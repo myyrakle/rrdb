@@ -1,8 +1,16 @@
 [package]
 name = "rrdb"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = "0.0.0" 
+authors = ["myyrakle <sssang97@naver.com>"] 
+description = "" 
+keywords = ["db", "database", "sql"] 
+edition = "2018" 
+license = "MIT" #라이센스
+include = ["src/lib.rs", "Cargo.toml"]
+exclude = [] #업로드 제외
+readme = "README.md" 
+repository = "https://github.com/myyrakle/rrdb"
+documentation = "https://github.com/myyrakle/rrdb/blob/master/README.md"
+homepage = "https://github.com/myyrakle/rrdb/blob/master/README.md" #홈페이지 사이트
 
 [dependencies]
