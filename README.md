@@ -1,1 +1,3 @@
 # rrdb
+
+Rust-based RDB
