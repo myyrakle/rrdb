@@ -15,3 +15,7 @@ homepage = "https://github.com/myyrakle/rrdb/blob/master/README.md"
 
 [dependencies]
 tokio = { version = "1", feature = ["full"] }
+
+[[bin]]
+name = "run"
+path = "src/main.rs"
