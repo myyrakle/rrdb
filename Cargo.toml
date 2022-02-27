@@ -2,15 +2,16 @@
 name = "rrdb"
 version = "0.0.0" 
 authors = ["myyrakle <sssang97@naver.com>"] 
-description = "" 
+description = "ready" 
 keywords = ["db", "database", "sql"] 
 edition = "2018" 
-license = "MIT" #라이센스
+license = "MIT" 
 include = ["src/lib.rs", "Cargo.toml"]
-exclude = [] #업로드 제외
+exclude = []
 readme = "README.md" 
 repository = "https://github.com/myyrakle/rrdb"
 documentation = "https://github.com/myyrakle/rrdb/blob/master/README.md"
-homepage = "https://github.com/myyrakle/rrdb/blob/master/README.md" #홈페이지 사이트
+homepage = "https://github.com/myyrakle/rrdb/blob/master/README.md"
 
 [dependencies]
+tokio = { version = "1", feature = ["full"] }
