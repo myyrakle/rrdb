@@ -15,7 +15,16 @@ homepage = "https://github.com/myyrakle/rrdb/blob/master/README.md"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+clap = { version = "3.1.3", features = ["derive"] }
+atty = { version = "0.2.14", optional = true }
+structopt = { version = "0.3.18", optional = true }
 
 [[bin]]
-name = "run"
+name = "rrdb"
 path = "./src/main.rs"
+required-features = ["rrdb"]
+
+[features]
+default = ["rrdb"]
+rrdb = ["cli"]
+cli = ["atty", "structopt"]
