@@ -5,6 +5,8 @@ use command::commands::SubCommands;
 
 use clap::Parser;
 
+use std::fs::create_dir;
+
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -18,8 +20,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     match args.action {
-        SubCommands::Init => {
-            println!("Init");
+        SubCommands::Init(init) => {
+            //let configPath = init.init.configPath.unwrap_or("./".into());
+            //println!("Init, {:?}", configPath);
+
+            create_dir(".rrdb.config").unwrap();
         }
         SubCommands::Run => {
             println!("Run");
