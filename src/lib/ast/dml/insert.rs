@@ -1,6 +1,8 @@
-use crate::lib::{DMLStatement, SQLStatement};
+use crate::lib::{DMLStatement, SQLStatement, Table};
 
-pub struct InsertQuery {}
+pub struct InsertQuery {
+    pub into_table: Option<Table>,
+}
 
 impl DMLStatement for InsertQuery {}
 
