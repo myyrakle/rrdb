@@ -1,8 +1,8 @@
-use crate::lib::ast::dml::expressions::IExpresstion;
+use crate::lib::ast::dml::expressions::IExpression;
 
 #[derive(Clone, Debug)]
-pub struct BooleanExpresstion {
+pub struct BooleanExpression {
     pub value: bool,
 }
 
-impl IExpresstion for BooleanExpresstion {}
+impl IExpression for BooleanExpression {}

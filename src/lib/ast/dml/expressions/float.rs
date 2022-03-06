@@ -1,8 +1,8 @@
-use crate::lib::ast::dml::expressions::IExpresstion;
+use crate::lib::ast::dml::expressions::IExpression;
 
 #[derive(Clone, Debug)]
-pub struct FloatExpresstion {
+pub struct FloatExpression {
     pub value: f64,
 }
 
-impl IExpresstion for FloatExpresstion {}
+impl IExpression for FloatExpression {}

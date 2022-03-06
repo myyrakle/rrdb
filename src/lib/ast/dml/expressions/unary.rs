@@ -1,9 +1,9 @@
-use crate::lib::{ast::dml::expressions::IExpresstion, UnaryOperator};
+use crate::lib::{ast::dml::expressions::IExpression, UnaryOperator};
 
 #[derive(Clone, Debug)]
-pub struct UnaryExpresstion {
+pub struct UnaryExpression {
     pub operator: UnaryOperator,
-    pub operand: Box<dyn IExpresstion>,
+    pub operand: Box<dyn IExpression>,
 }
 
-impl IExpresstion for UnaryExpresstion {}
+impl IExpression for UnaryExpression {}

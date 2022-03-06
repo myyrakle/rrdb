@@ -1,10 +1,10 @@
-use crate::lib::ast::dml::expressions::{BinaryOperator, IExpresstion};
+use crate::lib::ast::dml::expressions::{BinaryOperator, IExpression};
 
 #[derive(Clone, Debug)]
-pub struct BinaryExpresstion {
+pub struct BinaryExpression {
     pub operator: BinaryOperator,
-    pub lhs: Box<dyn IExpresstion>,
-    pub rhs: Box<dyn IExpresstion>,
+    pub lhs: Box<dyn IExpression>,
+    pub rhs: Box<dyn IExpression>,
 }
 
-impl IExpresstion for BinaryExpresstion {}
+impl IExpression for BinaryExpression {}

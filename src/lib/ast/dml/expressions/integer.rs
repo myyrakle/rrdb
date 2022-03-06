@@ -1,8 +1,8 @@
-use crate::lib::ast::dml::expressions::IExpresstion;
+use crate::lib::ast::dml::expressions::IExpression;
 
 #[derive(Clone, Debug)]
-pub struct IntegerExpresstion {
+pub struct IntegerExpression {
     pub value: i64,
 }
 
-impl IExpresstion for IntegerExpresstion {}
+impl IExpression for IntegerExpression {}

@@ -2,9 +2,9 @@ use std::fmt::Debug;
 
 use dyn_clone::{clone_trait_object, DynClone};
 
-pub trait IExpresstion: DynClone + Debug {}
+pub trait IExpression: DynClone + Debug {}
 
-clone_trait_object!(IExpresstion);
+clone_trait_object!(IExpression);
 
 #[derive(Clone, Debug)]
-pub struct Expresstion {}
+pub struct Expression {}
