@@ -1,10 +1,10 @@
 pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 
-struct DropTable {
+struct DropTableQuery {
     database_name: String,
     table_name: String,
 }
 
-impl DDLStatement for DropTable {}
+impl DDLStatement for DropTableQuery {}
 
-impl SQLStatement for DropTable {}
+impl SQLStatement for DropTableQuery {}

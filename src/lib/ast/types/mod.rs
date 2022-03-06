@@ -1,6 +1,9 @@
 pub mod column;
 pub use column::*;
 
+pub mod table;
+pub use table::*;
+
 pub mod foreign_key;
 pub use foreign_key::*;
 

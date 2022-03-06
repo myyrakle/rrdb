@@ -7,3 +7,6 @@ pub use delete::*;
 pub use insert::*;
 pub use select::*;
 pub use update::*;
+
+pub mod parts;
+pub use parts::*;

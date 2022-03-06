@@ -2,7 +2,7 @@ pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 pub use crate::lib::ast::types::Column;
 use crate::lib::{CheckConstraint, ForeignKey, TableOptions};
 
-struct CreateTable {
+struct CreateTableQuery {
     database_name: Option<String>,
     table_name: String,
     columns: Vec<Column>,
@@ -13,6 +13,6 @@ struct CreateTable {
     table_options: TableOptions,
 }
 
-impl DDLStatement for CreateTable {}
+impl DDLStatement for CreateTableQuery {}
 
-impl SQLStatement for CreateTable {}
+impl SQLStatement for CreateTableQuery {}

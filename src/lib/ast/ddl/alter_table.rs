@@ -1,6 +1,6 @@
 pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 
-struct AlterTable {
+struct AlterTableQuery {
     database_name: String,
     table_name: String,
     // columns: Vec<Column>,
@@ -11,6 +11,6 @@ struct AlterTable {
     // table_options: TableOptions,
 }
 
-impl DDLStatement for AlterTable {}
+impl DDLStatement for AlterTableQuery {}
 
-impl SQLStatement for AlterTable {}
+impl SQLStatement for AlterTableQuery {}
