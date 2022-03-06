@@ -1,3 +1,4 @@
+#[derive(Clone, Debug)]
 pub enum BinaryOperator {
     Add, // A + B
     Sub, // A - B
@@ -12,6 +13,8 @@ pub enum BinaryOperator {
     Eq,  // A = B
     Neq, // A != B, A <> B
 }
+
+#[derive(Clone, Debug)]
 
 pub enum UnaryOperator {
     Pos, // +A
