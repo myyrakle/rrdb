@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     match args.action {
-        SubCommands::Init(init) => {
+        SubCommands::Init(_init) => {
             //let configPath = init.init.configPath.unwrap_or("./".into());
             //println!("Init, {:?}", configPath);
 
@@ -29,9 +29,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         SubCommands::Run => {
             println!("Run");
 
-            loop {
-                break;
-            }
+            // loop {
+
+            //     break;
+            // }
         }
         SubCommands::Client => {
             println!("Client");

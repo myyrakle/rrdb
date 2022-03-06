@@ -1,8 +1,8 @@
 pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
+use crate::lib::Table;
 
-struct AlterTableQuery {
-    database_name: String,
-    table_name: String,
+pub struct AlterTableQuery {
+    pub table: Table,
     // columns: Vec<Column>,
     // primary_key: Option<Vec<String>>,
     // foreign_keys: Vec<ForeignKey>,

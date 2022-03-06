@@ -1,16 +1,15 @@
 pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 pub use crate::lib::ast::types::Column;
-use crate::lib::{CheckConstraint, ForeignKey, TableOptions};
+use crate::lib::{CheckConstraint, ForeignKey, Table, TableOptions};
 
-struct CreateTableQuery {
-    database_name: Option<String>,
-    table_name: String,
-    columns: Vec<Column>,
-    primary_key: Option<Vec<String>>,
-    foreign_keys: Vec<ForeignKey>,
-    unique_keys: Vec<Vec<String>>,
-    check_constraints: Vec<CheckConstraint>,
-    table_options: TableOptions,
+pub struct CreateTableQuery {
+    pub table: Table,
+    pub columns: Vec<Column>,
+    pub primary_key: Option<Vec<String>>,
+    pub foreign_keys: Vec<ForeignKey>,
+    pub unique_keys: Vec<Vec<String>>,
+    pub check_constraints: Vec<CheckConstraint>,
+    pub table_options: TableOptions,
 }
 
 impl DDLStatement for CreateTableQuery {}

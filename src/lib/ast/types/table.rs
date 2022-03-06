@@ -1,7 +1,5 @@
-use crate::lib::DataTypes;
-
 #[derive(Clone, Debug)]
 pub struct Table {
-    database_name: String,
-    table_name: String,
+    pub database_name: String,
+    pub table_name: String,
 }

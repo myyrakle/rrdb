@@ -8,7 +8,7 @@ use clap::Args;
 pub struct ConfigOptionsInit {
     /// 파일이 세팅될 경로
     #[clap(long, short, parse(from_os_str))]
-    pub configPath: Option<PathBuf>,
+    pub config_path: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, Args)]

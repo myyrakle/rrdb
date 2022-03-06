@@ -10,3 +10,6 @@ pub use group_by::*;
 
 pub mod order_by;
 pub use order_by::*;
+
+pub mod having;
+pub use having::*;
