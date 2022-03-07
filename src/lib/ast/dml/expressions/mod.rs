@@ -10,6 +10,9 @@ pub use binary::*;
 pub mod unary;
 pub use unary::*;
 
+pub mod call;
+pub use call::*;
+
 pub mod float;
 pub use float::*;
 
