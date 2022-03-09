@@ -28,6 +28,18 @@ pub fn select_3() {
 }
 
 #[test]
+pub fn select_4() {
+    let text = r#"SELECT 'I''m Sam'"#.to_owned();
+
+    let tokens = Tokenizer::string_to_tokens(text);
+
+    assert_eq!(
+        tokens,
+        vec![Token::Select, Token::String("I'm Sam".to_owned())]
+    );
+}
+
+#[test]
 pub fn select_from_1() {
     let text = r#"SELECT name from person"#.to_owned();
 
@@ -40,6 +52,23 @@ pub fn select_from_1() {
             Token::Identifier("name".to_owned()),
             Token::From,
             Token::Identifier("person".to_owned())
+        ]
+    );
+}
+
+#[test]
+pub fn select_from_2() {
+    let text = r#"SELECT 1 from "boom""#.to_owned();
+
+    let tokens = Tokenizer::string_to_tokens(text);
+
+    assert_eq!(
+        tokens,
+        vec![
+            Token::Select,
+            Token::Integer(1),
+            Token::From,
+            Token::Identifier("boom".to_owned())
         ]
     );
 }

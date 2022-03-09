@@ -36,7 +36,7 @@ impl Tokenizer {
     }
 
     pub fn is_quote(&self) -> bool {
-        ['\'', '"', '`'].contains(&self.last_char)
+        ['\'', '"'].contains(&self.last_char)
     }
 
     pub fn is_dot(&self) -> bool {
@@ -128,6 +128,8 @@ impl Tokenizer {
                 "BETWEEN" => Token::Between,
                 "LIKE" => Token::Like,
                 "IN" => Token::In,
+                "TRUE" => Token::Boolean(true),
+                "FALSE" => Token::Boolean(false),
                 _ => Token::Identifier(identifier),
             };
         }
@@ -164,12 +166,13 @@ impl Tokenizer {
                     ),
                 }
             }
-        } else if self.is_special_character() {
+        }
+        // 특수문자일 경우
+        else if self.is_special_character() {
             match self.last_char {
                 ',' => Token::Comma,
                 '-' => {
                     // 다음 문자가 또 -일 경우 행 단위 주석으로 처리
-
                     self.read_char();
 
                     if self.last_char == '-' {
@@ -222,6 +225,50 @@ impl Tokenizer {
                     }
                 }
                 _ => Token::Operator(self.last_char.to_string()),
+            }
+        }
+        // 따옴표일 경우 처리
+        else if self.is_quote() {
+            if self.last_char == '"' {
+                let mut identifier = vec![];
+
+                self.read_char();
+                while self.last_char != '"' {
+                    identifier.push(self.last_char);
+                    self.read_char();
+                }
+
+                let identifier: String = identifier.into_iter().collect::<String>();
+
+                Token::Identifier(identifier)
+            } else if self.last_char == '\'' {
+                let mut string = vec![];
+
+                self.read_char();
+                while !self.is_eof() {
+                    if self.last_char == '\'' {
+                        self.read_char();
+
+                        // '' 의 형태일 경우 '로 이스케이프
+                        // 아닐 경우 문자열 종료
+                        if self.last_char == '\'' {
+                            string.push(self.last_char);
+                        } else {
+                            self.unread_char();
+                            break;
+                        }
+                    } else {
+                        string.push(self.last_char);
+                    }
+
+                    self.read_char();
+                }
+
+                let string: String = string.into_iter().collect::<String>();
+
+                Token::String(string)
+            } else {
+                Token::UnknownCharacter(self.last_char)
             }
         }
         // 아무것도 해당되지 않을 경우 예외처리
