@@ -38,6 +38,8 @@ pub enum Token {
     Table,
     Column,
     Comment,
+    Primary,
+    Foreign,
     Key,
     Add,
 

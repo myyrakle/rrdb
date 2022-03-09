@@ -120,6 +120,8 @@ impl Tokenizer {
                 "TABLE" => Token::Table,
                 "COLUMN" => Token::Column,
                 "COMMENT" => Token::Comment,
+                "PRIMARY" => Token::Primary,
+                "FOREIGN" => Token::Foreign,
                 "KEY" => Token::Key,
                 "ADD" => Token::Add,
                 "AND" => Token::And,
