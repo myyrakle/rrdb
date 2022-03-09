@@ -24,3 +24,6 @@ pub use string::*;
 
 pub mod boolean;
 pub use boolean::*;
+
+pub mod identifier;
+pub use identifier::*;
