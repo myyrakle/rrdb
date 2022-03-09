@@ -1,8 +1,8 @@
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     // DCL
-    Grant,
-    Revoke,
+    // Grant,
+    // Revoke,
 
     // DML
     Select,
@@ -19,6 +19,7 @@ pub enum Token {
     Offset,
     Insert,
     Into,
+    Values,
     Update,
     Set,
     Delete,
@@ -41,7 +42,8 @@ pub enum Token {
     Add,
 
     // ETC
-    Analyze,
+    // Analyze,
+    CodeComment(String),
 
     // EXPRESSION
     And,
@@ -51,12 +53,17 @@ pub enum Token {
     Like,
     In,
 
-    // primary
+    // primary expression
     Identifier(String),
     Integer(i64),
     Float(f64),
     Boolean(bool),
     String(String),
+
+    Operator(String),
+
+    // general syntax
+    Comma,
 
     // exception handling
     EOF,

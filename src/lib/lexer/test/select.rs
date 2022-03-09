@@ -61,3 +61,32 @@ pub fn select_from_where_1() {
         ]
     );
 }
+
+// #[test]
+// pub fn inner_join() {
+//     let text = r#"
+//         SELECT
+//             p.name as name,
+//             s.name as schoolName
+//         from person as p
+//         inner join school as s
+//         on 1=1
+//             and p.school_id = s.id
+//     "#
+//     .to_owned();
+
+//     let tokens = Tokenizer::string_to_tokens(text);
+
+//     assert_eq!(
+//         tokens,
+//         vec![
+//             Token::Select,
+//             Token::Identifier("p.name".to_owned()),
+//             Token::As,
+//             Token::Identifier("name".to_owned()),
+//             Token::From,
+//             Token::Identifier("person".to_owned()),
+//             Token::Where,
+//         ]
+//     );
+// }
