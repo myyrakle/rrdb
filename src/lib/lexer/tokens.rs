@@ -1,46 +1,65 @@
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    EOF = -1,
+    // DCL
+    Grant,
+    Revoke,
 
-    SELECT,
-    FROM,
-    WHERE,
+    // DML
+    Select,
+    From,
+    Where,
+    As,
+    Order,
+    By,
+    Asc,
+    Desc,
+    Group,
+    Having,
+    Limit,
+    Offset,
+    Insert,
+    Into,
+    Update,
+    Set,
+    Delete,
+    Join,
+    Inner,
+    Left,
+    Right,
+    Full,
+    Outer,
+    On,
 
-    ORDER_BY,
-    ASC,
-    DESC,
+    // DDL
+    Create,
+    Alter,
+    Drop,
+    Table,
+    Column,
+    Comment,
+    Key,
+    Add,
 
-    GROUP_BY,
-    HAVING,
+    // ETC
+    Analyze,
 
-    LIMIT,
-    OFFSET,
-
-    INSERT,
-    INTO,
-
-    UPDATE,
-    SET,
-
-    DELETE,
-
-    JOIN,
-    INNER,
-    LEFT,
-    RIGHT,
-    FULL,
-    OUTER,
-
-    CREATE,
-    ALTER,
-    DROP,
-
-    TABLE,
-    COLUMN,
+    // EXPRESSION
+    And,
+    Or,
+    Not,
+    Between,
+    Like,
+    In,
 
     // primary
-    IDENTIFIER(String),
-    INTEGER(i64),
-    FLOAT(f64),
-    BOOLEAN(bool),
-    STRING(String),
+    Identifier(String),
+    Integer(i64),
+    Float(f64),
+    Boolean(bool),
+    String(String),
+
+    // exception handling
+    EOF,
+    Error(String),
+    UnknownCharacter(char),
 }

@@ -1,4 +1,4 @@
-use crate::lib::ast::dml::expressions::{BinaryOperator, IExpression};
+use crate::lib::ast::dml::expressions::IExpression;
 
 #[derive(Clone, Debug)]
 pub struct CallExpression {
