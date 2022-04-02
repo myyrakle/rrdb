@@ -39,6 +39,10 @@ impl Tokenizer {
         ['\'', '"'].contains(&self.last_char)
     }
 
+    pub fn is_semicolon(&self) -> bool {
+        self.last_char == ';'
+    }
+
     pub fn is_dot(&self) -> bool {
         self.last_char == '.'
     }
@@ -272,6 +276,10 @@ impl Tokenizer {
             } else {
                 Token::UnknownCharacter(self.last_char)
             }
+        }
+        // 세미콜론
+        else if self.is_semicolon() {
+            Token::SemiColon
         }
         // 아무것도 해당되지 않을 경우 예외처리
         else if self.is_eof() {

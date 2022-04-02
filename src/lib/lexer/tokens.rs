@@ -66,6 +66,7 @@ pub enum Token {
 
     // general syntax
     Comma,
+    SemiColon,
 
     // exception handling
     EOF,

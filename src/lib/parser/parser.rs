@@ -18,7 +18,7 @@ impl Parser {
         self.current_token.to_owned()
     }
 
-    pub fn has_next_token(&mut self) -> bool {
+    pub fn has_next_token(&self) -> bool {
         !self.tokenizer.is_eof()
     }
 
@@ -26,7 +26,33 @@ impl Parser {
         Box::new(IntegerExpression::new(value))
     }
 
-    pub fn parse() {
-        loop {}
+    pub fn parse(&mut self) {
+        // Top-Level Parser Loop
+        loop {
+            if self.has_next_token() {
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::EOF => {
+                        // 루프 종료
+                        break;
+                    }
+                    Token::SemiColon => {
+                        // top-level 세미콜론 무시
+                        continue;
+                    }
+                    Token::Create => {}
+                    Token::Alter => {}
+                    Token::Drop => {}
+                    Token::Select => {}
+                    Token::Update => {}
+                    Token::Insert => {}
+                    Token::Delete => {}
+                    _ => (),
+                }
+            } else {
+                break;
+            }
+        }
     }
 }
