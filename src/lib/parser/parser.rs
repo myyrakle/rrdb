@@ -24,7 +24,7 @@ impl Parser {
         !self.tokenizer.is_eof()
     }
 
-    fn parse_integer(value: i64) -> Box<dyn IExpression> {
+    fn _parse_integer(value: i64) -> Box<dyn IExpression> {
         Box::new(IntegerExpression::new(value))
     }
 
@@ -47,17 +47,29 @@ impl Parser {
         Ok(())
     }
 
-    fn handle_alter_query(&mut self) {}
+    fn handle_alter_query(&mut self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
-    fn handle_drop_query(&mut self) {}
+    fn handle_drop_query(&mut self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
-    fn handle_select_query(&mut self) {}
+    fn handle_select_query(&mut self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
-    fn handle_update_query(&mut self) {}
+    fn handle_update_query(&mut self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
-    fn handle_delete_query(&mut self) {}
+    fn handle_delete_query(&mut self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
-    fn handle_insert_query(&mut self) {}
+    fn handle_insert_query(&mut self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 
     pub fn parse(&mut self) -> Result<(), Box<dyn Error>> {
         // Top-Level Parser Loop
@@ -75,12 +87,12 @@ impl Parser {
                         continue;
                     }
                     Token::Create => self.handle_create_query()?,
-                    Token::Alter => self.handle_alter_query(),
-                    Token::Drop => self.handle_drop_query(),
-                    Token::Select => self.handle_select_query(),
-                    Token::Update => self.handle_update_query(),
-                    Token::Insert => self.handle_insert_query(),
-                    Token::Delete => self.handle_delete_query(),
+                    Token::Alter => self.handle_alter_query()?,
+                    Token::Drop => self.handle_drop_query()?,
+                    Token::Select => self.handle_select_query()?,
+                    Token::Update => self.handle_update_query()?,
+                    Token::Insert => self.handle_insert_query()?,
+                    Token::Delete => self.handle_delete_query()?,
                     _ => (),
                 }
             } else {
