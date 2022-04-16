@@ -33,7 +33,7 @@ impl Tokenizer {
     }
 
     pub fn is_special_character(&self) -> bool {
-        ['+', '-', '*', '/', ',', '>', '<', '=', '!', '(', ')'].contains(&self.last_char)
+        ['+', '-', '*', '/', ',', '>', '<', '=', '!'].contains(&self.last_char)
     }
 
     pub fn is_quote(&self) -> bool {
@@ -50,6 +50,10 @@ impl Tokenizer {
 
     pub fn is_backtic(&self) -> bool {
         self.last_char == '`'
+    }
+
+    pub fn is_parentheses(&self) -> bool {
+        self.last_char == '(' || self.last_char == ')'
     }
 
     pub fn is_eof(&self) -> bool {
@@ -78,7 +82,7 @@ impl Tokenizer {
     // 끝을 만날 경우 Token::EOF를 반환합니다.
     pub fn get_token(&mut self) -> Token {
         // 화이트 스페이스 삼킴
-        while self.is_whitespace() {
+        while self.is_whitespace() && !self.is_eof() {
             self.read_char();
         }
 
@@ -283,6 +287,18 @@ impl Tokenizer {
         // 세미콜론
         else if self.is_semicolon() {
             Token::SemiColon
+        }
+        // 마침표
+        else if self.is_dot() {
+            Token::Period
+        }
+        // 괄호
+        else if self.is_parentheses() {
+            if self.last_char == '(' {
+                Token::LeftParentheses
+            } else {
+                Token::RightParentheses
+            }
         }
         // 아무것도 해당되지 않을 경우 예외처리
         else if self.is_eof() {

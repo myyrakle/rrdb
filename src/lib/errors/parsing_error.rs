@@ -1,16 +1,18 @@
+use std::string::ToString;
+
 #[derive(Debug, Clone)]
 pub struct ParsingError {
     pub message: String,
 }
 
 impl ParsingError {
-    pub fn new(message: &str) -> Self {
+    pub fn new<T: ToString>(message: T) -> Self {
         Self {
-            message: message.to_owned(),
+            message: message.to_string(),
         }
     }
 
-    pub fn boxed(message: &str) -> Box<Self> {
+    pub fn boxed<T: ToString>(message: T) -> Box<Self> {
         Box::new(Self::new(message))
     }
 }

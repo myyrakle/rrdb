@@ -1,6 +1,9 @@
 use std::error::Error;
 
-use crate::lib::{IExpression, IntegerExpression, ParsingError, Token, Tokenizer, SQLStatement, CreateTableQuery};
+use crate::lib::{
+    CreateTableQuery, IExpression, IntegerExpression, ParsingError, SQLStatement, Table, Token,
+    Tokenizer,
+};
 
 #[derive(Debug)]
 pub struct Parser {
@@ -71,36 +74,118 @@ impl Parser {
                 if !self.has_next_token() {
                     return Err(ParsingError::boxed("need more tokens"));
                 }
-    
+
                 let current_token = self.get_next_token();
 
                 if Token::Exists == current_token {
                     query_builder.set_if_not_exists(true);
                 } else {
-                    return Err(ParsingError::boxed("need more tokens"));
+                    return Err(ParsingError::boxed(format!(
+                        "expected keyword is 'exists'. but your input word is '{:?}'",
+                        current_token
+                    )));
                 }
             } else {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed(format!(
+                    "expected keyword is 'not'. but your input word is '{:?}'",
+                    current_token
+                )));
             }
         }
 
-        Ok(query_builder.build())
-    }
-
-    fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+        // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        let _current_token = self.get_next_token();
+        // 첫번째로 오는 이름은 테이블명으로 추정
+        let current_token = self.get_next_token();
+        let mut table_name = "".to_string();
+        let mut database_name = None;
 
-        let  query_builder = CreateTableQuery::builder();
-         // TODO: impl
+        if let Token::Identifier(name) = current_token {
+            table_name = name;
+        } else {
+            return Err(ParsingError::boxed(format!(
+                "expected identifier. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
+        if current_token == Token::Period {
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            if let Token::Identifier(name) = current_token {
+                database_name = Some(table_name);
+                table_name = name;
+            } else {
+                return Err(ParsingError::boxed(format!(
+                    "expected identifier. but your input word is '{:?}'",
+                    current_token
+                )));
+            }
+        }
+
+        query_builder.set_table(Table::new(database_name, table_name));
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if Token::LeftParentheses != current_token {
+            return Err(ParsingError::boxed(format!(
+                "expected '('. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        // ...
+
+        // 닫는 괄호 체크
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if Token::RightParentheses != current_token {
+            return Err(ParsingError::boxed(format!(
+                "expected ')'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        // 세미콜론 체크
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if Token::SemiColon != current_token {
+            return Err(ParsingError::boxed(format!(
+                "expected ';'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
 
         Ok(query_builder.build())
     }
 
-    fn handle_drop_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+    fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -113,7 +198,7 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    fn handle_select_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+    fn handle_drop_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -126,7 +211,7 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    fn handle_update_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+    fn handle_select_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -139,7 +224,7 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    fn handle_delete_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+    fn handle_update_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -152,7 +237,7 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    fn handle_insert_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+    fn handle_delete_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -165,7 +250,20 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Box<dyn SQLStatement>>, Box<dyn Error>>  {
+    fn handle_insert_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let _current_token = self.get_next_token();
+
+        let query_builder = CreateTableQuery::builder();
+        // TODO: impl
+
+        Ok(query_builder.build())
+    }
+
+    pub fn parse(&mut self) -> Result<Vec<Box<dyn SQLStatement>>, Box<dyn Error>> {
         let mut statements: Vec<Box<dyn SQLStatement>> = vec![];
 
         // Top-Level Parser Loop
@@ -191,7 +289,7 @@ impl Parser {
                     Token::Delete => statements.push(self.handle_delete_query()?),
                     _ => {
                         break;
-                    },
+                    }
                 }
             } else {
                 break;

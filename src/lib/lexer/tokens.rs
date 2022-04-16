@@ -70,12 +70,13 @@ pub enum Token {
 
     // general syntax
     Comma,
+    Period,
     SemiColon,
+    LeftParentheses,
+    RightParentheses,
 
     // exception handling
     EOF,
     Error(String),
     UnknownCharacter(char),
-
-   
 }
