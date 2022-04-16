@@ -2,6 +2,7 @@ pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 pub use crate::lib::ast::types::Column;
 use crate::lib::{CheckConstraint, ForeignKey, Table, TableOptions, UniqueKey};
 
+#[derive(Debug, Clone)]
 pub struct CreateTableQuery {
     pub table: Option<Table>,
     pub columns: Vec<Column>,

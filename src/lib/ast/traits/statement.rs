@@ -1,4 +1,4 @@
-pub trait SQLStatement {}
+pub trait SQLStatement: std::fmt::Debug {}
 
 pub trait DDLStatement: SQLStatement {}
 

@@ -1,5 +1,6 @@
 use crate::lib::lexer::Token;
 
+#[derive(Debug)]
 pub struct Tokenizer {
     buffer: Vec<char>,
     buffer_index: usize,

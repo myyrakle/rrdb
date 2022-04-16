@@ -1,6 +1,7 @@
 pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 use crate::lib::Table;
 
+#[derive(Debug, Clone)]
 pub struct AlterTableQuery {
     pub table: Table,
     // columns: Vec<Column>,

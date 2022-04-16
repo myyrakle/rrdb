@@ -2,6 +2,7 @@ use std::error::Error;
 
 use crate::lib::{IExpression, IntegerExpression, ParsingError, Token, Tokenizer, SQLStatement, CreateTableQuery};
 
+#[derive(Debug)]
 pub struct Parser {
     pub current_token: Token,
     pub tokenizer: Tokenizer,
@@ -29,7 +30,7 @@ impl Parser {
     }
 
     // CREATE...로 시작되는 쿼리 분석
-    fn handle_create_query(&mut self) -> Result<(), Box<dyn Error>> {
+    fn handle_create_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -38,7 +39,7 @@ impl Parser {
 
         match current_token {
             Token::Table => {
-                self.handle_create_table_query()?;
+                return self.handle_create_table_query();
             }
             _ => {
                 return Err(ParsingError::boxed(
@@ -46,8 +47,6 @@ impl Parser {
                 ));
             }
         }
-
-        Ok(())
     }
 
     // CREATE table 쿼리 분석
@@ -88,31 +87,87 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    fn handle_alter_query(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let _current_token = self.get_next_token();
+
+        let  query_builder = CreateTableQuery::builder();
+         // TODO: impl
+
+        Ok(query_builder.build())
     }
 
-    fn handle_drop_query(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn handle_drop_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let _current_token = self.get_next_token();
+
+        let query_builder = CreateTableQuery::builder();
+        // TODO: impl
+
+        Ok(query_builder.build())
     }
 
-    fn handle_select_query(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn handle_select_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let _current_token = self.get_next_token();
+
+        let query_builder = CreateTableQuery::builder();
+        // TODO: impl
+
+        Ok(query_builder.build())
     }
 
-    fn handle_update_query(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn handle_update_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let _current_token = self.get_next_token();
+
+        let query_builder = CreateTableQuery::builder();
+        // TODO: impl
+
+        Ok(query_builder.build())
     }
 
-    fn handle_delete_query(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn handle_delete_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let _current_token = self.get_next_token();
+
+        let query_builder = CreateTableQuery::builder();
+        // TODO: impl
+
+        Ok(query_builder.build())
     }
 
-    fn handle_insert_query(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn handle_insert_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>>  {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let _current_token = self.get_next_token();
+
+        let query_builder = CreateTableQuery::builder();
+        // TODO: impl
+
+        Ok(query_builder.build())
     }
 
-    pub fn parse(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn parse(&mut self) -> Result<Vec<Box<dyn SQLStatement>>, Box<dyn Error>>  {
+        let mut statements: Vec<Box<dyn SQLStatement>> = vec![];
+
         // Top-Level Parser Loop
         loop {
             if self.has_next_token() {
@@ -127,20 +182,22 @@ impl Parser {
                         // top-level 세미콜론 무시
                         continue;
                     }
-                    Token::Create => self.handle_create_query()?,
-                    Token::Alter => self.handle_alter_query()?,
-                    Token::Drop => self.handle_drop_query()?,
-                    Token::Select => self.handle_select_query()?,
-                    Token::Update => self.handle_update_query()?,
-                    Token::Insert => self.handle_insert_query()?,
-                    Token::Delete => self.handle_delete_query()?,
-                    _ => (),
+                    Token::Create => statements.push(self.handle_create_query()?),
+                    Token::Alter => statements.push(self.handle_alter_query()?),
+                    Token::Drop => statements.push(self.handle_drop_query()?),
+                    Token::Select => statements.push(self.handle_select_query()?),
+                    Token::Update => statements.push(self.handle_update_query()?),
+                    Token::Insert => statements.push(self.handle_insert_query()?),
+                    Token::Delete => statements.push(self.handle_delete_query()?),
+                    _ => {
+                        break;
+                    },
                 }
             } else {
                 break;
             }
         }
 
-        Ok(())
+        Ok(statements)
     }
 }

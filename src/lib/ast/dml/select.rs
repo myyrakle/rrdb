@@ -3,6 +3,7 @@ use crate::lib::{DMLStatement, GroupByClause, OrderByClause, SQLStatement, Table
 
 use super::SelectItem;
 
+#[derive(Debug, Clone)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectItem>,
     pub from_table: Option<Table>,
