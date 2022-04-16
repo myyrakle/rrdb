@@ -1,6 +1,19 @@
 pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 pub use crate::lib::ast::types::Column;
-use crate::lib::{CheckConstraint, ForeignKey, Table, TableOptions, UniqueKey};
+use crate::lib::{ForeignKey, Table, TableOptions, UniqueKey};
+
+/*
+CREATE TABLE [IF NOT EXISTS] [database_name.]table_name (
+    column_name data_type [NOT NULL | NULL],
+    column_name data_type [NOT NULL | NULL],
+    ...
+    PRIMARY KEY (column_name),
+    UNIQUE (column_name),
+    FOREIGN KEY (column_name) REFERENCES table_name (column_name),
+    FOREIGN KEY (column_name) REFERENCES table_name (column_name),
+    ...
+);
+*/
 
 #[derive(Debug, Clone)]
 pub struct CreateTableQuery {
@@ -9,7 +22,6 @@ pub struct CreateTableQuery {
     pub primary_key: Vec<String>,
     pub foreign_keys: Vec<ForeignKey>,
     pub unique_keys: Vec<UniqueKey>,
-    pub check_constraints: Vec<CheckConstraint>,
     pub table_options: Option<TableOptions>,
     pub if_not_exists: bool,
 }
@@ -22,7 +34,6 @@ impl CreateTableQuery {
             primary_key: vec![],
             foreign_keys: vec![],
             unique_keys: vec![],
-            check_constraints: vec![],
             table_options: None,
             if_not_exists:false,
         }
@@ -51,11 +62,6 @@ impl CreateTableQuery {
 
     pub fn add_unique_key<'a>(&'a mut self, unique_key: UniqueKey) -> &'a mut Self {    
         self.unique_keys.push(unique_key);
-        self
-    }
-
-    pub fn add_check<'a>(&'a mut self, check: CheckConstraint) -> &'a mut Self {    
-        self.check_constraints.push(check);
         self
     }
 
