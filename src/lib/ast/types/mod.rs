@@ -7,9 +7,6 @@ pub use table::*;
 pub mod foreign_key;
 pub use foreign_key::*;
 
-pub mod check_constraint;
-pub use check_constraint::*;
-
 pub mod unique_key;
 pub use unique_key::*;
 
