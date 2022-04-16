@@ -136,6 +136,8 @@ impl Tokenizer {
                 "IN" => Token::In,
                 "TRUE" => Token::Boolean(true),
                 "FALSE" => Token::Boolean(false),
+                "IF" => Token::If,
+                "EXISTS" => Token::Exists,
                 _ => Token::Identifier(identifier),
             };
         }

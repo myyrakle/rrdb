@@ -42,6 +42,7 @@ pub enum Token {
     Foreign,
     Key,
     Add,
+    If,
 
     // ETC
     // Analyze,
@@ -64,6 +65,9 @@ pub enum Token {
 
     Operator(String),
 
+    //functions
+    Exists,
+
     // general syntax
     Comma,
     SemiColon,
@@ -72,4 +76,6 @@ pub enum Token {
     EOF,
     Error(String),
     UnknownCharacter(char),
+
+   
 }
