@@ -63,8 +63,8 @@ impl CreateTableQuery {
         self
     }
 
-    pub fn build(&self)->Box<dyn SQLStatement> {
-        Box::new(*self)
+    pub fn build(self)->Box<dyn SQLStatement> {
+        Box::new(self)
     }
 }
 
