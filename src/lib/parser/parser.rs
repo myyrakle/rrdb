@@ -1,35 +1,42 @@
-use std::error::Error;
+use std::{collections::VecDeque, error::Error};
 
 use crate::lib::{
-    CreateTableQuery, IExpression, IntegerExpression, ParsingError, SQLStatement, Table, Token,
-    Tokenizer,
+    Column, CreateTableQuery, FloatExpression, IExpression, IntegerExpression, ParsingError,
+    SQLStatement, Table, Token, Tokenizer,
 };
 
 #[derive(Debug)]
 pub struct Parser {
     pub current_token: Token,
-    pub tokenizer: Tokenizer,
+    pub tokens: VecDeque<Token>,
 }
 
 impl Parser {
     pub fn new(text: String) -> Self {
         Self {
             current_token: Token::EOF,
-            tokenizer: Tokenizer::new(text),
+            tokens: VecDeque::from(Tokenizer::string_to_tokens(text)),
         }
     }
 
     pub fn get_next_token(&mut self) -> Token {
-        self.current_token = self.tokenizer.get_token();
-        self.current_token.to_owned()
+        self.tokens.pop_front().unwrap()
+    }
+
+    pub fn unget_next_token(&mut self, token: Token) {
+        self.tokens.push_front(token)
     }
 
     pub fn has_next_token(&self) -> bool {
-        !self.tokenizer.is_eof()
+        self.tokens.len() != 0 && !self.tokens.front().unwrap().is_eof()
     }
 
     fn _parse_integer(value: i64) -> Box<dyn IExpression> {
         Box::new(IntegerExpression::new(value))
+    }
+
+    fn _parse_float(value: f64) -> Box<dyn IExpression> {
+        Box::new(FloatExpression::new(value))
     }
 
     // CREATE...로 시작되는 쿼리 분석
@@ -52,7 +59,7 @@ impl Parser {
         }
     }
 
-    // CREATE table 쿼리 분석
+    // CREATE TABLE 쿼리 분석
     fn handle_create_table_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
@@ -100,7 +107,7 @@ impl Parser {
 
         // 첫번째로 오는 이름은 테이블명으로 추정
         let current_token = self.get_next_token();
-        let mut table_name = "".to_string();
+        let mut table_name;
         let mut database_name = None;
 
         if let Token::Identifier(name) = current_token {
@@ -137,8 +144,10 @@ impl Parser {
             }
         }
 
+        // 테이블명 설정
         query_builder.set_table(Table::new(database_name, table_name));
 
+        // 여는 괄호 체크
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -152,7 +161,25 @@ impl Parser {
             )));
         }
 
-        // ...
+        // 닫는 괄호 나올때까지 행 파싱 반복
+        loop {
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            match current_token {
+                Token::RightParentheses => {
+                    self.unget_next_token(current_token);
+                    break;
+                }
+                _ => {
+                    let column = self.parse_table_column()?;
+                    query_builder.add_column(column);
+                }
+            }
+        }
 
         // 닫는 괄호 체크
         if !self.has_next_token() {
@@ -183,6 +210,10 @@ impl Parser {
         }
 
         Ok(query_builder.build())
+    }
+
+    fn parse_table_column(&mut self) -> Result<Column, Box<dyn Error>> {
+        unimplemented!()
     }
 
     fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {

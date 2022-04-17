@@ -80,3 +80,12 @@ pub enum Token {
     Error(String),
     UnknownCharacter(char),
 }
+
+impl Token {
+    pub fn is_eof(&self) -> bool {
+        match self {
+            Token::EOF => true,
+            _ => false,
+        }
+    }
+}
