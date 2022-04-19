@@ -1,8 +1,8 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::lib::{
-    Column, CreateTableQuery, FloatExpression, IExpression, IntegerExpression, ParsingError,
-    SQLStatement, Table, Token, Tokenizer,
+    Column, ColumnBuilder, CreateTableQuery, FloatExpression, IExpression, IntegerExpression,
+    ParsingError, SQLStatement, Table, Token, Tokenizer,
 };
 
 #[derive(Debug)]
@@ -213,7 +213,24 @@ impl Parser {
     }
 
     fn parse_table_column(&mut self) -> Result<Column, Box<dyn Error>> {
-        unimplemented!()
+        let mut builder = Column::builder();
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if let Token::Identifier(name) = current_token {
+            builder.set_name(name);
+        } else {
+            return Err(ParsingError::boxed(format!(
+                "expected identifier. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        Ok(builder.build())
     }
 
     fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {

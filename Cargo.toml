@@ -21,6 +21,7 @@ structopt = { version = "0.3.18", optional = true }
 serde = { version = "1", features = ["derive"] }
 toml = "0.5.8"
 dyn-clone = "1.0.4"
+derive_builder = "0.10.2"
 
 [[bin]]
 name = "rrdb"
