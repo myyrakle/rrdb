@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::lib::{
-    Column, ColumnBuilder, CreateTableQuery, FloatExpression, IExpression, IntegerExpression,
+    Column, CreateTableQuery, DataType, FloatExpression, IExpression, IntegerExpression,
     ParsingError, SQLStatement, Table, Token, Tokenizer,
 };
 
@@ -230,7 +230,80 @@ impl Parser {
             )));
         }
 
+        let data_type = self.parse_data_type()?;
+        builder.set_data_type(data_type);
+
         Ok(builder.build())
+    }
+
+    fn parse_data_type(&mut self) -> Result<DataType, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if let Token::Identifier(type_name) = current_token {
+            match type_name.as_str() {
+                "INT" => Ok(DataType::Int),
+                "FLOAT" => Ok(DataType::Float),
+                "BOOLEAN" => Ok(DataType::Boolean),
+                "VARCHAR" => {
+                    // 여는 괄호 체크
+                    if !self.has_next_token() {
+                        return Err(ParsingError::boxed("need more tokens"));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    if Token::LeftParentheses != current_token {
+                        return Err(ParsingError::boxed(format!(
+                            "expected '('. but your input word is '{:?}'",
+                            current_token
+                        )));
+                    }
+
+                    // 문자열 길이 체크
+                    if !self.has_next_token() {
+                        return Err(ParsingError::boxed("need more tokens"));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    if let Token::Integer(integer) = current_token {
+                        // 닫는 괄호 체크
+                        if !self.has_next_token() {
+                            return Err(ParsingError::boxed("need more tokens"));
+                        }
+
+                        let current_token = self.get_next_token();
+
+                        if Token::RightParentheses != current_token {
+                            return Err(ParsingError::boxed(format!(
+                                "expected ')'. but your input word is '{:?}'",
+                                current_token
+                            )));
+                        }
+
+                        Ok(DataType::Varchar(integer))
+                    } else {
+                        return Err(ParsingError::boxed(format!(
+                            "expected integer number. but your input word is '{:?}'",
+                            current_token
+                        )));
+                    }
+                }
+                _ => Err(ParsingError::boxed(format!(
+                    "unknown data type '{}'",
+                    type_name
+                ))),
+            }
+        } else {
+            return Err(ParsingError::boxed(format!(
+                "expected identifier. but your input word is '{:?}'",
+                current_token
+            )));
+        }
     }
 
     fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {

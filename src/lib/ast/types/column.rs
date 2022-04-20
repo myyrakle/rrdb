@@ -1,9 +1,9 @@
-use crate::lib::DataTypes;
+use crate::lib::DataType;
 
 #[derive(Clone, Debug)]
 pub struct Column {
     pub name: String,
-    pub data_type: DataTypes,
+    pub data_type: DataType,
     pub comment: String,
     pub default: Option<String>,
     pub not_null: bool,
@@ -18,7 +18,7 @@ impl Column {
 #[derive(Default)]
 pub struct ColumnBuilder {
     name: Option<String>,
-    data_type: Option<DataTypes>,
+    data_type: Option<DataType>,
     comment: Option<String>,
     default: Option<String>,
     not_null: Option<bool>,
@@ -30,7 +30,7 @@ impl ColumnBuilder {
         self
     }
 
-    pub fn set_data_type(&mut self, data_type: DataTypes) -> &mut Self {
+    pub fn set_data_type(&mut self, data_type: DataType) -> &mut Self {
         self.data_type = Some(data_type);
         self
     }

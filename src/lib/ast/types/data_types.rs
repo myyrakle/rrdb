@@ -1,7 +1,8 @@
+// SQL 데이터 타입
 #[derive(Clone, Debug)]
-pub enum DataTypes {
+pub enum DataType {
     Int,
     Float,
-    Varchar(i32),
     Boolean,
+    Varchar(i64),
 }
