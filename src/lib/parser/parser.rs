@@ -175,6 +175,7 @@ impl Parser {
                     break;
                 }
                 _ => {
+                    self.unget_next_token(current_token);
                     let column = self.parse_table_column()?;
                     query_builder.add_column(column);
                 }
@@ -233,6 +234,88 @@ impl Parser {
         let data_type = self.parse_data_type()?;
         builder.set_data_type(data_type);
 
+        loop {
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            match current_token {
+                Token::Comma => {
+                    // , 만나면 종료
+                    break;
+                }
+                Token::RightParentheses => {
+                    // ) 만나면 종료
+                    self.unget_next_token(current_token);
+                    break;
+                }
+                Token::Primary => {
+                    if !self.has_next_token() {
+                        return Err(ParsingError::boxed("need more tokens"));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    match current_token {
+                        Token::Key => {
+                            builder.set_primary_key(true);
+                            builder.set_not_null(true);
+                        }
+                        _ => {
+                            return Err(ParsingError::boxed(format!(
+                                "expected 'PRIMARY KEY'. but your input word is '{:?}'",
+                                current_token
+                            )));
+                        }
+                    }
+                }
+                Token::Not => {
+                    if !self.has_next_token() {
+                        return Err(ParsingError::boxed("need more tokens"));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    match current_token {
+                        Token::Null => {
+                            builder.set_not_null(true);
+                        }
+                        _ => {
+                            return Err(ParsingError::boxed(format!(
+                                "expected 'NOT NULL'. but your input word is '{:?}'",
+                                current_token
+                            )));
+                        }
+                    }
+                }
+                Token::Null => {
+                    builder.set_not_null(false);
+                }
+                Token::Comment => {
+                    if !self.has_next_token() {
+                        return Err(ParsingError::boxed("need more tokens"));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    if let Token::String(comment) = current_token {
+                        builder.set_comment(comment);
+                    } else {
+                        return Err(ParsingError::boxed(format!(
+                            "expected comment string. but your input word is '{:?}'",
+                            current_token
+                        )));
+                    }
+                }
+                Token::Default => {
+                    return Err(ParsingError::boxed("not supported yet"));
+                }
+                _ => {}
+            }
+        }
+
         Ok(builder.build())
     }
 
@@ -244,8 +327,8 @@ impl Parser {
         let current_token = self.get_next_token();
 
         if let Token::Identifier(type_name) = current_token {
-            match type_name.as_str() {
-                "INT" => Ok(DataType::Int),
+            match type_name.to_uppercase().as_str() {
+                "INTEGER" => Ok(DataType::Int),
                 "FLOAT" => Ok(DataType::Float),
                 "BOOLEAN" => Ok(DataType::Boolean),
                 "VARCHAR" => {

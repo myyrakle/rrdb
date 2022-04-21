@@ -141,6 +141,8 @@ impl Tokenizer {
                 "IN" => Token::In,
                 "TRUE" => Token::Boolean(true),
                 "FALSE" => Token::Boolean(false),
+                "NULL" => Token::Null,
+                "DEFAULT" => Token::Default,
                 "IF" => Token::If,
                 "EXISTS" => Token::Exists,
                 _ => Token::Identifier(identifier),
@@ -155,6 +157,7 @@ impl Tokenizer {
                 number_string.push(self.last_char);
                 self.read_char();
             }
+            self.unread_char();
 
             let number_string: String =
                 number_string.into_iter().collect::<String>().to_uppercase();

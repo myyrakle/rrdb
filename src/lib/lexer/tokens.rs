@@ -44,6 +44,8 @@ pub enum Token {
     Add,
     If,
 
+    Default,
+
     // ETC
     // Analyze,
     CodeComment(String),
@@ -62,6 +64,7 @@ pub enum Token {
     Float(f64),
     Boolean(bool),
     String(String),
+    Null,
 
     Operator(String),
 

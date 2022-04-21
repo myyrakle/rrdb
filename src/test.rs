@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         CREATE TABLE if not exists "bar"."person"
         (
             id INTEGER PRIMARY KEY,
-            name TEXT,
+            name varchar(100),
             age INTEGER
         ); "#
         .to_owned();

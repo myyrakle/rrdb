@@ -7,6 +7,7 @@ pub struct Column {
     pub comment: String,
     pub default: Option<String>,
     pub not_null: bool,
+    pub primary_key: bool,
 }
 
 impl Column {
@@ -22,6 +23,7 @@ pub struct ColumnBuilder {
     comment: Option<String>,
     default: Option<String>,
     not_null: Option<bool>,
+    primary_key: Option<bool>,
 }
 
 impl ColumnBuilder {
@@ -50,6 +52,11 @@ impl ColumnBuilder {
         self
     }
 
+    pub fn set_primary_key(&mut self, primary_key: bool) -> &mut Self {
+        self.primary_key = Some(primary_key);
+        self
+    }
+
     pub fn build(self) -> Column {
         Column {
             name: self.name.unwrap(),
@@ -57,6 +64,7 @@ impl ColumnBuilder {
             comment: self.comment.unwrap_or("".into()),
             default: self.default,
             not_null: self.not_null.unwrap_or(false),
+            primary_key: self.primary_key.unwrap_or(false),
         }
     }
 }
