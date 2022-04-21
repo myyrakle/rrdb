@@ -22,5 +22,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = parser.parse();
     println!("{:?}", result);
 
+    let text = r#"
+        drop table "bar"."person"; "#
+        .to_owned();
+
+    // let tokens = Tokenizer::string_to_tokens(text);
+    // println!("{:?}", tokens);
+
+    let mut parser = Parser::new(text);
+    let result = parser.parse();
+    println!("{:?}", result);
+
     Ok(())
 }

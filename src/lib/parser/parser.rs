@@ -1,8 +1,8 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::lib::{
-    Column, CreateTableQuery, DataType, FloatExpression, IExpression, IntegerExpression,
-    ParsingError, SQLStatement, Table, Token, Tokenizer,
+    Column, CreateTableQuery, DataType, DropTableQuery, FloatExpression, IExpression,
+    IntegerExpression, ParsingError, SQLStatement, Table, Token, Tokenizer,
 };
 
 #[derive(Debug)]
@@ -195,6 +195,74 @@ impl Parser {
                 current_token
             )));
         }
+
+        // 세미콜론 체크
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if Token::SemiColon != current_token {
+            return Err(ParsingError::boxed(format!(
+                "expected ';'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        Ok(query_builder.build())
+    }
+
+    // CREATE TABLE 쿼리 분석
+    fn handle_drop_table_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
+        let mut query_builder = DropTableQuery::builder();
+
+        // 테이블명 획득 로직
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        // 첫번째로 오는 이름은 테이블명으로 추정
+        let current_token = self.get_next_token();
+        let mut table_name;
+        let mut database_name = None;
+
+        if let Token::Identifier(name) = current_token {
+            table_name = name;
+        } else {
+            return Err(ParsingError::boxed(format!(
+                "expected identifier. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
+        if current_token == Token::Period {
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            if let Token::Identifier(name) = current_token {
+                database_name = Some(table_name);
+                table_name = name;
+            } else {
+                return Err(ParsingError::boxed(format!(
+                    "expected identifier. but your input word is '{:?}'",
+                    current_token
+                )));
+            }
+        }
+
+        // 테이블명 설정
+        query_builder.set_table(Table::new(database_name, table_name));
 
         // 세미콜론 체크
         if !self.has_next_token() {
@@ -407,12 +475,18 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        let _current_token = self.get_next_token();
+        let current_token = self.get_next_token();
 
-        let query_builder = CreateTableQuery::builder();
-        // TODO: impl
-
-        Ok(query_builder.build())
+        match current_token {
+            Token::Table => {
+                return self.handle_drop_table_query();
+            }
+            _ => {
+                return Err(ParsingError::boxed(
+                    "not supported command. possible commands: (create table)",
+                ));
+            }
+        }
     }
 
     fn handle_select_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {

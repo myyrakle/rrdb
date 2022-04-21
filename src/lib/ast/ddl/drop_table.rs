@@ -3,7 +3,22 @@ use crate::lib::Table;
 
 #[derive(Debug, Clone)]
 pub struct DropTableQuery {
-    pub table: Table,
+    pub table: Option<Table>,
+}
+
+impl DropTableQuery {
+    pub fn builder() -> Self {
+        DropTableQuery { table: None }
+    }
+
+    pub fn set_table<'a>(&'a mut self, table: Table) -> &'a mut Self {
+        self.table = Some(table);
+        self
+    }
+
+    pub fn build(self) -> Box<dyn SQLStatement> {
+        Box::new(self)
+    }
 }
 
 impl DDLStatement for DropTableQuery {}
