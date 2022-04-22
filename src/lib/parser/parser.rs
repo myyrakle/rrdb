@@ -100,52 +100,10 @@ impl Parser {
             }
         }
 
-        // 테이블명 획득 로직
-        if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
-        }
-
-        // 첫번째로 오는 이름은 테이블명으로 추정
-        let current_token = self.get_next_token();
-        let mut table_name;
-        let mut database_name = None;
-
-        if let Token::Identifier(name) = current_token {
-            table_name = name;
-        } else {
-            return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
-                current_token
-            )));
-        }
-
-        if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
-        }
-
-        let current_token = self.get_next_token();
-
-        // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
-        if current_token == Token::Period {
-            if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
-            }
-
-            let current_token = self.get_next_token();
-
-            if let Token::Identifier(name) = current_token {
-                database_name = Some(table_name);
-                table_name = name;
-            } else {
-                return Err(ParsingError::boxed(format!(
-                    "expected identifier. but your input word is '{:?}'",
-                    current_token
-                )));
-            }
-        }
+        let table = self.parse_table_name()?;
 
         // 테이블명 설정
-        query_builder.set_table(Table::new(database_name, table_name));
+        query_builder.set_table(table);
 
         // 여는 괄호 체크
         if !self.has_next_token() {
@@ -222,47 +180,10 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        // 첫번째로 오는 이름은 테이블명으로 추정
-        let current_token = self.get_next_token();
-        let mut table_name;
-        let mut database_name = None;
-
-        if let Token::Identifier(name) = current_token {
-            table_name = name;
-        } else {
-            return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
-                current_token
-            )));
-        }
-
-        if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
-        }
-
-        let current_token = self.get_next_token();
-
-        // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
-        if current_token == Token::Period {
-            if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
-            }
-
-            let current_token = self.get_next_token();
-
-            if let Token::Identifier(name) = current_token {
-                database_name = Some(table_name);
-                table_name = name;
-            } else {
-                return Err(ParsingError::boxed(format!(
-                    "expected identifier. but your input word is '{:?}'",
-                    current_token
-                )));
-            }
-        }
+        let table = self.parse_table_name()?;
 
         // 테이블명 설정
-        query_builder.set_table(Table::new(database_name, table_name));
+        query_builder.set_table(table);
 
         // 세미콜론 체크
         if !self.has_next_token() {
@@ -455,6 +376,56 @@ impl Parser {
                 current_token
             )));
         }
+    }
+
+    fn parse_table_name(&mut self) -> Result<Table, Box<dyn Error>> {
+        // 테이블명 획득 로직
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        // 첫번째로 오는 이름은 테이블명으로 추정
+        let current_token = self.get_next_token();
+        let mut table_name;
+        let mut database_name = None;
+
+        if let Token::Identifier(name) = current_token {
+            table_name = name;
+        } else {
+            return Err(ParsingError::boxed(format!(
+                "expected identifier. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
+        if current_token == Token::Period {
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            if let Token::Identifier(name) = current_token {
+                database_name = Some(table_name);
+                table_name = name;
+            } else {
+                return Err(ParsingError::boxed(format!(
+                    "expected identifier. but your input word is '{:?}'",
+                    current_token
+                )));
+            }
+        } else {
+            self.unget_next_token(current_token);
+        }
+
+        Ok(Table::new(database_name, table_name))
     }
 
     fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
