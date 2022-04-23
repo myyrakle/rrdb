@@ -1,6 +1,9 @@
 pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
 use crate::lib::Table;
 
+/*
+DROP TABLE [database_name.]table_name;
+*/
 #[derive(Debug, Clone)]
 pub struct DropTableQuery {
     pub table: Option<Table>,
