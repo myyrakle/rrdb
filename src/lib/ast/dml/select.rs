@@ -1,4 +1,4 @@
-use crate::lib::dml::parts::_where::WhereClause;
+use crate::lib::ast::dml::parts::_where::WhereClause;
 use crate::lib::{DMLStatement, GroupByClause, OrderByClause, SQLStatement, Table};
 
 use super::SelectItem;
