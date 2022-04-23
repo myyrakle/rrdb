@@ -1,6 +1,6 @@
 use crate::lib::parser::Parser;
 
-use crate::lib::{CreateTableQuery, DropTableQuery, ParsingError, SQLStatement, Token};
+use crate::lib::{ParsingError, SQLStatement, Token};
 use std::error::Error;
 
 impl Parser {

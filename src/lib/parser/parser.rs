@@ -1,9 +1,6 @@
 use std::{collections::VecDeque, error::Error};
 
-use crate::lib::{
-    Column, CreateTableQuery, DataType, FloatExpression, IExpression, IntegerExpression,
-    ParsingError, SQLStatement, Table, Token, Tokenizer,
-};
+use crate::lib::{SQLStatement, Token, Tokenizer};
 
 #[derive(Debug)]
 pub struct Parser {

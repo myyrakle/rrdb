@@ -2,10 +2,7 @@ use std::error::Error;
 
 use crate::lib::parser::Parser;
 
-use crate::lib::{
-    Column, CreateTableQuery, DataType, FloatExpression, IExpression, IntegerExpression,
-    ParsingError, SQLStatement, Table, Token, Tokenizer,
-};
+use crate::lib::{Column, DataType, ParsingError, Table, Token};
 
 impl Parser {
     // 테이블 컬럼 정의 분석
