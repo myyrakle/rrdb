@@ -77,6 +77,7 @@ pub enum Token {
     SemiColon,
     LeftParentheses,
     RightParentheses,
+    Backslash,
 
     // exception handling
     EOF,

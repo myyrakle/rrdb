@@ -12,3 +12,6 @@ pub use dml::*;
 
 pub mod dcl;
 pub use dcl::*;
+
+pub mod commands;
+pub use commands::*;

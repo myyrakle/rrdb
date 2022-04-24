@@ -41,6 +41,10 @@ impl Parser {
                     Token::Update => statements.push(self.handle_update_query()?),
                     Token::Insert => statements.push(self.handle_insert_query()?),
                     Token::Delete => statements.push(self.handle_delete_query()?),
+                    Token::Operator(operator) if operator == "\\" => {
+                        // 추후 구현 필요. \c, \d 등...
+                        continue;
+                    }
                     _ => {
                         break;
                     }
