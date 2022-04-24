@@ -7,7 +7,8 @@ use lib::parser::Parser;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
-        CREATE TABLE if not exists "person"
+        CREATE DATABASE if not exists "test_db";
+        CREATE TABLE if not exists "test_db"."person"
         (
             id INTEGER PRIMARY KEY,
             name varchar(100),

@@ -35,6 +35,7 @@ pub enum Token {
     Create,
     Alter,
     Drop,
+    Database,
     Table,
     Column,
     Comment,

@@ -12,44 +12,14 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        let current_token = self.get_next_token();
-
         let mut query_builder = CreateTableQuery::builder();
 
-        // [IF NOT EXISTS] 체크 로직
-        if Token::If == current_token {
-            if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
-            }
-
-            let current_token = self.get_next_token();
-
-            if Token::Not == current_token {
-                if !self.has_next_token() {
-                    return Err(ParsingError::boxed("need more tokens"));
-                }
-
-                let current_token = self.get_next_token();
-
-                if Token::Exists == current_token {
-                    query_builder.set_if_not_exists(true);
-                } else {
-                    return Err(ParsingError::boxed(format!(
-                        "expected keyword is 'exists'. but your input word is '{:?}'",
-                        current_token
-                    )));
-                }
-            } else {
-                return Err(ParsingError::boxed(format!(
-                    "expected keyword is 'not'. but your input word is '{:?}'",
-                    current_token
-                )));
-            }
-        }
-
-        let table = self.parse_table_name()?;
+        // IF NOT EXISTS 파싱
+        let if_not_exists = self.has_if_not_exists()?;
+        query_builder.set_if_not_exists(if_not_exists);
 
         // 테이블명 설정
+        let table = self.parse_table_name()?;
         query_builder.set_table(table);
 
         // 여는 괄호 체크

@@ -126,6 +126,7 @@ impl Tokenizer {
                 "CREATE" => Token::Create,
                 "ALTER" => Token::Alter,
                 "DROP" => Token::Drop,
+                "DATABASE" => Token::Database,
                 "TABLE" => Token::Table,
                 "COLUMN" => Token::Column,
                 "COMMENT" => Token::Comment,

@@ -16,9 +16,12 @@ impl Parser {
             Token::Table => {
                 return self.handle_create_table_query();
             }
+            Token::Database => {
+                return self.handle_create_database_query();
+            }
             _ => {
                 return Err(ParsingError::boxed(
-                    "not supported command. possible commands: (create table)",
+                    format!("not supported command. possible commands: (create table). but your input is {:?}", current_token),
                 ));
             }
         }
