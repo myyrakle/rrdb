@@ -123,6 +123,10 @@ impl Parser {
     ) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
         let mut query_builder = DropTableQuery::builder();
 
+        // IF EXISTS 파싱
+        let if_exists = self.has_if_exists()?;
+        query_builder.set_if_exists(if_exists);
+
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
