@@ -58,6 +58,9 @@ impl Parser {
             Token::Table => {
                 return self.handle_drop_table_query();
             }
+            Token::Database => {
+                return self.handle_drop_database_query();
+            }
             _ => {
                 return Err(ParsingError::boxed(
                     "not supported command. possible commands: (create table)",

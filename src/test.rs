@@ -7,14 +7,19 @@ use lib::parser::Parser;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
-        CREATE DATABASE if not exists "test_db";
-        CREATE TABLE if not exists "test_db"."person"
-        (
-            id INTEGER PRIMARY KEY,
-            name varchar(100),
-            age INTEGER
-        ); "#
-        .to_owned();
+       
+        drop table if exists "foo_db".foo;
+        "#
+    .to_owned();
+
+    let _foo = r#" CREATE DATABASE if not exists "test_db";
+CREATE TABLE if not exists "test_db"."person"
+(
+    id INTEGER PRIMARY KEY,
+    name varchar(100),
+    age INTEGER
+);
+drop database "foo_db";"#;
 
     // let tokens = Tokenizer::string_to_tokens(text);
     // println!("{:?}", tokens);
