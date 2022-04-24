@@ -276,4 +276,34 @@ impl Parser {
             return Ok(false);
         }
     }
+
+    // IF EXISTS 체크 로직
+    pub(crate) fn has_if_exists(&mut self) -> Result<bool, Box<dyn Error>> {
+        // 테이블명 획득 로직
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if Token::If == current_token {
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            if Token::Exists == current_token {
+                return Ok(true);
+            } else {
+                return Err(ParsingError::boxed(format!(
+                    "expected keyword is 'exists'. but your input word is '{:?}'",
+                    current_token
+                )));
+            }
+        } else {
+            self.unget_next_token(current_token);
+            return Ok(false);
+        }
+    }
 }
