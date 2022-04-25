@@ -1,6 +1,6 @@
 use std::string::ToString;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ParsingError {
     pub message: String,
 }

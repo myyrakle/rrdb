@@ -16,7 +16,7 @@ impl Parser {
 
         // IF NOT EXISTS 파싱
         let if_not_exists = self.has_if_not_exists()?;
-        query_builder.set_if_not_exists(if_not_exists);
+        query_builder = query_builder.set_if_not_exists(if_not_exists);
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
@@ -26,7 +26,7 @@ impl Parser {
 
         match current_token {
             Token::Identifier(identifier) => {
-                query_builder.set_name(identifier);
+                query_builder = query_builder.set_name(identifier);
             }
             _ => {
                 return Err(ParsingError::boxed(
@@ -58,7 +58,7 @@ impl Parser {
 
         // IF EXISTS 파싱
         let if_exists = self.has_if_exists()?;
-        query_builder.set_if_exists(if_exists);
+        query_builder = query_builder.set_if_exists(if_exists);
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
@@ -69,7 +69,7 @@ impl Parser {
 
         match current_token {
             Token::Identifier(identifier) => {
-                query_builder.set_name(identifier);
+                query_builder = query_builder.set_name(identifier);
             }
             _ => {
                 return Err(ParsingError::boxed(

@@ -1,2 +1,2 @@
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SelectItem {}

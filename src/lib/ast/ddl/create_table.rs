@@ -15,7 +15,7 @@ CREATE TABLE [IF NOT EXISTS] [database_name.]table_name (
 );
 */
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CreateTableQuery {
     pub table: Option<TableName>,
     pub columns: Vec<Column>,
@@ -39,32 +39,32 @@ impl CreateTableQuery {
         }
     }
 
-    pub fn set_table<'a>(&'a mut self, table: TableName) -> &'a mut Self {
+    pub fn set_table<'a>(mut self, table: TableName) -> Self {
         self.table = Some(table);
         self
     }
 
-    pub fn set_table_option<'a>(&'a mut self, option: TableOptions) -> &'a mut Self {
+    pub fn set_table_option(mut self, option: TableOptions) -> Self {
         self.table_options = Some(option);
         self
     }
 
-    pub fn add_column<'a>(&'a mut self, column: Column) -> &'a mut Self {
+    pub fn add_column(mut self, column: Column) -> Self {
         self.columns.push(column);
         self
     }
 
-    pub fn set_primary_key<'a>(&'a mut self, columns: Vec<String>) -> &'a mut Self {
+    pub fn set_primary_key(mut self, columns: Vec<String>) -> Self {
         self.primary_key = columns;
         self
     }
 
-    pub fn add_unique_key<'a>(&'a mut self, unique_key: UniqueKey) -> &'a mut Self {
+    pub fn add_unique_key(mut self, unique_key: UniqueKey) -> Self {
         self.unique_keys.push(unique_key);
         self
     }
 
-    pub fn set_if_not_exists<'a>(&'a mut self, if_not_exists: bool) -> &'a mut Self {
+    pub fn set_if_not_exists(mut self, if_not_exists: bool) -> Self {
         self.if_not_exists = if_not_exists;
         self
     }

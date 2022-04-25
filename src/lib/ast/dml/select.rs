@@ -4,7 +4,7 @@ use crate::lib::{GroupByClause, OrderByClause, TableName};
 
 use super::SelectItem;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectItem>,
     pub from_table: Option<TableName>,

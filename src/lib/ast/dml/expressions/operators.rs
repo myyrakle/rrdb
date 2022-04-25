@@ -1,4 +1,5 @@
-#[derive(Clone, Debug)]
+// 2항연산자
+#[derive(Clone, Debug, PartialEq)]
 pub enum BinaryOperator {
     Add,  // A + B
     Sub,  // A - B
@@ -15,8 +16,8 @@ pub enum BinaryOperator {
     Like, // A LIKE B
 }
 
-#[derive(Clone, Debug)]
-
+// 단항연산자
+#[derive(Clone, Debug, PartialEq)]
 pub enum UnaryOperator {
     Pos, // +A
     Neg, // -A

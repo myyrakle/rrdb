@@ -7,7 +7,7 @@ ALTER DATABASE database_name
     RENAME TO new_database_name
 };
 */
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlterDatabaseQuery {
     pub database_name: Option<String>,
     pub action: Option<AlterDatabaseAction>,
@@ -21,12 +21,12 @@ impl AlterDatabaseQuery {
         }
     }
 
-    pub fn set_name<'a>(&'a mut self, name: String) -> &'a mut Self {
+    pub fn set_name(mut self, name: String) -> Self {
         self.database_name = Some(name);
         self
     }
 
-    pub fn set_action<'a>(&'a mut self, action: AlterDatabaseAction) -> &'a mut Self {
+    pub fn set_action(mut self, action: AlterDatabaseAction) -> Self {
         self.action = Some(action);
         self
     }
@@ -36,12 +36,12 @@ impl AlterDatabaseQuery {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AlterDatabaseAction {
     RenameTo(AlterDatabaseRenameTo),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlterDatabaseRenameTo {
     pub name: String,
 }

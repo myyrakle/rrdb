@@ -16,7 +16,7 @@ impl Parser {
         let current_token = self.get_next_token();
 
         if let Token::Identifier(name) = current_token {
-            builder.set_name(name);
+            builder = builder.set_name(name);
         } else {
             return Err(ParsingError::boxed(format!(
                 "expected identifier. but your input word is '{:?}'",
@@ -25,7 +25,7 @@ impl Parser {
         }
 
         let data_type = self.parse_data_type()?;
-        builder.set_data_type(data_type);
+        builder = builder.set_data_type(data_type);
 
         loop {
             if !self.has_next_token() {
@@ -53,8 +53,7 @@ impl Parser {
 
                     match current_token {
                         Token::Key => {
-                            builder.set_primary_key(true);
-                            builder.set_not_null(true);
+                            builder = builder.set_primary_key(true).set_not_null(true);
                         }
                         _ => {
                             return Err(ParsingError::boxed(format!(
@@ -73,7 +72,7 @@ impl Parser {
 
                     match current_token {
                         Token::Null => {
-                            builder.set_not_null(true);
+                            builder = builder.set_not_null(true);
                         }
                         _ => {
                             return Err(ParsingError::boxed(format!(
@@ -84,7 +83,7 @@ impl Parser {
                     }
                 }
                 Token::Null => {
-                    builder.set_not_null(false);
+                    builder = builder.set_not_null(false);
                 }
                 Token::Comment => {
                     if !self.has_next_token() {
@@ -94,7 +93,7 @@ impl Parser {
                     let current_token = self.get_next_token();
 
                     if let Token::String(comment) = current_token {
-                        builder.set_comment(comment);
+                        builder = builder.set_comment(comment);
                     } else {
                         return Err(ParsingError::boxed(format!(
                             "expected comment string. but your input word is '{:?}'",

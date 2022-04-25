@@ -1,6 +1,6 @@
 use crate::lib::TableName;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ForeignKey {
     pub key_name: String,
     pub table: TableName,

@@ -4,7 +4,7 @@ pub use crate::lib::ast::types::Column;
 /*
 DROP DATABASE [IF EXISTS] database_name;
 */
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DropDatabaseQuery {
     pub database_name: Option<String>,
     pub if_exists: bool,
@@ -18,12 +18,12 @@ impl DropDatabaseQuery {
         }
     }
 
-    pub fn set_name<'a>(&'a mut self, name: String) -> &'a mut Self {
+    pub fn set_name(mut self, name: String) -> Self {
         self.database_name = Some(name);
         self
     }
 
-    pub fn set_if_exists<'a>(&'a mut self, set_if_exists: bool) -> &'a mut Self {
+    pub fn set_if_exists(mut self, set_if_exists: bool) -> Self {
         self.if_exists = set_if_exists;
         self
     }

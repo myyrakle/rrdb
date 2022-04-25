@@ -1,6 +1,6 @@
 // [database_name.]table_name
 // 테이블명을 가리키는 값입니다.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TableName {
     pub database_name: Option<String>,
     pub table_name: String,

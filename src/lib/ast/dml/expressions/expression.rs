@@ -6,5 +6,5 @@ pub trait IExpression: DynClone + Debug {}
 
 clone_trait_object!(IExpression);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Expression {}

@@ -1,6 +1,6 @@
 use crate::lib::ast::dml::expressions::IExpression;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FloatExpression {
     pub value: f64,
 }

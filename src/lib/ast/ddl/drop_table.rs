@@ -4,7 +4,7 @@ use crate::lib::TableName;
 /*
 DROP TABLE [IF EXISTS] [database_name.]table_name;
 */
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DropTableQuery {
     pub table: Option<TableName>,
     pub if_exists: bool,
@@ -18,12 +18,12 @@ impl DropTableQuery {
         }
     }
 
-    pub fn set_table<'a>(&'a mut self, table: TableName) -> &'a mut Self {
+    pub fn set_table(mut self, table: TableName) -> Self {
         self.table = Some(table);
         self
     }
 
-    pub fn set_if_exists<'a>(&'a mut self, set_if_exists: bool) -> &'a mut Self {
+    pub fn set_if_exists(mut self, set_if_exists: bool) -> Self {
         self.if_exists = set_if_exists;
         self
     }

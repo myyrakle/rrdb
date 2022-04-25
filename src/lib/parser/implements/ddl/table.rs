@@ -14,11 +14,11 @@ impl Parser {
 
         // IF NOT EXISTS 파싱
         let if_not_exists = self.has_if_not_exists()?;
-        query_builder.set_if_not_exists(if_not_exists);
+        query_builder = query_builder.set_if_not_exists(if_not_exists);
 
         // 테이블명 설정
         let table = self.parse_table_name()?;
-        query_builder.set_table(table);
+        query_builder = query_builder.set_table(table);
 
         // 여는 괄호 체크
         if !self.has_next_token() {
@@ -50,7 +50,7 @@ impl Parser {
                 _ => {
                     self.unget_next_token(current_token);
                     let column = self.parse_table_column()?;
-                    query_builder.add_column(column);
+                    query_builder = query_builder.add_column(column);
                 }
             }
         }
@@ -119,7 +119,7 @@ impl Parser {
 
         // IF EXISTS 파싱
         let if_exists = self.has_if_exists()?;
-        query_builder.set_if_exists(if_exists);
+        query_builder = query_builder.set_if_exists(if_exists);
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
@@ -129,7 +129,7 @@ impl Parser {
         let table = self.parse_table_name()?;
 
         // 테이블명 설정
-        query_builder.set_table(table);
+        query_builder = query_builder.set_table(table);
 
         // 세미콜론 체크
         if !self.has_next_token() {

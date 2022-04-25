@@ -1,7 +1,7 @@
 use crate::lib::ast::enums::SQLExpression;
 
 // a BETWEEN x AND y
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BetweenExpression {
     pub a: SQLExpression,
     pub x: SQLExpression,

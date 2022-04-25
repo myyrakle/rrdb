@@ -4,7 +4,7 @@ pub use crate::lib::ast::types::Column;
 /*
 CREATE DATABASE [IF NOT EXISTS] database_name;
 */
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CreateDatabaseQuery {
     pub database_name: Option<String>,
     pub if_not_exists: bool,
@@ -18,12 +18,12 @@ impl CreateDatabaseQuery {
         }
     }
 
-    pub fn set_name<'a>(&'a mut self, name: String) -> &'a mut Self {
+    pub fn set_name(mut self, name: String) -> Self {
         self.database_name = Some(name);
         self
     }
 
-    pub fn set_if_not_exists<'a>(&'a mut self, if_not_exists: bool) -> &'a mut Self {
+    pub fn set_if_not_exists(mut self, if_not_exists: bool) -> Self {
         self.if_not_exists = if_not_exists;
         self
     }

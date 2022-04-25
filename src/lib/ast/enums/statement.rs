@@ -4,14 +4,14 @@ use crate::lib::ast::ddl::{
 };
 use crate::lib::ast::dml::{DeleteQuery, InsertQuery, SelectQuery, UpdateQuery};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SQLStatement {
     DDL(DDLStatement),
     DML(DMLStatement),
     DCL(DCLStatement),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DDLStatement {
     CreateDatabaseQuery(CreateDatabaseQuery),
     AlterDatabase(AlterDatabaseQuery),
@@ -21,7 +21,7 @@ pub enum DDLStatement {
     DropTableQuery(DropTableQuery),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DMLStatement {
     InsertQuery(InsertQuery),
     UpdateQuery(UpdateQuery),
@@ -29,5 +29,5 @@ pub enum DMLStatement {
     SelectQuery(SelectQuery),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DCLStatement {}
