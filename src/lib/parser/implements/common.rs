@@ -285,7 +285,6 @@ impl Parser {
         }
 
         let current_token = self.get_next_token();
-        println!("{:?}", current_token);
 
         if Token::If == current_token {
             if !self.has_next_token() {

@@ -1,5 +1,5 @@
-pub mod traits;
-pub use traits::*;
+pub mod enums;
+pub use enums::*;
 
 pub mod types;
 pub use types::*;

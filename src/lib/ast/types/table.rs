@@ -1,3 +1,5 @@
+// [database_name.]table_name
+// 테이블명을 가리키는 값입니다.
 #[derive(Clone, Debug)]
 pub struct Table {
     pub database_name: Option<String>,

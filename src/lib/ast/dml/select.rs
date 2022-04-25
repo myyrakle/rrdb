@@ -1,5 +1,6 @@
 use crate::lib::ast::dml::parts::_where::WhereClause;
-use crate::lib::{DMLStatement, GroupByClause, OrderByClause, SQLStatement, Table};
+use crate::lib::ast::enums::{DMLStatement, SQLStatement};
+use crate::lib::{GroupByClause, OrderByClause, Table};
 
 use super::SelectItem;
 
@@ -14,6 +15,20 @@ pub struct SelectQuery {
     pub offset: Option<i32>,
 }
 
-impl DMLStatement for SelectQuery {}
+impl SelectQuery {
+    pub fn builder() -> Self {
+        SelectQuery {
+            select_items: vec![],
+            from_table: None,
+            where_clause: None,
+            group_by_clause: None,
+            order_by_clause: None,
+            limit: None,
+            offset: None,
+        }
+    }
 
-impl SQLStatement for SelectQuery {}
+    pub fn build(self) -> SQLStatement {
+        SQLStatement::DML(DMLStatement::SelectQuery(self))
+    }
+}

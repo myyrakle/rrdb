@@ -1,4 +1,4 @@
-pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
+use crate::lib::ast::enums::{DDLStatement, SQLStatement};
 use crate::lib::Table;
 
 /*
@@ -28,11 +28,7 @@ impl DropTableQuery {
         self
     }
 
-    pub fn build(self) -> Box<dyn SQLStatement> {
-        Box::new(self)
+    pub fn build(self) -> SQLStatement {
+        SQLStatement::DDL(DDLStatement::DropTableQuery(self))
     }
 }
-
-impl DDLStatement for DropTableQuery {}
-
-impl SQLStatement for DropTableQuery {}

@@ -1,11 +1,11 @@
+use crate::lib::ast::enums::SQLStatement;
 use crate::lib::parser::Parser;
-
-use crate::lib::{ParsingError, SQLStatement, Token};
+use crate::lib::{ParsingError, Token};
 use std::error::Error;
 
 impl Parser {
     // CREATE...로 시작되는 쿼리 분석
-    pub(crate) fn handle_create_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
+    pub(crate) fn handle_create_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -28,7 +28,7 @@ impl Parser {
     }
 
     // ALTER TABLE...
-    pub(crate) fn handle_alter_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
+    pub(crate) fn handle_alter_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -47,7 +47,7 @@ impl Parser {
         }
     }
 
-    pub(crate) fn handle_drop_query(&mut self) -> Result<Box<dyn SQLStatement>, Box<dyn Error>> {
+    pub(crate) fn handle_drop_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }

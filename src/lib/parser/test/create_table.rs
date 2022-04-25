@@ -1,5 +1,4 @@
 #[cfg(test)]
-
 use crate::lib::Parser;
 
 #[test]
@@ -11,7 +10,8 @@ pub fn create_table() {
             name TEXT,
             age INTEGER
         );
-    "#.to_owned();
+    "#
+    .to_owned();
 
     let mut parser = Parser::new(text);
     let result = parser.parse();

@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, error::Error};
 
-use crate::lib::{SQLStatement, Token, Tokenizer};
+use crate::lib::ast::enums::SQLStatement;
+use crate::lib::lexer::{Token, Tokenizer};
 
 #[derive(Debug)]
 pub struct Parser {
@@ -17,8 +18,8 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Box<dyn SQLStatement>>, Box<dyn Error>> {
-        let mut statements: Vec<Box<dyn SQLStatement>> = vec![];
+    pub fn parse(&mut self) -> Result<Vec<SQLStatement>, Box<dyn Error>> {
+        let mut statements: Vec<SQLStatement> = vec![];
 
         // Top-Level Parser Loop
         loop {

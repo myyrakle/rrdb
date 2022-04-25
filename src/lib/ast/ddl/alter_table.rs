@@ -1,4 +1,4 @@
-pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
+//use crate::lib::ast::enums::SQLStatement;
 use crate::lib::ast::types::Column;
 use crate::lib::ast::types::Table;
 use crate::lib::DataType;
@@ -27,10 +27,6 @@ pub enum AlterTableAction {
     DropColumn(AlterTableDropColumn),
     RenameColumn(AlterTableRenameColumn),
 }
-
-impl DDLStatement for AlterTableQuery {}
-
-impl SQLStatement for AlterTableQuery {}
 
 // 테이블명 변경
 // ALTER TABLE [database_name.]table_name RENAME TO new_table_name;

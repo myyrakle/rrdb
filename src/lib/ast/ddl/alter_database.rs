@@ -1,4 +1,4 @@
-pub use crate::lib::ast::traits::{DDLStatement, SQLStatement};
+use crate::lib::ast::enums::{DDLStatement, SQLStatement};
 pub use crate::lib::ast::types::Column;
 
 /*
@@ -31,14 +31,10 @@ impl AlterDatabaseQuery {
         self
     }
 
-    pub fn build(self) -> Box<dyn SQLStatement> {
-        Box::new(self)
+    pub fn build(self) -> SQLStatement {
+        SQLStatement::DDL(DDLStatement::AlterDatabase(self))
     }
 }
-
-impl DDLStatement for AlterDatabaseQuery {}
-
-impl SQLStatement for AlterDatabaseQuery {}
 
 #[derive(Debug, Clone)]
 pub enum AlterDatabaseAction {
