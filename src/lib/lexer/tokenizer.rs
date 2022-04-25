@@ -60,6 +60,7 @@ impl Tokenizer {
         self.buffer_index >= self.buffer.len()
     }
 
+    // 버퍼에서 문자 하나를 읽어서 last_char에 보관합니다.
     pub fn read_char(&mut self) {
         if self.buffer_index >= self.buffer.len() {
             self.last_char = ' ';
@@ -69,6 +70,7 @@ impl Tokenizer {
         }
     }
 
+    // 보관했던 문자 하나를 다시 버퍼에 돌려놓습니다.
     pub fn unread_char(&mut self) {
         if self.buffer_index <= 0 {
             self.last_char = ' ';
@@ -153,12 +155,21 @@ impl Tokenizer {
         else if self.is_digit() {
             let mut number_string = vec![self.last_char];
 
-            self.read_char();
-            while self.is_digit() || self.is_dot() {
-                number_string.push(self.last_char);
+            // 숫자나 .이 나올 때까지만 버퍼에서 읽어서 number_string에 저장
+            loop {
                 self.read_char();
+                if self.is_digit() || self.is_dot() {
+                    number_string.push(self.last_char);
+                    continue;
+                } else {
+                    if self.is_eof() {
+                        break;
+                    } else {
+                        self.unread_char();
+                        break;
+                    }
+                }
             }
-            self.unread_char();
 
             let number_string: String =
                 number_string.into_iter().collect::<String>().to_uppercase();

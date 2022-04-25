@@ -1,5 +1,4 @@
 #[cfg(test)]
-
 use crate::lib::lexer::{Token, Tokenizer};
 
 #[test]

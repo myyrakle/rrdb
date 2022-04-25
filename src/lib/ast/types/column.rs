@@ -54,6 +54,9 @@ impl ColumnBuilder {
 
     pub fn set_primary_key<'a>(mut self, primary_key: bool) -> Self {
         self.primary_key = Some(primary_key);
+        if primary_key {
+            self.not_null = Some(true);
+        }
         self
     }
 
