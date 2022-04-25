@@ -1,6 +1,6 @@
 //use crate::lib::ast::enums::SQLStatement;
 use crate::lib::ast::types::Column;
-use crate::lib::ast::types::Table;
+use crate::lib::ast::types::TableName;
 use crate::lib::DataType;
 
 /*
@@ -15,7 +15,7 @@ ALTER TABLE [database_name.]table_name
 */
 #[derive(Debug, Clone)]
 pub struct AlterTableQuery {
-    pub table: Table,
+    pub table: TableName,
     pub action: AlterTableAction,
 }
 

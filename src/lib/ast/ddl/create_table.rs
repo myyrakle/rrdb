@@ -1,6 +1,6 @@
 use crate::lib::ast::enums::{DDLStatement, SQLStatement};
 pub use crate::lib::ast::types::Column;
-use crate::lib::{ForeignKey, Table, TableOptions, UniqueKey};
+use crate::lib::{ForeignKey, TableName, TableOptions, UniqueKey};
 
 /*
 CREATE TABLE [IF NOT EXISTS] [database_name.]table_name (
@@ -17,7 +17,7 @@ CREATE TABLE [IF NOT EXISTS] [database_name.]table_name (
 
 #[derive(Debug, Clone)]
 pub struct CreateTableQuery {
-    pub table: Option<Table>,
+    pub table: Option<TableName>,
     pub columns: Vec<Column>,
     pub primary_key: Vec<String>,
     pub foreign_keys: Vec<ForeignKey>,
@@ -39,7 +39,7 @@ impl CreateTableQuery {
         }
     }
 
-    pub fn set_table<'a>(&'a mut self, table: Table) -> &'a mut Self {
+    pub fn set_table<'a>(&'a mut self, table: TableName) -> &'a mut Self {
         self.table = Some(table);
         self
     }

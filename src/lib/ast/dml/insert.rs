@@ -1,6 +1,6 @@
-use crate::lib::ast::Table;
+use crate::lib::ast::TableName;
 
 #[derive(Debug, Clone)]
 pub struct InsertQuery {
-    pub into_table: Option<Table>,
+    pub into_table: Option<TableName>,
 }

@@ -68,3 +68,20 @@ impl ColumnBuilder {
         }
     }
 }
+
+// [column_name.]table_name
+// 컬럼명을 가리키는 값입니다.
+#[derive(Clone, Debug)]
+pub struct ColumnName {
+    pub table_name: Option<String>,
+    pub column_name: String,
+}
+
+impl ColumnName {
+    pub fn new(table_name: Option<String>, column_name: String) -> Self {
+        ColumnName {
+            table_name,
+            column_name,
+        }
+    }
+}

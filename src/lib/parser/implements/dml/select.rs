@@ -1,8 +1,7 @@
 use std::error::Error;
 
-use crate::lib::parser::Parser;
-
 use crate::lib::lexer::Token;
+use crate::lib::parser::Parser;
 use crate::lib::{ParsingError, SQLStatement, SelectQuery};
 
 impl Parser {

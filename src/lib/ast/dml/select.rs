@@ -1,13 +1,13 @@
 use crate::lib::ast::dml::parts::_where::WhereClause;
 use crate::lib::ast::enums::{DMLStatement, SQLStatement};
-use crate::lib::{GroupByClause, OrderByClause, Table};
+use crate::lib::{GroupByClause, OrderByClause, TableName};
 
 use super::SelectItem;
 
 #[derive(Debug, Clone)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectItem>,
-    pub from_table: Option<Table>,
+    pub from_table: Option<TableName>,
     pub where_clause: Option<WhereClause>,
     pub group_by_clause: Option<GroupByClause>,
     pub order_by_clause: Option<OrderByClause>,

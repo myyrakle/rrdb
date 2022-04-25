@@ -1,12 +1,12 @@
 use crate::lib::ast::enums::{DDLStatement, SQLStatement};
-use crate::lib::Table;
+use crate::lib::TableName;
 
 /*
 DROP TABLE [IF EXISTS] [database_name.]table_name;
 */
 #[derive(Debug, Clone)]
 pub struct DropTableQuery {
-    pub table: Option<Table>,
+    pub table: Option<TableName>,
     pub if_exists: bool,
 }
 
@@ -18,7 +18,7 @@ impl DropTableQuery {
         }
     }
 
-    pub fn set_table<'a>(&'a mut self, table: Table) -> &'a mut Self {
+    pub fn set_table<'a>(&'a mut self, table: TableName) -> &'a mut Self {
         self.table = Some(table);
         self
     }

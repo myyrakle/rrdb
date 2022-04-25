@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::lib::parser::Parser;
 
-use crate::lib::{Column, DataType, ParsingError, Table, Token};
+use crate::lib::{Column, DataType, ParsingError, TableName, Token};
 
 impl Parser {
     // 테이블 컬럼 정의 분석
@@ -184,7 +184,7 @@ impl Parser {
     }
 
     // 테이블명 분석
-    pub(crate) fn parse_table_name(&mut self) -> Result<Table, Box<dyn Error>> {
+    pub(crate) fn parse_table_name(&mut self) -> Result<TableName, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
@@ -231,7 +231,7 @@ impl Parser {
             self.unget_next_token(current_token);
         }
 
-        Ok(Table::new(database_name, table_name))
+        Ok(TableName::new(database_name, table_name))
     }
 
     // IF NOT EXISTS 체크 로직
