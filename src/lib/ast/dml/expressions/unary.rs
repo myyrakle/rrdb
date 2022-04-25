@@ -1,9 +1,8 @@
-use crate::lib::{ast::dml::expressions::IExpression, UnaryOperator};
+use crate::lib::ast::dml::expressions::UnaryOperator;
+use crate::lib::ast::enums::SQLExpression;
 
 #[derive(Clone, Debug)]
-pub struct UnaryExpression {
+pub struct UnaryOperatorExpression {
     pub operator: UnaryOperator,
-    pub operand: Box<dyn IExpression>,
+    pub operand: SQLExpression,
 }
-
-impl IExpression for UnaryExpression {}

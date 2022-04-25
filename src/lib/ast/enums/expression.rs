@@ -1,4 +1,4 @@
-use crate::lib::ast::dml::expressions::BetweenExpression;
+use crate::lib::ast::dml::expressions::{BetweenExpression, BinaryOperatorExpression};
 use crate::lib::ast::types::ColumnName;
 
 #[derive(Clone, Debug)]
@@ -16,9 +16,6 @@ pub enum SQLExpression {
     String(String),
     Null,
 }
-
-#[derive(Clone, Debug)]
-pub struct BinaryOperatorExpression {}
 
 #[derive(Clone, Debug)]
 pub struct UnaryOperatorExpression {}

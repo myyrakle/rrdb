@@ -1,10 +1,9 @@
-use crate::lib::ast::dml::expressions::{BinaryOperator, IExpression};
+use crate::lib::ast::dml::expressions::BinaryOperator;
+use crate::lib::ast::enums::SQLExpression;
 
 #[derive(Clone, Debug)]
-pub struct BinaryExpression {
+pub struct BinaryOperatorExpression {
     pub operator: BinaryOperator,
-    pub lhs: Box<dyn IExpression>,
-    pub rhs: Box<dyn IExpression>,
+    pub lhs: SQLExpression,
+    pub rhs: SQLExpression,
 }
-
-impl IExpression for BinaryExpression {}

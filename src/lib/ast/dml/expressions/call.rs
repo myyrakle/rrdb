@@ -1,9 +1,7 @@
-use crate::lib::ast::dml::expressions::IExpression;
+use crate::lib::ast::enums::SQLExpression;
 
 #[derive(Clone, Debug)]
 pub struct CallExpression {
     pub function_name: String,
-    pub arguments: Vec<Box<dyn IExpression>>,
+    pub arguments: Vec<SQLExpression>,
 }
-
-impl IExpression for CallExpression {}
