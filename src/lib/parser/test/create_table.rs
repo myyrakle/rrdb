@@ -8,7 +8,7 @@ use crate::lib::parser::Parser;
 #[test]
 pub fn create_table() {
     let text = r#"
-        CREATE TABLE person
+        CREATE TABLE "test_db".person
         (
             id INTEGER PRIMARY KEY,
             name varchar(100),
@@ -20,7 +20,10 @@ pub fn create_table() {
     let mut parser = Parser::new(text);
 
     let expected = CreateTableQuery::builder()
-        .set_table(TableName::new(None, "person".to_owned()))
+        .set_table(TableName::new(
+            Some("test_db".to_owned()),
+            "person".to_owned(),
+        ))
         .add_column(
             Column::builder()
                 .set_name("id".to_owned())
