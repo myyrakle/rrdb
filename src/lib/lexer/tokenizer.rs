@@ -32,6 +32,10 @@ impl Tokenizer {
         self.last_char.is_alphanumeric()
     }
 
+    pub fn is_underscore(&self) -> bool {
+        self.last_char == '_'
+    }
+
     pub fn is_special_character(&self) -> bool {
         ['+', '-', '*', '/', ',', '>', '<', '=', '!'].contains(&self.last_char)
     }
@@ -89,11 +93,11 @@ impl Tokenizer {
         }
 
         // 첫번째 글짜가 알파벳일 경우 식별자 및 키워드로 인식
-        let token = if self.is_alphabet() {
+        let token = if self.is_alphabet() || self.is_underscore() {
             let mut identifier = vec![self.last_char];
 
             self.read_char();
-            while self.is_alphabet_or_number() {
+            while self.is_alphabet_or_number() || self.is_underscore() {
                 identifier.push(self.last_char);
                 self.read_char();
             }
