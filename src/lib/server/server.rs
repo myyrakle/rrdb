@@ -1,6 +1,6 @@
 use crate::lib::server::ServerOption;
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
 pub struct Server {
@@ -15,7 +15,7 @@ impl Server {
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         println!("# Server is Running at {}", self.option.port);
 
-        let listener = TcpListener::bind(format!("127.0.0.1:{}", self.option.port)).await?;
+        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.option.port)).await?;
 
         loop {
             match listener.accept().await {

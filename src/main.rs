@@ -2,7 +2,7 @@ pub mod command;
 pub mod lib;
 
 use command::commands::SubCommand;
-use lib::constants::server::DEFAULT_PORT;
+use lib::constants::server::{DEFAULT_HOST, DEFAULT_PORT};
 use lib::server::{Server, ServerOption};
 
 use clap::Parser;
@@ -29,10 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         SubCommand::Run(run) => {
             let server_option = ServerOption {
                 port: run.value.port.unwrap_or(DEFAULT_PORT),
+                host: run.value.host.unwrap_or(DEFAULT_HOST.into()),
             };
             let server = Server::new(server_option);
 
-            server.run().await;
+            server.run().await?;
         }
         SubCommand::Client => {
             println!("Client");
