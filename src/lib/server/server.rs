@@ -25,24 +25,22 @@ impl Server {
                     tokio::spawn(async move {
                         let mut buffer = [0; 1024];
 
-                        // In a loop, read data from the socket and write the data back.
                         loop {
                             match socket.read(&mut buffer).await {
                                 // socket closed
                                 Ok(n) => {
                                     if n != 0 {
                                         let foo = String::from_utf8_lossy(&buffer);
+                                        // TODO: 쿼리 실행 후 리턴값 반환
                                         println!("{}", foo);
+                                    } else {
+                                        eprintln!("# 연결 종료");
+                                        break;
                                     }
-
-                                    // Write the data back
-                                    // if let Err(e) = socket.write_all(&buffer[0..n]).await {
-                                    //     eprintln!("failed to write to socket; err = {:?}", e);
-                                    //     return;
-                                    // }
                                 }
                                 Err(e) => {
                                     eprintln!("failed to read from socket; err = {:?}", e);
+                                    break;
                                 }
                             };
                         }
