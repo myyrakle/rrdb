@@ -3,10 +3,10 @@ pub mod lib;
 
 use command::commands::SubCommand;
 use lib::constants::server::{DEFAULT_HOST, DEFAULT_PORT};
+use lib::executor::Executor;
 use lib::server::{Server, ServerOption};
 
 use clap::Parser;
-use std::fs::create_dir;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -20,11 +20,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     match args.action {
-        SubCommand::Init(_init) => {
-            //let configPath = init.init.configPath.unwrap_or("./".into());
-            //println!("Init, {:?}", configPath);
+        SubCommand::Init(init) => {
+            let init_option = init.init;
 
-            create_dir(".rrdb.config").unwrap();
+            let executor = Executor::new();
+
+            let path = match init_option.config_path {
+                Some(path) => path,
+                None => ".".into(),
+            };
+
+            executor.init(path).await?;
         }
         SubCommand::Run(run) => {
             let server_option = ServerOption {

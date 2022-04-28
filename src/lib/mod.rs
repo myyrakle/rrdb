@@ -7,9 +7,6 @@ pub use lexer::*;
 pub mod ast;
 pub use ast::*;
 
-pub mod config;
-pub use config::*;
-
 pub mod errors;
 pub use errors::*;
 

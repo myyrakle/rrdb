@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use std::path::PathBuf;
 
 use clap::Args;
 
@@ -7,8 +6,8 @@ use clap::Args;
 #[derive(Clone, Debug, Default, Deserialize, Args)]
 pub struct ConfigOptionsInit {
     /// 파일이 세팅될 경로
-    #[clap(long, short, parse(from_os_str))]
-    pub config_path: Option<PathBuf>,
+    #[clap(long, short)]
+    pub config_path: Option<String>,
 }
 
 #[derive(Clone, Debug, Args)]
