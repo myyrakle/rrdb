@@ -7,11 +7,7 @@ pub struct GlobalConfig {
 
 impl std::default::Default for GlobalConfig {
     fn default() -> Self {
-        Self {
-            databases: vec![GlobalConfigDatabase {
-                database_name: "totof".into(),
-            }],
-        }
+        Self { databases: vec![] }
     }
 }
 
