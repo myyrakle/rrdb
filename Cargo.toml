@@ -22,6 +22,8 @@ serde = { version = "1", features = ["derive"] }
 toml = "0.5.9"
 dyn-clone = "1.0.4"
 derive_builder = "0.10.2"
+path-absolutize = "3.0.13"
+winreg = "0.10.1"
 
 [[bin]]
 name = "rrdb"

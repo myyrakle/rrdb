@@ -1,4 +1,6 @@
 use crate::lib::config::GlobalConfig;
+use crate::lib::utils::set_system_env;
+use path_absolutize::*;
 use std::path::PathBuf;
 
 pub struct Executor {}
@@ -8,10 +10,15 @@ impl Executor {
         Self {}
     }
 
+    // 기본 설정파일 세팅
     pub async fn init(&self, path: String) -> Result<(), Box<dyn std::error::Error>> {
         let mut path_buf = PathBuf::new();
         path_buf.push(path);
         path_buf.push(".rrdb.config");
+
+        #[allow(non_snake_case)]
+        let RRDB_BASE_PATH = path_buf.absolutize()?.to_str().unwrap().to_string();
+        set_system_env("RRDB_BASE_PATH", &RRDB_BASE_PATH);
 
         // 루트 디렉터리 생성
         let base_path = path_buf.clone();
