@@ -1,10 +1,33 @@
+use crate::lib::ast::{DDLStatement, SQLStatement};
 use crate::lib::server::ServerOption;
+use crate::lib::Executor;
+use crate::lib::Parser;
 
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
 pub struct Server {
     pub option: ServerOption,
+}
+
+async fn process_query(query: String) -> Result<(), Box<dyn std::error::Error>> {
+    let mut parser = Parser::new(query);
+    let executor = Executor::new();
+
+    let ast_list = parser.parse().unwrap();
+
+    for ast in ast_list {
+        match ast {
+            SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
+                return Ok(executor.create_database(query).await?);
+            }
+            _ => {
+                println!("?: {:?}", ast);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 impl Server {
@@ -30,9 +53,19 @@ impl Server {
                                 // socket closed
                                 Ok(n) => {
                                     if n != 0 {
-                                        let foo = String::from_utf8_lossy(&buffer);
+                                        let query = String::from_utf8_lossy(&buffer).to_string();
+                                        println!("QUERY: {}", query);
+
+                                        match process_query(query.clone()).await {
+                                            Ok(_) => {
+                                                let response = "OK".to_string();
+                                                println!("RESPONSE: {}", response);
+                                            }
+                                            Err(error) => {
+                                                println!("ERROR: {}", error);
+                                            }
+                                        }
                                         // TODO: 쿼리 실행 후 리턴값 반환
-                                        println!("{}", foo);
                                     } else {
                                         eprintln!("# 연결 종료");
                                         break;
