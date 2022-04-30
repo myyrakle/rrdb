@@ -1,7 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct DatabaseConfig {
     pub database_name: String,
-    pub table_names: Vec<String>,
 }

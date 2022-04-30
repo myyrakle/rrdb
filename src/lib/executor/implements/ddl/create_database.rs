@@ -5,6 +5,7 @@ use crate::lib::ast::ddl::CreateDatabaseQuery;
 use crate::lib::errors::ExecuteError;
 use crate::lib::executor::Executor;
 use crate::lib::utils::get_system_env;
+use crate::lib::DatabaseConfig;
 
 impl Executor {
     pub async fn create_database(&self, query: CreateDatabaseQuery) -> Result<(), Box<dyn Error>> {
@@ -16,9 +17,14 @@ impl Executor {
             .clone()
             .ok_or(ExecuteError::boxed("no database name"))?;
 
-        database_path.push(database_name);
+        database_path.push(&database_name);
+        tokio::fs::create_dir(database_path.clone()).await?;
 
-        tokio::fs::create_dir(database_path).await?;
+        // 각 데이터베이스 단위 설정파일 생성
+        database_path.push("database.config");
+        let database_info = DatabaseConfig { database_name };
+        let database_config = toml::to_string(&database_info).unwrap();
+        tokio::fs::write(database_path, database_config.as_bytes()).await?;
 
         Ok(())
     }
