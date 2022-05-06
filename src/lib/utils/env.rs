@@ -56,6 +56,7 @@ pub fn set_system_env<S: std::string::ToString>(key: S, value: S) {
 
         file.write_all(export_line.as_bytes()).unwrap();
         std::env::set_var(key, value);
+        Command::new("export FOO=\"BAR\"").output().unwrap();
         // Command::new("export")
         //     .arg(format!("{}={}", key, value))
         //     .spawn()
