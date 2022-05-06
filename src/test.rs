@@ -6,6 +6,10 @@ use lib::parser::Parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let foo = lib::utils::get_system_env("RRDB_BASE_PATH");
+
+    println!("{}", foo);
+
     let text = r#"
        
         drop table if exists "foo_db".foo;

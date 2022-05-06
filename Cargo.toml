@@ -23,6 +23,9 @@ toml = "0.5.9"
 dyn-clone = "1.0.4"
 derive_builder = "0.10.2"
 path-absolutize = "3.0.13"
+whoami = "1.2.1"
+
+[target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
 
 [[bin]]
