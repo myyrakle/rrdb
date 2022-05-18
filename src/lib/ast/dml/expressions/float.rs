@@ -1,5 +1,3 @@
-use crate::lib::ast::dml::expressions::IExpression;
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct FloatExpression {
     pub value: f64,
@@ -10,5 +8,3 @@ impl FloatExpression {
         Self { value: value }
     }
 }
-
-impl IExpression for FloatExpression {}

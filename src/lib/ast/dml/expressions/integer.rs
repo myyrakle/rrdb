@@ -1,5 +1,3 @@
-use crate::lib::ast::dml::expressions::IExpression;
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntegerExpression {
     pub value: i64,
@@ -10,5 +8,3 @@ impl IntegerExpression {
         Self { value: value }
     }
 }
-
-impl IExpression for IntegerExpression {}

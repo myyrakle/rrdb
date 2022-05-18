@@ -11,7 +11,6 @@ impl Parser {
         }
 
         let query_builder = SelectQuery::builder();
-        // TODO: impl
 
         // FROM 절이나 세미콜론이 나오기 전까지 select 절 파싱
         loop {
@@ -19,13 +18,17 @@ impl Parser {
 
             match current_token {
                 Token::From => {
+                    // from 다시 집어넣고 종료
                     self.unget_next_token(current_token);
                     break;
                 }
                 Token::SemiColon => {
+                    // from 없는 select절로 간주. 종료.
                     return Ok(query_builder.build());
                 }
-                _ => {}
+                _ => {
+                    // TODO: SELECT절 파싱
+                }
             }
         }
 
