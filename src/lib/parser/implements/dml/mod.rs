@@ -9,3 +9,6 @@ pub use insert::*;
 
 pub mod delete;
 pub use delete::*;
+
+pub mod expression;
+pub use expression::*;

@@ -28,6 +28,11 @@ impl SelectQuery {
         }
     }
 
+    pub fn add_select_item(mut self, item: SelectItem) -> Self {
+        self.select_items.push(item);
+        self
+    }
+
     pub fn build(self) -> SQLStatement {
         SQLStatement::DML(DMLStatement::SelectQuery(self))
     }

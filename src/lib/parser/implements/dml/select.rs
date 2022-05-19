@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::lib::lexer::Token;
 use crate::lib::parser::Parser;
-use crate::lib::{ParsingError, SQLStatement, SelectQuery};
+use crate::lib::{ParsingError, SQLStatement, SelectItem, SelectQuery};
 
 impl Parser {
     pub(crate) fn handle_select_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
@@ -10,7 +10,7 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        let query_builder = SelectQuery::builder();
+        let mut query_builder = SelectQuery::builder();
 
         // FROM 절이나 세미콜론이 나오기 전까지 select 절 파싱
         loop {
@@ -27,7 +27,8 @@ impl Parser {
                     return Ok(query_builder.build());
                 }
                 _ => {
-                    // TODO: SELECT절 파싱
+                    let select_item = self.parse_select_item()?;
+                    query_builder = query_builder.add_select_item(select_item);
                 }
             }
         }
@@ -45,6 +46,61 @@ impl Parser {
             }
         }
 
+        // TODO: JOIN 절 파싱
+
+        // TODO: WHERE 절 파싱
+
+        // TODO: Order By 절 파싱
+
+        // TODO: Limit 절 파싱
+
+        // TODO: Offset 절 파싱
+
         Ok(query_builder.build())
+    }
+
+    pub(crate) fn parse_select_item(&mut self) -> Result<SelectItem, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let select_item = SelectItem::builder();
+
+        // 표현식 파싱
+        let select_item = select_item.set_item(self.parse_expression()?);
+
+        // 더 없을 경우 바로 반환
+        if !self.has_next_token() {
+            return Ok(select_item.build());
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::As => {
+                // 더 없을 경우 바로 반환
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed(format!("expected alias. need more",)));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Identifier(identifier) => Ok(select_item.build()),
+                    _ => Err(ParsingError::boxed(format!(
+                        "expected alias, but your input word is '{:?}'",
+                        current_token
+                    ))),
+                }
+            }
+            Token::Comma => {
+                // 현재 select_item은 종료된 것으로 판단.
+                Ok(select_item.build())
+            }
+            _ => Err(ParsingError::boxed(format!(
+                "expected expression. but your input word is '{:?}'",
+                current_token
+            ))),
+        }
     }
 }
