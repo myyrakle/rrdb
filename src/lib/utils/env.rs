@@ -1,3 +1,7 @@
+// 운영 체제에 종속적인 형태로, 파일 저장경로 등에 대한 값을 환경변수로 저장합니다.
+// Windows, Linux, MacOS를 위주로 지원합니다.
+
+// 환경변수를 가져옵니다.
 pub fn get_system_env<S: std::string::ToString>(key: S) -> String {
     let key = key.to_string();
 
@@ -28,6 +32,7 @@ pub fn get_system_env<S: std::string::ToString>(key: S) -> String {
     }
 }
 
+// 환경변수를 설정합니다.
 pub fn set_system_env<S: std::string::ToString>(key: S, value: S) {
     let key = key.to_string();
     let value = value.to_string();
