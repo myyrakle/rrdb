@@ -1,3 +1,4 @@
+// MacOS에서 고정 환경변수를 가져옵니다.
 pub fn get_profile_path() -> String {
     let username = whoami::username();
     let user_path = format!("/Users/{}", username);
