@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::thread::current;
 
 use crate::lib::lexer::Token;
 use crate::lib::parser::Parser;
@@ -13,6 +14,15 @@ impl Parser {
         let query_builder = SelectQuery::builder();
 
         let current_token = self.get_next_token();
+
+        match current_token {
+            Token::Integer(integer)=> {
+
+            }, 
+            _ => {
+                return Err(ParsingError::boxed(format!("unexpected token: {:?}", current_token)));
+            }
+        }
 
         return Err(ParsingError::boxed("need more tokens"));
     }

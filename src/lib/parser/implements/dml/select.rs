@@ -86,7 +86,10 @@ impl Parser {
                 let current_token = self.get_next_token();
 
                 match current_token {
-                    Token::Identifier(identifier) => Ok(select_item.build()),
+                    Token::Identifier(identifier) => {
+                        let select_item = select_item.set_alias(identifier);
+                        Ok(select_item.build())
+                    },
                     _ => Err(ParsingError::boxed(format!(
                         "expected alias, but your input word is '{:?}'",
                         current_token
