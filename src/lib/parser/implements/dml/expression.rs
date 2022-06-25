@@ -16,11 +16,12 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Integer(integer)=> {
-
-            }, 
+            Token::Integer(integer) => {}
             _ => {
-                return Err(ParsingError::boxed(format!("unexpected token: {:?}", current_token)));
+                return Err(ParsingError::boxed(format!(
+                    "unexpected token: {:?}",
+                    current_token
+                )));
             }
         }
 
