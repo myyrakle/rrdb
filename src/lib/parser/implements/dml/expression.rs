@@ -3,7 +3,7 @@ use std::thread::current;
 
 use crate::lib::lexer::Token;
 use crate::lib::parser::Parser;
-use crate::lib::{ParsingError, SQLExpression, SQLStatement, SelectQuery};
+use crate::lib::{identifier, ParsingError, SQLExpression};
 
 impl Parser {
     pub(crate) fn parse_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {
@@ -11,12 +11,18 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        let query_builder = SelectQuery::builder();
-
         let current_token = self.get_next_token();
 
         match current_token {
             Token::Integer(integer) => {}
+            Token::Float(float) => {}
+            Token::Identifier(identifier) => {}
+            Token::String(string) => {}
+            Token::Boolean(boolean) => {}
+            Token::LeftParentheses => {}
+            Token::RightParentheses => {}
+            Token::As => {}
+            Token::Comma => {}
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "unexpected token: {:?}",

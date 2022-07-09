@@ -25,7 +25,7 @@ pub enum UnaryOperator {
 }
 
 // 2항연산자 우선순위 획득
-pub fn get_operator_precedence(opertor: BinaryOperator) -> i32 {
+pub fn get_binary_operator_precedence(opertor: BinaryOperator) -> i32 {
     match opertor {
         BinaryOperator::Add => 10,
         BinaryOperator::Sub => 10,
