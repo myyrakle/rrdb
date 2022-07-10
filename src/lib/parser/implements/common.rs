@@ -2,8 +2,8 @@ use std::error::Error;
 
 use crate::lib::parser::Parser;
 
+use crate::lib::ast::predule::{Column, DataType, ParsingError, TableName};
 use crate::lib::lexer::predule::Token;
-use crate::lib::{Column, DataType, ParsingError, TableName};
 
 impl Parser {
     // 테이블 컬럼 정의 분석

@@ -1,4 +1,4 @@
-use crate::lib::DataType;
+use crate::lib::ast::predule::DataType;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Column {

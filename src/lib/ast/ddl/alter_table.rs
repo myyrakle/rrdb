@@ -1,7 +1,7 @@
 //use crate::lib::ast::enums::SQLStatement;
+use crate::lib::ast::predule::DataType;
 use crate::lib::ast::types::Column;
 use crate::lib::ast::types::TableName;
-use crate::lib::DataType;
 
 /*
 ALTER TABLE [database_name.]table_name

@@ -1,8 +1,8 @@
 use std::error::Error;
 
+use crate::lib::ast::predule::{ParsingError, SQLStatement, SelectItem, SelectQuery};
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::Parser;
-use crate::lib::{ParsingError, SQLStatement, SelectItem, SelectQuery};
 
 impl Parser {
     pub(crate) fn handle_select_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {

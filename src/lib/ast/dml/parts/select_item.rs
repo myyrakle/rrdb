@@ -1,4 +1,4 @@
-use crate::lib::SQLExpression;
+use crate::lib::ast::predule::SQLExpression;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectItem {

@@ -1,4 +1,4 @@
-use crate::lib::ast::TableName;
+use crate::lib::ast::predule::TableName;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InsertQuery {

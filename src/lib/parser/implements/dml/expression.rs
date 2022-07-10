@@ -1,9 +1,9 @@
 use std::error::Error;
 use std::thread::current;
 
+use crate::lib::ast::predule::{identifier, ParsingError, SQLExpression};
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::Parser;
-use crate::lib::{identifier, ParsingError, SQLExpression};
 
 impl Parser {
     pub(crate) fn parse_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {

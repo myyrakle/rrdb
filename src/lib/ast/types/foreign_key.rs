@@ -1,4 +1,4 @@
-use crate::lib::TableName;
+use crate::lib::ast::predule::TableName;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ForeignKey {

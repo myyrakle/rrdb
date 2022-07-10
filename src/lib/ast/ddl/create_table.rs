@@ -1,6 +1,6 @@
 use crate::lib::ast::enums::{DDLStatement, SQLStatement};
+use crate::lib::ast::predule::{ForeignKey, TableName, TableOptions, UniqueKey};
 pub use crate::lib::ast::types::Column;
-use crate::lib::{ForeignKey, TableName, TableOptions, UniqueKey};
 
 /*
 CREATE TABLE [IF NOT EXISTS] [database_name.]table_name (

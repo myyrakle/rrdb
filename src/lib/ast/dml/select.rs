@@ -1,6 +1,6 @@
 use crate::lib::ast::dml::parts::_where::WhereClause;
 use crate::lib::ast::enums::{DMLStatement, SQLStatement};
-use crate::lib::{GroupByClause, OrderByClause, TableName};
+use crate::lib::ast::predule::{GroupByClause, OrderByClause, TableName};
 
 use super::SelectItem;
 

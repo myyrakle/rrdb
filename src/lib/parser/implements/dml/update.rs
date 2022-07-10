@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::lib::parser::Parser;
 
-use crate::lib::{CreateTableQuery, ParsingError, SQLStatement};
+use crate::lib::ast::predule::{CreateTableQuery, ParsingError, SQLStatement};
 
 impl Parser {
     pub(crate) fn handle_update_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
