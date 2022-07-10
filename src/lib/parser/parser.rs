@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::lib::ast::enums::SQLStatement;
-use crate::lib::lexer::{Token, Tokenizer};
+use crate::lib::lexer::predule::{Token, Tokenizer};
 
 #[derive(Debug)]
 pub struct Parser {

@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::thread::current;
 
-use crate::lib::lexer::Token;
+use crate::lib::lexer::predule::Token;
 use crate::lib::parser::Parser;
 use crate::lib::{identifier, ParsingError, SQLExpression};
 
@@ -14,6 +14,9 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
+            Token::Operator(operator) => match operator {
+                _ => {}
+            },
             Token::Integer(integer) => {}
             Token::Float(float) => {}
             Token::Identifier(identifier) => {}

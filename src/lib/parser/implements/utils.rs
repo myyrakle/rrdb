@@ -1,6 +1,6 @@
 use super::super::Parser;
 
-use crate::lib::Token;
+use crate::lib::lexer::predule::Token;
 
 impl Parser {
     // 다음 토큰 획득

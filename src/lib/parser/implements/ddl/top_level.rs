@@ -1,6 +1,8 @@
 use crate::lib::ast::enums::SQLStatement;
+use crate::lib::lexer::predule::Token;
 use crate::lib::parser::Parser;
-use crate::lib::{ParsingError, Token};
+use crate::lib::ParsingError;
+
 use std::error::Error;
 
 impl Parser {

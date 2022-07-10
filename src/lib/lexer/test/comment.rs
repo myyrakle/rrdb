@@ -1,6 +1,5 @@
 #[cfg(test)]
-
-use crate::lib::lexer::{Token, Tokenizer};
+use crate::lib::lexer::predule::{Token, Tokenizer};
 
 #[test]
 pub fn comment_1() {

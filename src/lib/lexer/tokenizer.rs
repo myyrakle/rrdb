@@ -1,4 +1,4 @@
-use crate::lib::lexer::Token;
+use crate::lib::lexer::predule::Token;
 
 #[derive(Debug)]
 pub struct Tokenizer {

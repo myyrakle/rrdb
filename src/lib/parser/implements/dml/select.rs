@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::lexer::Token;
+use crate::lib::lexer::predule::Token;
 use crate::lib::parser::Parser;
 use crate::lib::{ParsingError, SQLStatement, SelectItem, SelectQuery};
 
@@ -89,7 +89,7 @@ impl Parser {
                     Token::Identifier(identifier) => {
                         let select_item = select_item.set_alias(identifier);
                         Ok(select_item.build())
-                    },
+                    }
                     _ => Err(ParsingError::boxed(format!(
                         "expected alias, but your input word is '{:?}'",
                         current_token
