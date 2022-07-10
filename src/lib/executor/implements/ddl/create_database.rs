@@ -2,7 +2,7 @@ use std::error::Error;
 use std::path::PathBuf;
 
 use crate::lib::ast::ddl::CreateDatabaseQuery;
-use crate::lib::errors::ExecuteError;
+use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::Executor;
 use crate::lib::utils::get_system_env;
 use crate::lib::DatabaseConfig;

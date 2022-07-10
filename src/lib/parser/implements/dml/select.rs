@@ -1,6 +1,7 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{ParsingError, SQLStatement, SelectItem, SelectQuery};
+use crate::lib::ast::predule::{SQLStatement, SelectItem, SelectQuery};
+use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::Parser;
 

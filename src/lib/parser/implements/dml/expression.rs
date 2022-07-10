@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::thread::current;
 
-use crate::lib::ast::predule::{identifier, ParsingError, SQLExpression};
+use crate::lib::ast::predule::{identifier, SQLExpression};
+use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::Parser;
 
