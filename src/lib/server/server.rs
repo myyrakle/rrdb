@@ -1,5 +1,5 @@
 use crate::lib::ast::predule::{DDLStatement, SQLStatement};
-use crate::lib::server::ServerOption;
+use crate::lib::server::predule::ServerOption;
 use crate::lib::Executor;
 use crate::lib::Parser;
 

@@ -4,7 +4,7 @@ pub mod lib;
 use command::commands::{Command, SubCommand};
 use lib::constants::server::{DEFAULT_HOST, DEFAULT_PORT};
 use lib::executor::Executor;
-use lib::server::{Server, ServerOption};
+use lib::server::predule::{Server, ServerOption};
 
 use clap::Parser;
 
@@ -21,9 +21,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let path = match init_option.config_path {
                 Some(path) => path,
                 None => ".".into(),
-
-
-                
             };
 
             executor.init(path).await?;
