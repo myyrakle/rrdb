@@ -1,7 +1,7 @@
 use crate::lib::ast::predule::{DDLStatement, SQLStatement};
+use crate::lib::executor::predule::Executor;
 use crate::lib::parser::predule::Parser;
 use crate::lib::server::predule::ServerOption;
-use crate::lib::Executor;
 
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;

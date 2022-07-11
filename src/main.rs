@@ -3,7 +3,7 @@ pub mod lib;
 
 use command::commands::{Command, SubCommand};
 use lib::constants::server::{DEFAULT_HOST, DEFAULT_PORT};
-use lib::executor::Executor;
+use lib::executor::predule::Executor;
 use lib::server::predule::{Server, ServerOption};
 
 use clap::Parser;

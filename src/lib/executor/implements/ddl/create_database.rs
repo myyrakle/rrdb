@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use crate::lib::ast::ddl::CreateDatabaseQuery;
 use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::Executor;
+use crate::lib::executor::predule::DatabaseConfig;
+use crate::lib::executor::predule::Executor;
 use crate::lib::utils::get_system_env;
-use crate::lib::DatabaseConfig;
 
 impl Executor {
     pub async fn create_database(&self, query: CreateDatabaseQuery) -> Result<(), Box<dyn Error>> {
