@@ -4,7 +4,7 @@ use std::thread::current;
 use crate::lib::ast::predule::{identifier, SQLExpression};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
-use crate::lib::parser::Parser;
+use crate::lib::parser::predule::Parser;
 
 impl Parser {
     pub(crate) fn parse_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {

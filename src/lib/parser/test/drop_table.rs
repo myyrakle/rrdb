@@ -3,7 +3,7 @@ use crate::lib::ast::ddl::DropTableQuery;
 #[cfg(test)]
 use crate::lib::ast::types::TableName;
 #[cfg(test)]
-use crate::lib::parser::Parser;
+use crate::lib::parser::predule::Parser;
 
 #[test]
 pub fn drop_table() {

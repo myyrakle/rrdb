@@ -3,7 +3,7 @@ use crate::lib::ast::ddl::CreateTableQuery;
 #[cfg(test)]
 use crate::lib::ast::types::{Column, DataType, TableName};
 #[cfg(test)]
-use crate::lib::parser::Parser;
+use crate::lib::parser::predule::Parser;
 
 #[test]
 pub fn create_table() {

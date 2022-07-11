@@ -1,4 +1,4 @@
-use crate::lib::parser::Parser;
+use crate::lib::parser::predule::Parser;
 
 use crate::lib::ast::ddl::{CreateDatabaseQuery, DropDatabaseQuery};
 use crate::lib::ast::enums::SQLStatement;

@@ -1,4 +1,4 @@
-use super::super::Parser;
+use crate::lib::parser::predule::Parser;
 
 use crate::lib::lexer::predule::Token;
 

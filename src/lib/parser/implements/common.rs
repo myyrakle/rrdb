@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::lib::ast::predule::{Column, DataType, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
-use crate::lib::parser::Parser;
+use crate::lib::parser::predule::Parser;
 
 impl Parser {
     // 테이블 컬럼 정의 분석
