@@ -1,5 +1,5 @@
 use crate::lib::config::GlobalConfig;
-use crate::lib::utils::set_system_env;
+use crate::lib::utils::predule::set_system_env;
 use path_absolutize::*;
 use std::path::PathBuf;
 

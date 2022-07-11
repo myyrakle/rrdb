@@ -5,7 +5,7 @@ use crate::lib::ast::ddl::CreateDatabaseQuery;
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::predule::DatabaseConfig;
 use crate::lib::executor::predule::Executor;
-use crate::lib::utils::get_system_env;
+use crate::lib::utils::predule::get_system_env;
 
 impl Executor {
     pub async fn create_database(&self, query: CreateDatabaseQuery) -> Result<(), Box<dyn Error>> {

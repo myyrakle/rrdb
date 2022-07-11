@@ -6,7 +6,7 @@ use lib::parser::predule::Parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let foo = lib::utils::get_system_env("RRDB_BASE_PATH");
+    let foo = lib::utils::predule::get_system_env("RRDB_BASE_PATH");
 
     println!("{}", foo);
 
