@@ -16,13 +16,58 @@ impl Parser {
 
         match current_token {
             Token::Operator(operator) => match operator {
-                _ => {}
+                _ => {
+                    return Err(ParsingError::boxed(format!(
+                        "unexpected operator: {:?}",
+                        operator
+                    )));
+                }
             },
-            Token::Integer(integer) => {}
-            Token::Float(float) => {}
-            Token::Identifier(identifier) => {}
-            Token::String(string) => {}
-            Token::Boolean(boolean) => {}
+            Token::Integer(integer) => {
+                let lhs = integer;
+
+                if self.next_token_is_binary_operator() {
+                    // TODO: 2항 표현식 파싱 진입
+                } else {
+                    return Ok(SQLExpression::Integer(lhs));
+                }
+            }
+            Token::Float(float) => {
+                let lhs = float;
+
+                if self.next_token_is_binary_operator() {
+                    // TODO: 2항 표현식 파싱 진입
+                } else {
+                    return Ok(SQLExpression::Float(lhs));
+                }
+            }
+            Token::Identifier(identifier) => {
+                let lhs = identifier;
+
+                if self.next_token_is_binary_operator() {
+                    // TODO: 2항 표현식 파싱 진입
+                } else {
+                    return Ok(SQLExpression::Identifier(lhs));
+                }
+            }
+            Token::String(string) => {
+                let lhs = string;
+
+                if self.next_token_is_binary_operator() {
+                    // TODO: 2항 표현식 파싱 진입
+                } else {
+                    return Ok(SQLExpression::String(lhs));
+                }
+            }
+            Token::Boolean(boolean) => {
+                let lhs = boolean;
+
+                if self.next_token_is_binary_operator() {
+                    // TODO: 2항 표현식 파싱 진입
+                } else {
+                    return Ok(SQLExpression::Boolean(lhs));
+                }
+            }
             Token::LeftParentheses => {
                 self.unget_next_token(current_token);
                 return self.parse_parentheses_expression();

@@ -16,5 +16,6 @@ pub enum SQLExpression {
     Float(f64),
     Boolean(bool),
     String(String),
+    Identifier(String),
     Null,
 }

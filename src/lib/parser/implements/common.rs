@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::thread::current;
 
 use crate::lib::ast::predule::{Column, DataType, TableName};
 use crate::lib::errors::predule::ParsingError;
@@ -304,6 +305,28 @@ impl Parser {
         } else {
             self.unget_next_token(current_token);
             return Ok(false);
+        }
+    }
+
+    // 다음 토큰이 2항 연산자/키워드인지
+    pub(crate) fn next_token_is_binary_operator(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            // ( 삼킴
+            let current_token = self.get_next_token();
+
+            self.unget_next_token(current_token.clone());
+
+            match current_token {
+                Token::And | Token::Or | Token::Like => return true,
+                Token::Operator(operator) => {
+                    return ["+", "-", "*", "/", "%"].contains(&operator.as_str())
+                }
+                _ => {
+                    return false;
+                }
+            }
         }
     }
 }
