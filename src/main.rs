@@ -2,7 +2,7 @@ pub mod command;
 pub mod lib;
 
 use command::commands::{Command, SubCommand};
-use lib::constants::server::{DEFAULT_HOST, DEFAULT_PORT};
+use lib::constants::predule::{DEFAULT_HOST, DEFAULT_PORT};
 use lib::executor::predule::Executor;
 use lib::server::predule::{Server, ServerOption};
 

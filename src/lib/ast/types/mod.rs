@@ -15,3 +15,6 @@ pub use table_options::*;
 
 pub mod data_types;
 pub use data_types::*;
+
+pub mod select_column;
+pub use select_column::*;
