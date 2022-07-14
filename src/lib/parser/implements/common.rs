@@ -313,11 +313,11 @@ impl Parser {
         if !self.has_next_token() {
             return false;
         } else {
-            // ( 삼킴
             let current_token = self.get_next_token();
 
             self.unget_next_token(current_token.clone());
 
+            // 2항 키워드, 연산자일 경우에만 true 반환
             match current_token {
                 Token::And | Token::Or | Token::Like => return true,
                 Token::Operator(operator) => {
