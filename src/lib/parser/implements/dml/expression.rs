@@ -1,7 +1,6 @@
 use std::error::Error;
-use std::thread::current;
 
-use crate::lib::ast::predule::{identifier, SQLExpression};
+use crate::lib::ast::predule::SQLExpression;
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::Parser;
@@ -42,12 +41,14 @@ impl Parser {
                 }
             }
             Token::Identifier(identifier) => {
-                let lhs = identifier;
+                self.unget_next_token(Token::Identifier(identifier));
+
+                let select_column = self.parse_select_column()?;
 
                 if self.next_token_is_binary_operator() {
                     // TODO: 2항 표현식 파싱 진입
                 } else {
-                    return Ok(SQLExpression::Identifier(lhs));
+                    return Ok(SQLExpression::SelectColumn(select_column));
                 }
             }
             Token::String(string) => {

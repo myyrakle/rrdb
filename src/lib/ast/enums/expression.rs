@@ -1,7 +1,7 @@
 use crate::lib::ast::dml::expressions::{
     BetweenExpression, BinaryOperatorExpression, UnaryOperatorExpression,
 };
-use crate::lib::ast::types::ColumnName;
+use crate::lib::ast::predule::{ColumnName, SelectColumn};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SQLExpression {
@@ -16,6 +16,6 @@ pub enum SQLExpression {
     Float(f64),
     Boolean(bool),
     String(String),
-    Identifier(String),
+    SelectColumn(SelectColumn),
     Null,
 }

@@ -1,10 +1,10 @@
 use std::error::Error;
-use std::thread::current;
 
 use crate::lib::ast::predule::{Column, DataType, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::Parser;
+use crate::lib::types::SelectColumn;
 
 impl Parser {
     // 테이블 컬럼 정의 분석
@@ -305,6 +305,50 @@ impl Parser {
         } else {
             self.unget_next_token(current_token);
             return Ok(false);
+        }
+    }
+
+    // SELECT 컬럼 정의 분석
+    pub(crate) fn parse_select_column(&mut self) -> Result<SelectColumn, Box<dyn Error>> {
+        let mut select_column = SelectColumn::new(None, "".to_string());
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if let Token::Identifier(name) = current_token {
+            select_column.column_name = name;
+        } else {
+            return Err(ParsingError::boxed(format!(
+                "expected identifier. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Ok(select_column);
+        } else {
+            let current_token = self.get_next_token();
+
+            if current_token == Token::Period {
+                let current_token = self.get_next_token();
+
+                if let Token::Identifier(name) = current_token {
+                    select_column.table_name = Some(select_column.column_name);
+                    select_column.column_name = name;
+                    return Ok(select_column);
+                } else {
+                    return Err(ParsingError::boxed(format!(
+                        "expected identifier. but your input word is '{:?}'",
+                        current_token
+                    )));
+                }
+            } else {
+                self.unget_next_token(current_token);
+                return Ok(select_column);
+            }
         }
     }
 
