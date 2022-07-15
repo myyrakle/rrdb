@@ -5,7 +5,7 @@ use crate::lib::lexer::predule::{Token, Tokenizer};
 pub fn select_1() {
     let text = r#"SELECT 1"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(tokens, vec![Token::Select, Token::Integer(1)]);
 }
@@ -14,7 +14,7 @@ pub fn select_1() {
 pub fn select_2() {
     let text = r#"  SELECT 1432"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(tokens, vec![Token::Select, Token::Integer(1432)]);
 }
@@ -23,7 +23,7 @@ pub fn select_2() {
 pub fn select_3() {
     let text = r#"SELECT 3.14"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(tokens, vec![Token::Select, Token::Float(3.14)]);
 }
@@ -32,7 +32,7 @@ pub fn select_3() {
 pub fn select_4() {
     let text = r#"SELECT 'I''m Sam'"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(
         tokens,
@@ -44,7 +44,7 @@ pub fn select_4() {
 pub fn select_from_1() {
     let text = r#"SELECT name from person"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(
         tokens,
@@ -61,7 +61,7 @@ pub fn select_from_1() {
 pub fn select_from_2() {
     let text = r#"SELECT 1 from "boom""#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(
         tokens,
@@ -78,7 +78,7 @@ pub fn select_from_2() {
 pub fn select_from_where_1() {
     let text = r#"SELECT name from person where"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(
         tokens,

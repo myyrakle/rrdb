@@ -28,8 +28,8 @@ drop database "foo_db";"#;
     // let tokens = Tokenizer::string_to_tokens(text);
     // println!("{:?}", tokens);
 
-    let mut parser = Parser::new(text);
-    let result = parser.parse();
+    let mut parser = Parser::new(text)?;
+    let result = parser.parse()?;
     println!("{:?}", result);
 
     let text = r#"
@@ -39,8 +39,8 @@ drop database "foo_db";"#;
     // let tokens = Tokenizer::string_to_tokens(text);
     // println!("{:?}", tokens);
 
-    let mut parser = Parser::new(text);
-    let result = parser.parse();
+    let mut parser = Parser::new(text)?;
+    let result = parser.parse()?;
     println!("{:?}", result);
 
     Ok(())

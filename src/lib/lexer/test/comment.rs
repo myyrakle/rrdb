@@ -5,7 +5,7 @@ use crate::lib::lexer::predule::{Token, Tokenizer};
 pub fn comment_1() {
     let text = r#"SELECT 1 -- asdf"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(
         tokens,
@@ -21,7 +21,7 @@ pub fn comment_1() {
 pub fn comment_2() {
     let text = r#"SELECT /*asdf*/1"#.to_owned();
 
-    let tokens = Tokenizer::string_to_tokens(text);
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
 
     assert_eq!(
         tokens,

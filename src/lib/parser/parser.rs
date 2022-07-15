@@ -11,10 +11,18 @@ pub struct Parser {
 
 impl Parser {
     // 파서 객체 생성
-    pub fn new(text: String) -> Self {
+    pub fn new(text: String) -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            current_token: Token::EOF,
+            tokens: VecDeque::from(Tokenizer::string_to_tokens(text)?),
+        })
+    }
+
+    // 파서 객체 생성
+    pub fn with_tokens(tokens: VecDeque<Token>) -> Self {
         Self {
             current_token: Token::EOF,
-            tokens: VecDeque::from(Tokenizer::string_to_tokens(text)),
+            tokens,
         }
     }
 

@@ -11,10 +11,10 @@ pub struct Server {
 }
 
 async fn process_query(query: String) -> Result<(), Box<dyn std::error::Error>> {
-    let mut parser = Parser::new(query);
+    let mut parser = Parser::new(query)?;
     let executor = Executor::new();
 
-    let ast_list = parser.parse().unwrap();
+    let ast_list = parser.parse()?;
 
     for ast in ast_list {
         match ast {
