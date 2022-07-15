@@ -1,3 +1,4 @@
+use crate::lib::lexer::predule::OperatorToken;
 use crate::lib::lexer::predule::Token;
 
 #[derive(Debug)]
@@ -224,7 +225,7 @@ impl Tokenizer {
                         Token::CodeComment(comment)
                     } else {
                         self.unread_char();
-                        Token::Operator("-".to_owned())
+                        Token::Operator(OperatorToken::Minus)
                     }
                 }
                 '/' => {
@@ -253,10 +254,12 @@ impl Tokenizer {
                         Token::CodeComment(comment)
                     } else {
                         self.unread_char();
-                        Token::Operator("/".to_owned())
+                        Token::Operator(OperatorToken::Slash)
                     }
                 }
-                _ => Token::Operator(self.last_char.to_string()),
+                '+' => Token::Operator(OperatorToken::Plus),
+                '*' => Token::Operator(OperatorToken::Asterisk),
+                _ => Token::UnknownCharacter(self.last_char),
             }
         }
         // 따옴표일 경우 처리

@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::lib::ast::enums::SQLStatement;
-use crate::lib::lexer::predule::{Token, Tokenizer};
+use crate::lib::lexer::predule::{OperatorToken, Token, Tokenizer};
 
 #[derive(Debug)]
 pub struct Parser {
@@ -42,8 +42,8 @@ impl Parser {
                     Token::Update => statements.push(self.handle_update_query()?),
                     Token::Insert => statements.push(self.handle_insert_query()?),
                     Token::Delete => statements.push(self.handle_delete_query()?),
-                    Token::Operator(operator) if operator == "\\" => {
-                        // 추후 구현 필요. \c, \d 등...
+                    Token::Operator(operator) if operator == OperatorToken::Slash => {
+                        // TODO: 추후 구현 필요. \c, \d 등...
                         continue;
                     }
                     _ => {
