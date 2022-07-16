@@ -10,7 +10,7 @@ pub fn create_database() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text);
+    let mut parser = Parser::new(text).unwrap();
 
     let expected = CreateDatabaseQuery::builder()
         .set_name("test_db".to_owned())

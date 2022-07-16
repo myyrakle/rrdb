@@ -1,3 +1,5 @@
+use super::predule::OperatorToken;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     // DCL
@@ -67,7 +69,7 @@ pub enum Token {
     String(String),
     Null,
 
-    Operator(String),
+    Operator(OperatorToken),
 
     //functions
     Exists,

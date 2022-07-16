@@ -1,4 +1,6 @@
-use crate::lib::lexer::predule::Token;
+use crate::lib::errors::predule::LexingError;
+use crate::lib::lexer::predule::{OperatorToken, Token};
+use std::error::Error;
 
 #[derive(Debug)]
 pub struct Tokenizer {
@@ -86,7 +88,7 @@ impl Tokenizer {
 
     // 주어진 텍스트에서 토큰을 순서대로 획득해 반환합니다.
     // 끝을 만날 경우 Token::EOF를 반환합니다.
-    pub fn get_token(&mut self) -> Token {
+    pub fn get_token(&mut self) -> Result<Token, Box<dyn Error>> {
         // 화이트 스페이스 삼킴
         while self.is_whitespace() && !self.is_eof() {
             self.read_char();
@@ -104,7 +106,7 @@ impl Tokenizer {
 
             let identifier: String = identifier.into_iter().collect::<String>();
 
-            return match identifier.to_uppercase().as_str() {
+            let token = match identifier.to_uppercase().as_str() {
                 "SELECT" => Token::Select,
                 "FROM" => Token::From,
                 "WHERE" => Token::Where,
@@ -154,6 +156,8 @@ impl Tokenizer {
                 "EXISTS" => Token::Exists,
                 _ => Token::Identifier(identifier),
             };
+
+            return Ok(token);
         }
         // 첫번째 글자가 숫자일 경우 정수 및 실수값으로 인식
         else if self.is_digit() {
@@ -184,18 +188,24 @@ impl Tokenizer {
 
                 match number {
                     Ok(number) => Token::Float(number),
-                    Err(_) => Token::Error(
-                        format!("invalid floating point number format: {}", number_string).into(),
-                    ),
+                    Err(_) => {
+                        return Err(LexingError::boxed(format!(
+                            "invalid floating point number format: {}",
+                            number_string
+                        )))
+                    }
                 }
             } else {
                 let number = number_string.parse::<i64>();
 
                 match number {
                     Ok(number) => Token::Integer(number),
-                    Err(_) => Token::Error(
-                        format!("invalid integer number format: {}", number_string).into(),
-                    ),
+                    Err(_) => {
+                        return Err(LexingError::boxed(format!(
+                            "invalid integer number format: {}",
+                            number_string
+                        )))
+                    }
                 }
             }
         }
@@ -224,7 +234,7 @@ impl Tokenizer {
                         Token::CodeComment(comment)
                     } else {
                         self.unread_char();
-                        Token::Operator("-".to_owned())
+                        Token::Operator(OperatorToken::Minus)
                     }
                 }
                 '/' => {
@@ -253,10 +263,17 @@ impl Tokenizer {
                         Token::CodeComment(comment)
                     } else {
                         self.unread_char();
-                        Token::Operator("/".to_owned())
+                        Token::Operator(OperatorToken::Slash)
                     }
                 }
-                _ => Token::Operator(self.last_char.to_string()),
+                '+' => Token::Operator(OperatorToken::Plus),
+                '*' => Token::Operator(OperatorToken::Asterisk),
+                _ => {
+                    return Err(LexingError::boxed(format!(
+                        "unexpected operator: {:?}",
+                        self.last_char
+                    )))
+                }
             }
         }
         // 따옴표일 경우 처리
@@ -323,24 +340,27 @@ impl Tokenizer {
         else if self.is_eof() {
             Token::EOF
         } else {
-            Token::UnknownCharacter(self.last_char)
+            return Err(LexingError::boxed(format!(
+                "unexpected character: {:?}",
+                self.last_char
+            )));
         };
 
         self.last_char = ' ';
 
-        token
+        Ok(token)
     }
 
     // Tokenizer 생성 없이 토큰 목록을 가져올 수 있는 유틸 함수입니다.
-    pub fn string_to_tokens(text: String) -> Vec<Token> {
+    pub fn string_to_tokens(text: String) -> Result<Vec<Token>, Box<dyn Error>> {
         let mut tokenizer = Tokenizer::new(text);
 
         let mut tokens = vec![];
 
         while !tokenizer.is_eof() {
-            tokens.push(tokenizer.get_token());
+            tokens.push(tokenizer.get_token()?);
         }
 
-        tokens
+        Ok(tokens)
     }
 }

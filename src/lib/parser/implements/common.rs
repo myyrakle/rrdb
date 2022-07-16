@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::lib::ast::predule::{Column, DataType, TableName};
 use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
+use crate::lib::lexer::predule::{OperatorToken, Token};
 use crate::lib::parser::predule::Parser;
 use crate::lib::types::SelectColumn;
 
@@ -365,7 +365,13 @@ impl Parser {
             match current_token {
                 Token::And | Token::Or | Token::Like => return true,
                 Token::Operator(operator) => {
-                    return ["+", "-", "*", "/", "%"].contains(&operator.as_str())
+                    return [
+                        OperatorToken::Plus,
+                        OperatorToken::Minus,
+                        OperatorToken::Asterisk,
+                        OperatorToken::Slash,
+                    ]
+                    .contains(&operator)
                 }
                 _ => {
                     return false;
