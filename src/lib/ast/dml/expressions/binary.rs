@@ -7,3 +7,9 @@ pub struct BinaryOperatorExpression {
     pub lhs: SQLExpression,
     pub rhs: SQLExpression,
 }
+
+impl Into<SQLExpression> for BinaryOperatorExpression {
+    fn into(self) -> SQLExpression {
+        SQLExpression::Binary(Box::new(self))
+    }
+}
