@@ -131,4 +131,24 @@ impl Parser {
 
         expression
     }
+
+    /**
+     * 소괄호 파싱
+    parenexpr ::= '(' expression ')'
+    */
+    pub(crate) fn parse_binary_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        // ( 삼킴
+        let current_token = self.get_next_token();
+
+        if current_token != Token::RightParentheses {
+            return Err(ParsingError::boxed(format!(
+                "expected right parentheses. but your input is {:?}",
+                current_token
+            )));
+        }
+    }
 }
