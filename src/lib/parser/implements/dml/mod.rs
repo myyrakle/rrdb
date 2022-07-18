@@ -12,6 +12,3 @@ pub use delete::*;
 
 pub mod expression;
 pub use expression::*;
-
-pub mod operator_priority;
-pub use operator_priority::*;
