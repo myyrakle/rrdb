@@ -1,8 +1,9 @@
 use std::convert::TryInto;
 use std::error::Error;
 
-use crate::lib::ast::predule::{BinaryOperatorExpression, SQLExpression};
-use crate::lib::dml::{BinaryOperator, UnaryOperator};
+use crate::lib::ast::predule::{
+    BinaryOperator, BinaryOperatorExpression, SQLExpression, UnaryOperator, UnaryOperatorExpression,
+};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::Parser;
@@ -18,9 +19,13 @@ impl Parser {
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_unary_operator() {
-                    let expression = self.parse_expression();
-                    let operator: UnaryOperator = operator.try_into?();
-                    return Ok(UnaryOperatorExpression {}).into();
+                    let expression = self.parse_expression()?;
+                    let operator: UnaryOperator = operator.try_into()?;
+                    return Ok(UnaryOperatorExpression {
+                        operand: expression,
+                        operator,
+                    }
+                    .into());
                 } else {
                     return Err(ParsingError::boxed(format!(
                         "unexpected operator: {:?}",
