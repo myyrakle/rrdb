@@ -1,7 +1,7 @@
 #[cfg(test)]
-use crate::lib::ast::dml::{SelectItem, SelectQuery};
-#[cfg(test)]
-use crate::lib::ast::predule::{BinaryOperator, BinaryOperatorExpression, SQLExpression};
+use crate::lib::ast::predule::{
+    BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectItem, SelectQuery,
+};
 #[cfg(test)]
 use crate::lib::parser::predule::Parser;
 
