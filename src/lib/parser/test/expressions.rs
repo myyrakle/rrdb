@@ -1,0 +1,41 @@
+#[cfg(test)]
+use crate::lib::ast::dml::{SelectItem, SelectQuery};
+#[cfg(test)]
+use crate::lib::ast::predule::{BinaryOperator, BinaryOperatorExpression, SQLExpression};
+#[cfg(test)]
+use crate::lib::parser::predule::Parser;
+
+#[test]
+pub fn expression() {
+    let text = r#"
+        SELECT 2 * (3 + 5) AS foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Binary(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::Mul,
+                        lhs: SQLExpression::Integer(2),
+                        rhs: SQLExpression::Binary(
+                            BinaryOperatorExpression {
+                                operator: BinaryOperator::Mul,
+                                lhs: SQLExpression::Integer(3),
+                                rhs: SQLExpression::Integer(5),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}

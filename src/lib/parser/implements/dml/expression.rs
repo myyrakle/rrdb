@@ -28,6 +28,7 @@ impl Parser {
                 let lhs = SQLExpression::Integer(integer);
 
                 if self.next_token_is_binary_operator() {
+                    println!("????");
                     return self.parse_binary_expression(lhs);
                 } else {
                     return Ok(lhs);
