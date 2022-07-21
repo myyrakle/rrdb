@@ -120,9 +120,9 @@ impl Parser {
         // ( 삼킴
         let current_token = self.get_next_token();
 
-        if current_token != Token::RightParentheses {
+        if current_token != Token::LeftParentheses {
             return Err(ParsingError::boxed(format!(
-                "expected right parentheses. but your input is {:?}",
+                "expected left parentheses. but your input is {:?}",
                 current_token
             )));
         }
