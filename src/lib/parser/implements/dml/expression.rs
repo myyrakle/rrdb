@@ -38,8 +38,11 @@ impl Parser {
 
                 if self.next_token_is_binary_operator() {
                     println!("????");
-                    return self.parse_binary_expression(lhs);
+                    let foo = self.parse_binary_expression(lhs);
+                    println!("asdf {:?}", foo);
+                    return foo;
                 } else {
+                    println!("!!!!");
                     return Ok(lhs);
                 }
             }
@@ -87,7 +90,6 @@ impl Parser {
                 return self.parse_parentheses_expression();
             }
             Token::RightParentheses => {
-                // self.unget_next_token(current_token);
                 return Err(ParsingError::boxed(format!(
                     "unexpected token: {:?}",
                     current_token
@@ -130,7 +132,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let expression = self.parse_expression();
+        let expression = self.parse_expression()?;
 
         // ) 삼킴
         let current_token = self.get_next_token();
@@ -142,7 +144,7 @@ impl Parser {
             )));
         }
 
-        expression
+        Ok(expression)
     }
 
     /**
@@ -162,7 +164,9 @@ impl Parser {
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_binary_operator() {
-                    let rhs = self.parse_expression()?;
+                    let rhs = self.parse_expression();
+                    println!("rhs {:?}", rhs);
+                    let rhs = rhs?;
                     let operator: BinaryOperator = operator.try_into()?;
                     return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
                 } else {

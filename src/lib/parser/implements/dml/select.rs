@@ -16,6 +16,7 @@ impl Parser {
         // FROM 절이나 세미콜론이 나오기 전까지 select 절 파싱
         loop {
             let current_token = self.get_next_token();
+            println!("{:?}", current_token);
 
             match current_token {
                 Token::From => {
@@ -28,6 +29,7 @@ impl Parser {
                     return Ok(query_builder.build());
                 }
                 _ => {
+                    self.unget_next_token(current_token);
                     let select_item = self.parse_select_item()?;
                     query_builder = query_builder.add_select_item(select_item);
                 }
