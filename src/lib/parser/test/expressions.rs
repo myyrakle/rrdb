@@ -23,7 +23,7 @@ pub fn expression() {
                         lhs: SQLExpression::Integer(2),
                         rhs: SQLExpression::Binary(
                             BinaryOperatorExpression {
-                                operator: BinaryOperator::Mul,
+                                operator: BinaryOperator::Add,
                                 lhs: SQLExpression::Integer(3),
                                 rhs: SQLExpression::Integer(5),
                             }
