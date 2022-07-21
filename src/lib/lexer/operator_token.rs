@@ -1,6 +1,7 @@
 use std::{convert::TryInto, error::Error};
 
-use crate::lib::ast::predule::BinaryOperator;
+use crate::lib::ast::predule::{BinaryOperator, UnaryOperator};
+use crate::lib::errors::predule::IntoError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum OperatorToken {
@@ -32,6 +33,10 @@ impl OperatorToken {
         ]
         .contains(self)
     }
+
+    pub fn is_unary_operator(&self) -> bool {
+        [Self::Plus, Self::Minus].contains(self)
+    }
 }
 
 impl TryInto<BinaryOperator> for OperatorToken {
@@ -49,6 +54,18 @@ impl TryInto<BinaryOperator> for OperatorToken {
             Self::Gte => Ok(BinaryOperator::Gte),
             Self::Eq => Ok(BinaryOperator::Eq),
             Self::Neq => Ok(BinaryOperator::Neq),
+        }
+    }
+}
+
+impl TryInto<UnaryOperator> for OperatorToken {
+    type Error = Box<dyn Error>;
+
+    fn try_into(self) -> Result<UnaryOperator, Self::Error> {
+        match self {
+            Self::Plus => Ok(UnaryOperator::Pos),
+            Self::Minus => Ok(UnaryOperator::Neg),
+            _ => Err(IntoError::boxed("UnaryOperator Cast Error")),
         }
     }
 }
