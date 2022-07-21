@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         lhs: SQLExpression::Integer(2),
                         rhs: SQLExpression::Binary(
                             BinaryOperatorExpression {
-                                operator: BinaryOperator::Mul,
+                                operator: BinaryOperator::Add,
                                 lhs: SQLExpression::Integer(3),
                                 rhs: SQLExpression::Integer(5),
                             }

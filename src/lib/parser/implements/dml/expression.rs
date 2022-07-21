@@ -16,8 +16,6 @@ impl Parser {
 
         let current_token = self.get_next_token();
 
-        println!("{:?}", current_token);
-
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_unary_operator() {
@@ -174,7 +172,6 @@ impl Parser {
             Token::Operator(operator) => {
                 if operator.is_binary_operator() {
                     let rhs = self.parse_expression()?;
-                    println!("rhs {:?}", rhs);
                     let operator: BinaryOperator = operator.try_into()?;
                     return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
                 } else {

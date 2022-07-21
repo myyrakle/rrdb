@@ -20,7 +20,6 @@ impl Parser {
             }
 
             let current_token = self.get_next_token();
-            println!("{:?}", current_token);
 
             match current_token {
                 Token::From => {
