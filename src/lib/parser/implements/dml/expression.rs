@@ -16,6 +16,8 @@ impl Parser {
 
         let current_token = self.get_next_token();
 
+        println!("{:?}", current_token);
+
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_unary_operator() {
@@ -37,12 +39,9 @@ impl Parser {
                 let lhs = SQLExpression::Integer(integer);
 
                 if self.next_token_is_binary_operator() {
-                    println!("????");
-                    let foo = self.parse_binary_expression(lhs);
-                    println!("asdf {:?}", foo);
-                    return foo;
+                    let expression = self.parse_binary_expression(lhs)?;
+                    return Ok(expression);
                 } else {
-                    println!("!!!!");
                     return Ok(lhs);
                 }
             }
@@ -50,7 +49,8 @@ impl Parser {
                 let lhs = SQLExpression::Float(float);
 
                 if self.next_token_is_binary_operator() {
-                    return self.parse_binary_expression(lhs);
+                    let expression = self.parse_binary_expression(lhs)?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
@@ -62,7 +62,8 @@ impl Parser {
                 let lhs = SQLExpression::SelectColumn(select_column);
 
                 if self.next_token_is_binary_operator() {
-                    return self.parse_binary_expression(lhs);
+                    let expression = self.parse_binary_expression(lhs)?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
@@ -71,7 +72,8 @@ impl Parser {
                 let lhs = SQLExpression::String(string);
 
                 if self.next_token_is_binary_operator() {
-                    return self.parse_binary_expression(lhs);
+                    let expression = self.parse_binary_expression(lhs)?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
@@ -80,14 +82,17 @@ impl Parser {
                 let lhs = SQLExpression::Boolean(boolean);
 
                 if self.next_token_is_binary_operator() {
-                    return self.parse_binary_expression(lhs);
+                    let expression = self.parse_binary_expression(lhs)?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
             }
             Token::LeftParentheses => {
                 self.unget_next_token(current_token);
-                return self.parse_parentheses_expression();
+                let expression = self.parse_parentheses_expression()?;
+
+                return Ok(expression);
             }
             Token::RightParentheses => {
                 return Err(ParsingError::boxed(format!(
@@ -134,12 +139,16 @@ impl Parser {
         // 표현식 파싱
         let expression = self.parse_expression()?;
 
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
         // ) 삼킴
         let current_token = self.get_next_token();
 
-        if current_token != Token::LeftParentheses {
+        if current_token != Token::RightParentheses {
             return Err(ParsingError::boxed(format!(
-                "expected left parentheses. but your input is {:?}",
+                "expected right parentheses. but your input is {:?}",
                 current_token
             )));
         }
@@ -164,9 +173,8 @@ impl Parser {
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_binary_operator() {
-                    let rhs = self.parse_expression();
+                    let rhs = self.parse_expression()?;
                     println!("rhs {:?}", rhs);
-                    let rhs = rhs?;
                     let operator: BinaryOperator = operator.try_into()?;
                     return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
                 } else {
