@@ -68,6 +68,41 @@ pub fn expression_2() {
     assert_eq!(parser.parse().unwrap(), vec![expected],);
 }
 
+#[test]
+pub fn expression_3() {
+    let text = r#"
+        SELECT 1 + 2 * 3 AS foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Binary(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::Add,
+                        lhs: SQLExpression::Integer(1),
+                        rhs: SQLExpression::Binary(
+                            BinaryOperatorExpression {
+                                operator: BinaryOperator::Mul,
+                                lhs: SQLExpression::Integer(2),
+                                rhs: SQLExpression::Integer(3),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
 // #[test]
 // pub fn expression_2() {
 //     let text = r#"
