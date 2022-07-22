@@ -6,7 +6,7 @@ use crate::lib::ast::predule::{
 use crate::lib::parser::predule::Parser;
 
 #[test]
-pub fn expression() {
+pub fn expression_1() {
     let text = r#"
         SELECT 2 * (3 + 5) AS foo
     "#
