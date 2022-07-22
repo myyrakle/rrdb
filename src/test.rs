@@ -1,47 +1,48 @@
 pub mod command;
 pub mod lib;
 
-//use lib::lexer::Tokenizer;
-use lib::parser::predule::Parser;
+use crate::lib::ast::predule::{
+    BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectItem, SelectQuery,
+};
+use crate::lib::parser::predule::Parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let foo = lib::utils::predule::get_system_env("RRDB_BASE_PATH");
+    // let foo = lib::utils::predule::get_system_env("RRDB_BASE_PATH");
 
-    println!("{}", foo);
+    // println!("{}", foo);
 
     let text = r#"
-       
-        drop table if exists "foo_db".foo;
-        "#
+    SELECT 2 * (3 + 5) AS foo
+"#
     .to_owned();
 
-    let _foo = r#" CREATE DATABASE if not exists "test_db";
-CREATE TABLE if not exists "test_db"."person"
-(
-    id INTEGER PRIMARY KEY,
-    name varchar(100),
-    age INTEGER
-);
-drop database "foo_db";"#;
+    let mut parser = Parser::new(text).unwrap();
 
-    // let tokens = Tokenizer::string_to_tokens(text);
-    // println!("{:?}", tokens);
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Binary(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::Mul,
+                        lhs: SQLExpression::Integer(2),
+                        rhs: SQLExpression::Binary(
+                            BinaryOperatorExpression {
+                                operator: BinaryOperator::Add,
+                                lhs: SQLExpression::Integer(3),
+                                rhs: SQLExpression::Integer(5),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                ))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
 
-    let mut parser = Parser::new(text)?;
-    let result = parser.parse()?;
-    println!("{:?}", result);
-
-    let text = r#"
-        drop table "bar"."person"; "#
-        .to_owned();
-
-    // let tokens = Tokenizer::string_to_tokens(text);
-    // println!("{:?}", tokens);
-
-    let mut parser = Parser::new(text)?;
-    let result = parser.parse()?;
-    println!("{:?}", result);
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
 
     Ok(())
 }

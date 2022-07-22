@@ -15,6 +15,10 @@ impl Parser {
 
         // FROM 절이나 세미콜론이 나오기 전까지 select 절 파싱
         loop {
+            if !self.has_next_token() {
+                break;
+            }
+
             let current_token = self.get_next_token();
 
             match current_token {
@@ -28,10 +32,15 @@ impl Parser {
                     return Ok(query_builder.build());
                 }
                 _ => {
+                    self.unget_next_token(current_token);
                     let select_item = self.parse_select_item()?;
                     query_builder = query_builder.add_select_item(select_item);
                 }
             }
+        }
+
+        if !self.has_next_token() {
+            return Ok(query_builder.build());
         }
 
         // FROM 절 파싱

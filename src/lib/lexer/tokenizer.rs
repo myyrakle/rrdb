@@ -364,3 +364,9 @@ impl Tokenizer {
         Ok(tokens)
     }
 }
+
+impl std::fmt::Display for Tokenizer {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "Tokenizer: {:?}", self)
+    }
+}
