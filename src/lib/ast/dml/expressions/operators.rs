@@ -24,21 +24,23 @@ pub enum UnaryOperator {
     Not, // Not A
 }
 
-// 2항연산자 우선순위 획득
-pub fn get_binary_operator_precedence(opertor: BinaryOperator) -> i32 {
-    match opertor {
-        BinaryOperator::Add => 10,
-        BinaryOperator::Sub => 10,
-        BinaryOperator::Mul => 40,
-        BinaryOperator::Div => 40,
-        BinaryOperator::And => 10,
-        BinaryOperator::Or => 10,
-        BinaryOperator::Lt => 10,
-        BinaryOperator::Gt => 10,
-        BinaryOperator::Lte => 10,
-        BinaryOperator::Gte => 10,
-        BinaryOperator::Eq => 10,
-        BinaryOperator::Neq => 10,
-        BinaryOperator::Like => 10,
+impl BinaryOperator {
+    // 2항연산자 우선순위 획득
+    pub fn get_precedence(&self) -> i32 {
+        match self {
+            BinaryOperator::Add => 10,
+            BinaryOperator::Sub => 10,
+            BinaryOperator::Mul => 40,
+            BinaryOperator::Div => 40,
+            BinaryOperator::And => 10,
+            BinaryOperator::Or => 10,
+            BinaryOperator::Lt => 10,
+            BinaryOperator::Gt => 10,
+            BinaryOperator::Lte => 10,
+            BinaryOperator::Gte => 10,
+            BinaryOperator::Eq => 10,
+            BinaryOperator::Neq => 10,
+            BinaryOperator::Like => 10,
+        }
     }
 }
