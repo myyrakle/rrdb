@@ -385,4 +385,17 @@ impl Parser {
             }
         }
     }
+
+    // 다음 토큰이 여는 괄호인지
+    pub(crate) fn next_token_is_left_parentheses(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            self.unget_next_token(current_token.clone());
+
+            return current_token == Token::LeftParentheses;
+        }
+    }
 }
