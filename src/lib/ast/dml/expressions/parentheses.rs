@@ -1,4 +1,4 @@
-use crate::lib::ast::enums::SQLExpression;
+use crate::lib::ast::predule::SQLExpression;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParenthesesExpression {

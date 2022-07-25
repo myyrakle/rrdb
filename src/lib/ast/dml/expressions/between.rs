@@ -1,4 +1,4 @@
-use crate::lib::ast::enums::SQLExpression;
+use crate::lib::ast::predule::SQLExpression;
 
 // a BETWEEN x AND y
 #[derive(Clone, Debug, PartialEq)]

@@ -1,8 +1,7 @@
-use crate::lib::ast::dml::expressions::{
-    BetweenExpression, BinaryOperatorExpression, CallExpression, ParenthesesExpression,
-    UnaryOperatorExpression,
+use crate::lib::ast::predule::{
+    BetweenExpression, BinaryOperatorExpression, CallExpression, ColumnName, ParenthesesExpression,
+    SelectColumn, UnaryOperatorExpression,
 };
-use crate::lib::ast::predule::{ColumnName, SelectColumn};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SQLExpression {
