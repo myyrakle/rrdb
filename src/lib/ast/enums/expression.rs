@@ -1,5 +1,5 @@
 use crate::lib::ast::dml::expressions::{
-    BetweenExpression, BinaryOperatorExpression, UnaryOperatorExpression,
+    BetweenExpression, BinaryOperatorExpression, ParenthesesExpression, UnaryOperatorExpression,
 };
 use crate::lib::ast::predule::{ColumnName, SelectColumn};
 
@@ -9,6 +9,7 @@ pub enum SQLExpression {
     Unary(Box<UnaryOperatorExpression>),   // 단항 연산식
     Binary(Box<BinaryOperatorExpression>), // 2항 연산식
     Between(Box<BetweenExpression>),       // BETWEEN 식
+    Parentheses(Box<ParenthesesExpression>),
 
     // 끝단 Primitive 값
     ColumnName(ColumnName),

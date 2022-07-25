@@ -7,6 +7,9 @@ pub use binary::*;
 pub mod unary;
 pub use unary::*;
 
+pub mod parentheses;
+pub use parentheses::*;
+
 pub mod call;
 pub use call::*;
 
