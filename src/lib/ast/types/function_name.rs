@@ -6,8 +6,8 @@ pub struct FunctionName {
 }
 
 impl FunctionName {
-    pub fn is_stored_function(&self) {
+    pub fn is_stored_function(&self) -> bool {
         // TODO: 내장함수 처리 고도화 필요
-        ["SUM", "COUNT"].contains(&self.function_name.to_uppercase())
+        ["SUM", "COUNT"].contains(&self.function_name.to_uppercase().as_str())
     }
 }
