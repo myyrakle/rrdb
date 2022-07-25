@@ -170,64 +170,51 @@ impl Parser {
 
         // 연산자 획득
         let current_token = self.get_next_token();
+        let operator: Result<BinaryOperator, _> = current_token.try_into();
 
-        match current_token {
-            Token::Operator(operator) => {
-                if operator.is_binary_operator() {
-                    let rhs = self.parse_expression()?;
-                    let operator: BinaryOperator = operator.try_into()?;
+        match operator {
+            Ok(operator) => {
+                let rhs = self.parse_expression()?;
 
-                    let current_precedence = operator.get_precedence();
+                let current_precedence = operator.get_precedence();
 
-                    let mut rhs_has_parentheses = false;
+                let mut rhs_has_parentheses = false;
 
-                    // 소괄호가 있다면 벗기고 플래그값 설정
-                    let rhs = if let SQLExpression::Parentheses(paren) = rhs {
-                        rhs_has_parentheses = true;
-                        paren.expression
-                    } else {
-                        rhs
-                    };
+                // 소괄호가 있다면 벗기고 플래그값 설정
+                let rhs = if let SQLExpression::Parentheses(paren) = rhs {
+                    rhs_has_parentheses = true;
+                    paren.expression
+                } else {
+                    rhs
+                };
 
-                    if let SQLExpression::Binary(rhs_binary) = rhs.clone() {
-                        let next_precedence = rhs_binary.operator.get_precedence();
+                if let SQLExpression::Binary(rhs_binary) = rhs.clone() {
+                    let next_precedence = rhs_binary.operator.get_precedence();
 
-                        // 오른쪽 연산자의 우선순위가 더 크거나, 소괄호가 있을 경우 오른쪽을 먼저 묶어서 바인딩
-                        if next_precedence > current_precedence || rhs_has_parentheses {
-                            return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
-                        }
-                        // 아니라면 왼쪽으로 묶어서 바인딩
-                        else {
-                            let new_lhs = BinaryOperatorExpression {
-                                lhs,
-                                rhs: rhs_binary.lhs,
-                                operator,
-                            };
-                            return Ok(BinaryOperatorExpression {
-                                lhs: new_lhs.into(),
-                                rhs: rhs_binary.rhs,
-                                operator: rhs_binary.operator,
-                            }
-                            .into());
-                        }
-                    } else {
+                    // 오른쪽 연산자의 우선순위가 더 크거나, 소괄호가 있을 경우 오른쪽을 먼저 묶어서 바인딩
+                    if next_precedence > current_precedence || rhs_has_parentheses {
                         return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
                     }
+                    // 아니라면 왼쪽으로 묶어서 바인딩
+                    else {
+                        let new_lhs = BinaryOperatorExpression {
+                            lhs,
+                            rhs: rhs_binary.lhs,
+                            operator,
+                        };
+                        return Ok(BinaryOperatorExpression {
+                            lhs: new_lhs.into(),
+                            rhs: rhs_binary.rhs,
+                            operator: rhs_binary.operator,
+                        }
+                        .into());
+                    }
                 } else {
-                    return Err(ParsingError::boxed(format!(
-                        "binary operator expected, but your input is {:?}",
-                        operator
-                    )));
+                    return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
                 }
             }
-            Token::And | Token::Or => {
-                return Err(ParsingError::boxed(format!("not implement")));
-            }
-            _ => {
-                return Err(ParsingError::boxed(format!(
-                    "operator is expected, but your input is {:?}",
-                    current_token
-                )));
+            Err(error) => {
+                return Err(error);
             }
         }
     }
