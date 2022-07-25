@@ -63,6 +63,9 @@ impl Parser {
                 if self.next_token_is_binary_operator() {
                     let expression = self.parse_binary_expression(lhs)?;
                     return Ok(expression);
+                } else if self.next_token_is_left_parentheses() {
+                    let expression = self.parse_function_call_expression()?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
@@ -217,5 +220,51 @@ impl Parser {
                 return Err(error);
             }
         }
+    }
+
+    /**
+     * 함수호출 파싱
+     */
+    pub(crate) fn parse_function_call_expression(
+        &mut self,
+    ) -> Result<SQLExpression, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        // ( 삼킴
+        let current_token = self.get_next_token();
+
+        if current_token != Token::LeftParentheses {
+            return Err(ParsingError::boxed(format!(
+                "expected left parentheses. but your input is {:?}",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        // 표현식 파싱
+        let expression = self.parse_expression()?;
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("need more tokens"));
+        }
+
+        // ) 삼킴
+        let current_token = self.get_next_token();
+
+        if current_token != Token::RightParentheses {
+            return Err(ParsingError::boxed(format!(
+                "expected right parentheses. but your input is {:?}",
+                current_token
+            )));
+        }
+
+        let expression = ParenthesesExpression { expression };
+
+        Ok(expression.into())
     }
 }
