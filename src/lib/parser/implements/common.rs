@@ -370,6 +370,12 @@ impl Parser {
                         OperatorToken::Minus,
                         OperatorToken::Asterisk,
                         OperatorToken::Slash,
+                        OperatorToken::Lt,
+                        OperatorToken::Lte,
+                        OperatorToken::Gt,
+                        OperatorToken::Gte,
+                        OperatorToken::Eq,
+                        OperatorToken::Neq,
                     ]
                     .contains(&operator)
                 }

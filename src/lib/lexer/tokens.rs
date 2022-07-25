@@ -1,4 +1,9 @@
+use std::convert::TryInto;
+use std::error::Error;
+
 use super::predule::OperatorToken;
+use crate::lib::ast::predule::BinaryOperator;
+use crate::lib::errors::predule::IntoError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
@@ -93,6 +98,22 @@ impl Token {
         match self {
             Token::EOF => true,
             _ => false,
+        }
+    }
+}
+
+impl TryInto<BinaryOperator> for Token {
+    type Error = Box<dyn Error>;
+
+    fn try_into(self) -> Result<BinaryOperator, Box<dyn Error>> {
+        match self {
+            Token::Operator(operator) => {
+                return operator.try_into();
+            }
+            Token::And => Ok(BinaryOperator::And),
+            Token::Or => Ok(BinaryOperator::Or),
+            Token::Like => Ok(BinaryOperator::Like),
+            _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
         }
     }
 }
