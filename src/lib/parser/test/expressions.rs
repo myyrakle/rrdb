@@ -6,7 +6,7 @@ use crate::lib::ast::predule::{
 use crate::lib::parser::predule::Parser;
 
 #[test]
-pub fn expression_1() {
+pub fn arithmetic_expression_1() {
     let text = r#"
         SELECT 3 + 5 AS foo
     "#
@@ -34,7 +34,7 @@ pub fn expression_1() {
 }
 
 #[test]
-pub fn expression_2() {
+pub fn arithmetic_expression_2() {
     let text = r#"
         SELECT 1 + 2 + 3 AS foo
     "#
@@ -69,7 +69,7 @@ pub fn expression_2() {
 }
 
 #[test]
-pub fn expression_3() {
+pub fn arithmetic_expression_3() {
     let text = r#"
         SELECT 1 + 2 * 3 AS foo
     "#
@@ -104,7 +104,7 @@ pub fn expression_3() {
 }
 
 #[test]
-pub fn expression_4() {
+pub fn arithmetic_expression_4() {
     let text = r#"
         SELECT 1 + 2 * 3 + 4 AS foo
     "#
@@ -146,7 +146,7 @@ pub fn expression_4() {
 }
 
 #[test]
-pub fn expression_5() {
+pub fn arithmetic_expression_5() {
     let text = r#"
         SELECT 2 * (3 + 5) AS foo
     "#
