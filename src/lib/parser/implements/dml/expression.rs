@@ -23,11 +23,18 @@ impl Parser {
                 if operator.is_unary_operator() {
                     let expression = self.parse_expression()?;
                     let operator: UnaryOperator = operator.try_into()?;
-                    return Ok(UnaryOperatorExpression {
+                    let lhs: SQLExpression = UnaryOperatorExpression {
                         operand: expression,
                         operator,
                     }
-                    .into());
+                    .into();
+
+                    if self.next_token_is_binary_operator() {
+                        let expression = self.parse_binary_expression(lhs)?;
+                        return Ok(expression);
+                    } else {
+                        return Ok(lhs);
+                    }
                 } else {
                     return Err(ParsingError::boxed(format!(
                         "unexpected operator: {:?}",
