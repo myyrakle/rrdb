@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // println!("{}", foo);
 
     let text = r#"
-    SELECT 1 + 2 + 3 AS foo
+    SELECT coalesce(null, 1) as foo
 "#
     .to_owned();
 

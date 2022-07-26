@@ -17,6 +17,7 @@ impl Parser {
         }
 
         let current_token = self.get_next_token();
+        println!("{:?}", current_token);
 
         match current_token {
             Token::Operator(operator) => {
@@ -97,6 +98,16 @@ impl Parser {
                     return Ok(lhs);
                 }
             }
+            Token::Null => {
+                let lhs = SQLExpression::Null;
+
+                if self.next_token_is_binary_operator() {
+                    let expression = self.parse_binary_expression(lhs)?;
+                    return Ok(expression);
+                } else {
+                    return Ok(lhs);
+                }
+            }
             Token::LeftParentheses => {
                 self.unget_next_token(current_token);
                 let expression = self.parse_parentheses_expression()?;
@@ -112,6 +123,7 @@ impl Parser {
             Token::As => {}
             Token::Comma => {}
             _ => {
+                println!("???");
                 return Err(ParsingError::boxed(format!(
                     "unexpected token: {:?}",
                     current_token

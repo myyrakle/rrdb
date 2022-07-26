@@ -1,6 +1,7 @@
 #[cfg(test)]
 use crate::lib::ast::predule::{
-    BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectItem, SelectQuery,
+    BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName, SQLExpression,
+    SelectItem, SelectQuery,
 };
 #[cfg(test)]
 use crate::lib::parser::predule::Parser;
@@ -172,6 +173,33 @@ pub fn arithmetic_expression_5() {
                     }
                     .into(),
                 ))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
+pub fn function_call_expression_1() {
+    let text = r#"
+        SELECT coalesce(null, 1) as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::FunctionCall(CallExpression {
+                    function_name: FunctionName {
+                        database_name: None,
+                        function_name: "coalesce".into(),
+                    },
+                    arguments: vec![SQLExpression::Null, SQLExpression::Integer(1)],
+                }))
                 .set_alias("foo".into())
                 .build(),
         )
