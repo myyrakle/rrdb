@@ -10,7 +10,7 @@ impl Parser {
     // CREATE TABLE 쿼리 분석
     pub(crate) fn handle_create_database_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0101 need more tokens"));
         }
 
         let mut query_builder = CreateDatabaseQuery::builder();
@@ -20,7 +20,7 @@ impl Parser {
         query_builder = query_builder.set_if_not_exists(if_not_exists);
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0102 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -38,7 +38,7 @@ impl Parser {
 
         // 세미콜론 체크
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0103 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -63,7 +63,7 @@ impl Parser {
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0104 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -81,7 +81,7 @@ impl Parser {
 
         // 세미콜론 체크
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0105 need more tokens"));
         }
 
         let current_token = self.get_next_token();

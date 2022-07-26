@@ -12,7 +12,7 @@ impl Parser {
         let mut builder = Column::builder();
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0001 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -31,7 +31,7 @@ impl Parser {
 
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0002 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -48,7 +48,7 @@ impl Parser {
                 }
                 Token::Primary => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0003 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -67,7 +67,7 @@ impl Parser {
                 }
                 Token::Not => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0004 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -89,7 +89,7 @@ impl Parser {
                 }
                 Token::Comment => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0005 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -116,7 +116,7 @@ impl Parser {
     // 데이터 타입 분석
     pub(crate) fn parse_data_type(&mut self) -> Result<DataType, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0006 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -129,7 +129,7 @@ impl Parser {
                 "VARCHAR" => {
                     // 여는 괄호 체크
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0007 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -143,7 +143,7 @@ impl Parser {
 
                     // 문자열 길이 체크
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0008 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -151,7 +151,7 @@ impl Parser {
                     if let Token::Integer(integer) = current_token {
                         // 닫는 괄호 체크
                         if !self.has_next_token() {
-                            return Err(ParsingError::boxed("need more tokens"));
+                            return Err(ParsingError::boxed("E0009 need more tokens"));
                         }
 
                         let current_token = self.get_next_token();
@@ -188,7 +188,7 @@ impl Parser {
     pub(crate) fn parse_table_name(&mut self) -> Result<TableName, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0010 need more tokens"));
         }
 
         // 첫번째로 오는 이름은 테이블명으로 추정
@@ -206,7 +206,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0011 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -214,7 +214,7 @@ impl Parser {
         // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
         if current_token == Token::Period {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0012 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -239,21 +239,21 @@ impl Parser {
     pub(crate) fn has_if_not_exists(&mut self) -> Result<bool, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0013 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::If == current_token {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0014 need more tokens"));
             }
 
             let current_token = self.get_next_token();
 
             if Token::Not == current_token {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("need more tokens"));
+                    return Err(ParsingError::boxed("E0015 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -282,14 +282,14 @@ impl Parser {
     pub(crate) fn has_if_exists(&mut self) -> Result<bool, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0016 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::If == current_token {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0017 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -313,7 +313,7 @@ impl Parser {
         let mut select_column = SelectColumn::new(None, "".to_string());
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0018 need more tokens"));
         }
 
         let current_token = self.get_next_token();

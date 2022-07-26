@@ -21,3 +21,12 @@ pub enum SQLExpression {
     SelectColumn(SelectColumn),
     Null,
 }
+
+impl SQLExpression {
+    pub fn is_unary(&self) -> bool {
+        match self.clone() {
+            Self::Unary(_) => true,
+            _ => false,
+        }
+    }
+}

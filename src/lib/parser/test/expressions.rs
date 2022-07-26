@@ -3,6 +3,7 @@ use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName, SQLExpression,
     SelectItem, SelectQuery,
 };
+use crate::lib::dml::{UnaryOperator, UnaryOperatorExpression};
 #[cfg(test)]
 use crate::lib::parser::predule::Parser;
 
@@ -170,6 +171,38 @@ pub fn arithmetic_expression_5() {
                             }
                             .into(),
                         ),
+                    }
+                    .into(),
+                ))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
+pub fn arithmetic_expression_6() {
+    let text = r#"
+        SELECT -2 * 5 AS foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Binary(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::Mul,
+                        lhs: UnaryOperatorExpression {
+                            operator: UnaryOperator::Neg,
+                            operand: SQLExpression::Integer(2),
+                        }
+                        .into(),
+                        rhs: SQLExpression::Integer(5),
                     }
                     .into(),
                 ))

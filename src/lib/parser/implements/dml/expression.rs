@@ -13,7 +13,7 @@ use crate::lib::types::SelectColumn;
 impl Parser {
     pub(crate) fn parse_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0201 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -23,17 +23,24 @@ impl Parser {
                 if operator.is_unary_operator() {
                     let expression = self.parse_expression()?;
                     let operator: UnaryOperator = operator.try_into()?;
-                    let lhs: SQLExpression = UnaryOperatorExpression {
-                        operand: expression,
-                        operator,
-                    }
-                    .into();
 
-                    if self.next_token_is_binary_operator() {
-                        let expression = self.parse_binary_expression(lhs)?;
-                        return Ok(expression);
-                    } else {
-                        return Ok(lhs);
+                    match expression {
+                        SQLExpression::Binary(mut binary) => {
+                            binary.lhs = UnaryOperatorExpression {
+                                operand: binary.lhs,
+                                operator,
+                            }
+                            .into();
+
+                            return Ok(binary.into());
+                        }
+                        _ => {
+                            return Ok(UnaryOperatorExpression {
+                                operand: expression,
+                                operator,
+                            }
+                            .into());
+                        }
                     }
                 } else {
                     return Err(ParsingError::boxed(format!(
@@ -136,7 +143,7 @@ impl Parser {
             }
         }
 
-        return Err(ParsingError::boxed("need more tokens"));
+        return Err(ParsingError::boxed("E0202 need more tokens"));
     }
 
     /**
@@ -145,7 +152,7 @@ impl Parser {
     */
     pub(crate) fn parse_parentheses_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0203 need more tokens"));
         }
 
         // ( 삼킴
@@ -159,14 +166,14 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0204 need more tokens"));
         }
 
         // 표현식 파싱
         let expression = self.parse_expression()?;
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0205 need more tokens"));
         }
 
         // ) 삼킴
@@ -192,11 +199,12 @@ impl Parser {
         lhs: SQLExpression,
     ) -> Result<SQLExpression, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0206 need more tokens"));
         }
 
         // 연산자 획득
         let current_token = self.get_next_token();
+
         let operator: Result<BinaryOperator, _> = current_token.try_into();
 
         match operator {
@@ -218,12 +226,8 @@ impl Parser {
                 if let SQLExpression::Binary(rhs_binary) = rhs.clone() {
                     let next_precedence = rhs_binary.operator.get_precedence();
 
-                    // 오른쪽 연산자의 우선순위가 더 크거나, 소괄호가 있을 경우 오른쪽을 먼저 묶어서 바인딩
-                    if next_precedence > current_precedence || rhs_has_parentheses {
-                        return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
-                    }
-                    // 아니라면 왼쪽으로 묶어서 바인딩
-                    else {
+                    // 단항연산식일 경우
+                    if lhs.is_unary() {
                         let new_lhs = BinaryOperatorExpression {
                             lhs,
                             rhs: rhs_binary.lhs,
@@ -235,6 +239,27 @@ impl Parser {
                             operator: rhs_binary.operator,
                         }
                         .into());
+                    }
+                    // 2항연산식일 경우
+                    else {
+                        // 오른쪽 연산자의 우선순위가 더 크거나, 소괄호가 있을 경우 오른쪽을 먼저 묶어서 바인딩
+                        if next_precedence > current_precedence || rhs_has_parentheses {
+                            return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
+                        }
+                        // 아니라면 왼쪽으로 묶어서 바인딩
+                        else {
+                            let new_lhs = BinaryOperatorExpression {
+                                lhs,
+                                rhs: rhs_binary.lhs,
+                                operator,
+                            };
+                            return Ok(BinaryOperatorExpression {
+                                lhs: new_lhs.into(),
+                                rhs: rhs_binary.rhs,
+                                operator: rhs_binary.operator,
+                            }
+                            .into());
+                        }
                     }
                 } else {
                     return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
@@ -263,7 +288,7 @@ impl Parser {
         };
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0207 need more tokens"));
         }
 
         // ( 삼킴
@@ -277,7 +302,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0208 need more tokens"));
         }
 
         // 닫는 괄호가 나올때까지 인자 파싱
@@ -298,7 +323,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0209 need more tokens"));
         }
 
         // ) 삼킴
