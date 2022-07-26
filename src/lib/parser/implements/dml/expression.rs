@@ -2,12 +2,13 @@ use std::convert::TryInto;
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    BinaryOperator, BinaryOperatorExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
-    UnaryOperatorExpression,
+    BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName, ParenthesesExpression,
+    SQLExpression, UnaryOperator, UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::Parser;
+use crate::lib::types::SelectColumn;
 
 impl Parser {
     pub(crate) fn parse_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {
@@ -58,13 +59,19 @@ impl Parser {
                 self.unget_next_token(Token::Identifier(identifier));
                 let select_column = self.parse_select_column()?;
 
-                let lhs = SQLExpression::SelectColumn(select_column);
+                let lhs = SQLExpression::SelectColumn(select_column.clone());
 
                 if self.next_token_is_binary_operator() {
                     let expression = self.parse_binary_expression(lhs)?;
                     return Ok(expression);
                 } else if self.next_token_is_left_parentheses() {
-                    let expression = self.parse_function_call_expression()?;
+                    let SelectColumn {
+                        table_name,
+                        column_name,
+                    } = select_column;
+
+                    let expression =
+                        self.parse_function_call_expression(table_name, column_name)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
@@ -227,7 +234,17 @@ impl Parser {
      */
     pub(crate) fn parse_function_call_expression(
         &mut self,
+        database_name: Option<String>,
+        function_name: String,
     ) -> Result<SQLExpression, Box<dyn Error>> {
+        let mut call_expression = CallExpression {
+            function_name: FunctionName {
+                database_name,
+                function_name,
+            },
+            arguments: vec![],
+        };
+
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -246,8 +263,17 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        // 표현식 파싱
-        let expression = self.parse_expression()?;
+        // 닫는 괄호가 나올때까지 인자 파싱
+        loop {
+            if self.next_token_is_right_parentheses() {
+                break;
+            }
+
+            // 표현식 파싱
+            let expression = self.parse_expression()?;
+
+            call_expression.arguments.push(expression);
+        }
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
@@ -263,8 +289,6 @@ impl Parser {
             )));
         }
 
-        let expression = ParenthesesExpression { expression };
-
-        Ok(expression.into())
+        Ok(call_expression.into())
     }
 }
