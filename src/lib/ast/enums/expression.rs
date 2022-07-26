@@ -1,6 +1,6 @@
 use crate::lib::ast::predule::{
-    BetweenExpression, BinaryOperatorExpression, CallExpression, ColumnName, ParenthesesExpression,
-    SelectColumn, UnaryOperatorExpression,
+    BetweenExpression, BinaryOperatorExpression, CallExpression, ColumnName, NotBetweenExpression,
+    ParenthesesExpression, SelectColumn, UnaryOperatorExpression,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,6 +9,7 @@ pub enum SQLExpression {
     Unary(Box<UnaryOperatorExpression>),     // 단항 연산식
     Binary(Box<BinaryOperatorExpression>),   // 2항 연산식
     Between(Box<BetweenExpression>),         // BETWEEN 식
+    NotBetween(Box<NotBetweenExpression>),   // NOT BETWEEN 식
     Parentheses(Box<ParenthesesExpression>), // 소괄호 표현식
     FunctionCall(CallExpression),            // 함수호출 표현식
 
