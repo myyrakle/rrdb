@@ -17,7 +17,6 @@ impl Parser {
         }
 
         let current_token = self.get_next_token();
-        println!("{:?}", current_token);
 
         match current_token {
             Token::Operator(operator) => {
@@ -123,7 +122,6 @@ impl Parser {
             Token::As => {}
             Token::Comma => {}
             _ => {
-                println!("???");
                 return Err(ParsingError::boxed(format!(
                     "unexpected token: {:?}",
                     current_token
@@ -258,7 +256,6 @@ impl Parser {
         };
 
         if !self.has_next_token() {
-            println!("3");
             return Err(ParsingError::boxed("need more tokens"));
         }
 
@@ -273,7 +270,6 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            println!("2");
             return Err(ParsingError::boxed("need more tokens"));
         }
 
@@ -295,7 +291,6 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            println!("1");
             return Err(ParsingError::boxed("need more tokens"));
         }
 
