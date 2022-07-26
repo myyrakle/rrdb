@@ -133,17 +133,22 @@ impl Parser {
                     current_token
                 )));
             }
-            Token::As => {}
-            Token::Comma => {}
+            Token::As => {
+                unimplemented!("");
+            }
+            Token::Comma => {
+                unimplemented!("");
+            }
+            Token::Not => {
+                unimplemented!("");
+            }
             _ => {
                 return Err(ParsingError::boxed(format!(
-                    "unexpected token: {:?}",
+                    "E0202 unexpected token: {:?}",
                     current_token
                 )));
             }
         }
-
-        return Err(ParsingError::boxed("E0202 need more tokens"));
     }
 
     /**
