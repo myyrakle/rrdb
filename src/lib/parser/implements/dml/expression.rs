@@ -258,6 +258,7 @@ impl Parser {
         };
 
         if !self.has_next_token() {
+            println!("3");
             return Err(ParsingError::boxed("need more tokens"));
         }
 
@@ -272,6 +273,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
+            println!("2");
             return Err(ParsingError::boxed("need more tokens"));
         }
 
@@ -285,9 +287,15 @@ impl Parser {
             let expression = self.parse_expression()?;
 
             call_expression.arguments.push(expression);
+
+            // 쉼표 삼키기.
+            if self.next_token_is_comma() {
+                self.get_next_token();
+            }
         }
 
         if !self.has_next_token() {
+            println!("1");
             return Err(ParsingError::boxed("need more tokens"));
         }
 
