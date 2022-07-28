@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // println!("{}", foo);
 
     let text = r#"
-    SELECT 1 + 2 + 3 AS foo
+    SELECT -2 * 5 AS foo
 "#
     .to_owned();
 

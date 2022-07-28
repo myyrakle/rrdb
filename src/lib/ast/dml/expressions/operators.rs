@@ -1,23 +1,28 @@
 // 2항연산자
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BinaryOperator {
-    Add,  // A + B
-    Sub,  // A - B
-    Mul,  // A * B
-    Div,  // A / B
-    And,  // A AND B
-    Or,   // A OR B
-    Lt,   // A < B
-    Gt,   // A > B
-    Lte,  // A <= B
-    Gte,  // A >= B
-    Eq,   // A = B
-    Neq,  // A != B, A <> B
-    Like, // A LIKE B
+    Add,     // A + B
+    Sub,     // A - B
+    Mul,     // A * B
+    Div,     // A / B
+    And,     // A AND B
+    Or,      // A OR B
+    Lt,      // A < B
+    Gt,      // A > B
+    Lte,     // A <= B
+    Gte,     // A >= B
+    Eq,      // A = B
+    Neq,     // A != B, A <> B
+    Like,    // A LIKE B
+    NotLike, // A NOT LIKE B
+    In,      // A In B
+    NotIn,   // A Not In B
+    Is,      // A Is B
+    IsNot,   // A Is Not B
 }
 
 // 단항연산자
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UnaryOperator {
     Pos, // +A
     Neg, // -A
@@ -41,6 +46,11 @@ impl BinaryOperator {
             BinaryOperator::Eq => 10,
             BinaryOperator::Neq => 10,
             BinaryOperator::Like => 10,
+            BinaryOperator::NotLike => 10,
+            BinaryOperator::In => 10,
+            BinaryOperator::NotIn => 10,
+            BinaryOperator::Is => 10,
+            BinaryOperator::IsNot => 10,
         }
     }
 }

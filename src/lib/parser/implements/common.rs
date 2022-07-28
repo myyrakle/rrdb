@@ -4,6 +4,7 @@ use crate::lib::ast::predule::{Column, DataType, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::{OperatorToken, Token};
 use crate::lib::parser::predule::Parser;
+use crate::lib::parser::predule::ParserContext;
 use crate::lib::types::SelectColumn;
 
 impl Parser {
@@ -12,7 +13,7 @@ impl Parser {
         let mut builder = Column::builder();
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0001 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -31,7 +32,7 @@ impl Parser {
 
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0002 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -48,7 +49,7 @@ impl Parser {
                 }
                 Token::Primary => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0003 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -67,7 +68,7 @@ impl Parser {
                 }
                 Token::Not => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0004 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -89,7 +90,7 @@ impl Parser {
                 }
                 Token::Comment => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0005 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -116,7 +117,7 @@ impl Parser {
     // 데이터 타입 분석
     pub(crate) fn parse_data_type(&mut self) -> Result<DataType, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0006 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -129,7 +130,7 @@ impl Parser {
                 "VARCHAR" => {
                     // 여는 괄호 체크
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0007 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -143,7 +144,7 @@ impl Parser {
 
                     // 문자열 길이 체크
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("need more tokens"));
+                        return Err(ParsingError::boxed("E0008 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -151,7 +152,7 @@ impl Parser {
                     if let Token::Integer(integer) = current_token {
                         // 닫는 괄호 체크
                         if !self.has_next_token() {
-                            return Err(ParsingError::boxed("need more tokens"));
+                            return Err(ParsingError::boxed("E0009 need more tokens"));
                         }
 
                         let current_token = self.get_next_token();
@@ -188,7 +189,7 @@ impl Parser {
     pub(crate) fn parse_table_name(&mut self) -> Result<TableName, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0010 need more tokens"));
         }
 
         // 첫번째로 오는 이름은 테이블명으로 추정
@@ -206,7 +207,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0011 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -214,7 +215,7 @@ impl Parser {
         // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
         if current_token == Token::Period {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0012 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -239,21 +240,21 @@ impl Parser {
     pub(crate) fn has_if_not_exists(&mut self) -> Result<bool, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0013 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::If == current_token {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0014 need more tokens"));
             }
 
             let current_token = self.get_next_token();
 
             if Token::Not == current_token {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("need more tokens"));
+                    return Err(ParsingError::boxed("E0015 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -282,14 +283,14 @@ impl Parser {
     pub(crate) fn has_if_exists(&mut self) -> Result<bool, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0016 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::If == current_token {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E0017 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -313,7 +314,7 @@ impl Parser {
         let mut select_column = SelectColumn::new(None, "".to_string());
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0018 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -353,7 +354,7 @@ impl Parser {
     }
 
     // 다음 토큰이 2항 연산자/키워드인지
-    pub(crate) fn next_token_is_binary_operator(&mut self) -> bool {
+    pub(crate) fn next_token_is_binary_operator(&mut self, context: ParserContext) -> bool {
         if !self.has_next_token() {
             return false;
         } else {
@@ -363,7 +364,15 @@ impl Parser {
 
             // 2항 키워드, 연산자일 경우에만 true 반환
             match current_token {
-                Token::And | Token::Or | Token::Like => return true,
+                Token::And => {
+                    // BETWEEN 파싱중이면서 괄호가 없는 상태라면 연산자가 아닌 것으로 간주.
+                    if context.in_between_clause && !context.in_parentheses {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Token::Or | Token::Like => return true,
                 Token::Operator(operator) => {
                     return [
                         OperatorToken::Plus,
@@ -383,6 +392,58 @@ impl Parser {
                     return false;
                 }
             }
+        }
+    }
+
+    // 다음 토큰이 여는 괄호인지
+    pub(crate) fn next_token_is_left_parentheses(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            self.unget_next_token(current_token.clone());
+
+            return current_token == Token::LeftParentheses;
+        }
+    }
+
+    // 다음 토큰이 닫는 괄호인지
+    pub(crate) fn next_token_is_right_parentheses(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            self.unget_next_token(current_token.clone());
+
+            return current_token == Token::RightParentheses;
+        }
+    }
+
+    // 다음 토큰이 쉼표인지
+    pub(crate) fn next_token_is_comma(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            self.unget_next_token(current_token.clone());
+
+            return current_token == Token::Comma;
+        }
+    }
+
+    // 다음 토큰이 여는 괄호인지
+    pub(crate) fn next_token_is_between(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            self.unget_next_token(current_token.clone());
+
+            return current_token == Token::Between;
         }
     }
 }

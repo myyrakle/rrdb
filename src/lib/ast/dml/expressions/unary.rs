@@ -1,5 +1,4 @@
-use crate::lib::ast::dml::expressions::UnaryOperator;
-use crate::lib::ast::enums::SQLExpression;
+use crate::lib::ast::predule::{SQLExpression, UnaryOperator};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnaryOperatorExpression {

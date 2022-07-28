@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::lib::ast::predule::{SQLStatement, SelectItem, SelectQuery};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
-use crate::lib::parser::predule::Parser;
+use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn handle_select_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
@@ -77,7 +77,7 @@ impl Parser {
         let select_item = SelectItem::builder();
 
         // 표현식 파싱
-        let select_item = select_item.set_item(self.parse_expression()?);
+        let select_item = select_item.set_item(self.parse_expression(ParserContext::default())?);
 
         // 더 없을 경우 바로 반환
         if !self.has_next_token() {

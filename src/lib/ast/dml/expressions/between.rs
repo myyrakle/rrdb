@@ -1,4 +1,4 @@
-use crate::lib::ast::enums::SQLExpression;
+use crate::lib::ast::predule::SQLExpression;
 
 // a BETWEEN x AND y
 #[derive(Clone, Debug, PartialEq)]
@@ -6,4 +6,10 @@ pub struct BetweenExpression {
     pub a: SQLExpression,
     pub x: SQLExpression,
     pub y: SQLExpression,
+}
+
+impl Into<SQLExpression> for BetweenExpression {
+    fn into(self) -> SQLExpression {
+        SQLExpression::Between(Box::new(self))
+    }
 }

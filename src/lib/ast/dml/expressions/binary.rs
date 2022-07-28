@@ -1,5 +1,4 @@
-use crate::lib::ast::dml::expressions::BinaryOperator;
-use crate::lib::ast::enums::SQLExpression;
+use crate::lib::ast::predule::{BinaryOperator, SQLExpression};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BinaryOperatorExpression {
@@ -11,5 +10,11 @@ pub struct BinaryOperatorExpression {
 impl Into<SQLExpression> for BinaryOperatorExpression {
     fn into(self) -> SQLExpression {
         SQLExpression::Binary(Box::new(self))
+    }
+}
+
+impl Into<SQLExpression> for Box<BinaryOperatorExpression> {
+    fn into(self) -> SQLExpression {
+        SQLExpression::Binary(self)
     }
 }
