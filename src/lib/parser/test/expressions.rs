@@ -268,3 +268,69 @@ pub fn between_expression_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected],);
 }
+
+#[test]
+pub fn between_expression_2() {
+    let text = r#"
+        SELECT 3 between 1 and 5 + 1 as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Between(
+                    BetweenExpression {
+                        a: SQLExpression::Integer(3),
+                        x: SQLExpression::Integer(1),
+                        y: BinaryOperatorExpression {
+                            operator: BinaryOperator::Add,
+                            lhs: SQLExpression::Integer(5),
+                            rhs: SQLExpression::Integer(1),
+                        }
+                        .into(),
+                    }
+                    .into(),
+                ))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
+pub fn between_expression_3() {
+    let text = r#"
+        SELECT 3 between 1 + 1 and 99 as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Between(
+                    BetweenExpression {
+                        a: SQLExpression::Integer(3),
+                        x: BinaryOperatorExpression {
+                            operator: BinaryOperator::Add,
+                            lhs: SQLExpression::Integer(1),
+                            rhs: SQLExpression::Integer(1),
+                        }
+                        .into(),
+                        y: SQLExpression::Integer(99),
+                    }
+                    .into(),
+                ))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
