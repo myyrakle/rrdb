@@ -4,6 +4,7 @@ use crate::lib::ast::predule::{Column, DataType, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::{OperatorToken, Token};
 use crate::lib::parser::predule::Parser;
+use crate::lib::parser::predule::ParserContext;
 use crate::lib::types::SelectColumn;
 
 impl Parser {
@@ -353,7 +354,7 @@ impl Parser {
     }
 
     // 다음 토큰이 2항 연산자/키워드인지
-    pub(crate) fn next_token_is_binary_operator(&mut self) -> bool {
+    pub(crate) fn next_token_is_binary_operator(&mut self, context: ParserContext) -> bool {
         if !self.has_next_token() {
             return false;
         } else {
@@ -363,7 +364,15 @@ impl Parser {
 
             // 2항 키워드, 연산자일 경우에만 true 반환
             match current_token {
-                Token::And | Token::Or | Token::Like => return true,
+                Token::And => {
+                    // BETWEEN 파싱중이면서 괄호가 없는 상태라면 연산자가 아닌 것으로 간주.
+                    if context.in_between_clause && !context.in_parentheses {
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Token::Or | Token::Like => return true,
                 Token::Operator(operator) => {
                     return [
                         OperatorToken::Plus,

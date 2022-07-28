@@ -56,7 +56,7 @@ impl Parser {
             Token::Integer(integer) => {
                 let lhs = SQLExpression::Integer(integer);
 
-                if self.next_token_is_binary_operator() {
+                if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else if self.next_token_is_between() {
@@ -69,7 +69,7 @@ impl Parser {
             Token::Float(float) => {
                 let lhs = SQLExpression::Float(float);
 
-                if self.next_token_is_binary_operator() {
+                if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
@@ -82,7 +82,7 @@ impl Parser {
 
                 let lhs = SQLExpression::SelectColumn(select_column.clone());
 
-                if self.next_token_is_binary_operator() {
+                if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else if self.next_token_is_left_parentheses() {
@@ -101,7 +101,7 @@ impl Parser {
             Token::String(string) => {
                 let lhs = SQLExpression::String(string);
 
-                if self.next_token_is_binary_operator() {
+                if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
@@ -111,7 +111,7 @@ impl Parser {
             Token::Boolean(boolean) => {
                 let lhs = SQLExpression::Boolean(boolean);
 
-                if self.next_token_is_binary_operator() {
+                if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
@@ -121,7 +121,7 @@ impl Parser {
             Token::Null => {
                 let lhs = SQLExpression::Null;
 
-                if self.next_token_is_binary_operator() {
+                if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
@@ -166,6 +166,8 @@ impl Parser {
         &mut self,
         context: ParserContext,
     ) -> Result<SQLExpression, Box<dyn Error>> {
+        let context = context.set_in_parentheses(true);
+
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0203 need more tokens"));
         }
@@ -364,6 +366,8 @@ impl Parser {
         a: SQLExpression,
         context: ParserContext,
     ) -> Result<SQLExpression, Box<dyn Error>> {
+        let context = context.set_in_between_clause(true);
+
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0210 need more tokens"));
         }
