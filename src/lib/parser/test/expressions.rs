@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use crate::lib::ast::predule::{
-    BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName, SQLExpression,
-    SelectItem, SelectQuery,
+    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
+    SQLExpression, SelectItem, SelectQuery,
 };
 use crate::lib::dml::{UnaryOperator, UnaryOperatorExpression};
 use crate::lib::parser::predule::Parser;
@@ -233,6 +233,34 @@ pub fn function_call_expression_1() {
                     },
                     arguments: vec![SQLExpression::Null, SQLExpression::Integer(1)],
                 }))
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
+pub fn between_expression_1() {
+    let text = r#"
+        SELECT 3 between 1 and 5 as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Between(
+                    BetweenExpression {
+                        a: SQLExpression::Integer(3),
+                        x: SQLExpression::Integer(1),
+                        y: SQLExpression::Integer(5),
+                    }
+                    .into(),
+                ))
                 .set_alias("foo".into())
                 .build(),
         )
