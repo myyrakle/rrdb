@@ -2,16 +2,20 @@ use std::convert::TryInto;
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName, ParenthesesExpression,
-    SQLExpression, UnaryOperator, UnaryOperatorExpression,
+    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
+    ParenthesesExpression, SQLExpression, UnaryOperator, UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::Parser;
+use crate::lib::parser::predule::ParserContext;
 use crate::lib::types::SelectColumn;
 
 impl Parser {
-    pub(crate) fn parse_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {
+    pub(crate) fn parse_expression(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLExpression, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0201 need more tokens"));
         }
@@ -21,7 +25,7 @@ impl Parser {
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_unary_operator() {
-                    let expression = self.parse_expression()?;
+                    let expression = self.parse_expression(context)?;
                     let operator: UnaryOperator = operator.try_into()?;
 
                     match expression {
@@ -53,7 +57,10 @@ impl Parser {
                 let lhs = SQLExpression::Integer(integer);
 
                 if self.next_token_is_binary_operator() {
-                    let expression = self.parse_binary_expression(lhs)?;
+                    let expression = self.parse_binary_expression(lhs, context)?;
+                    return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
@@ -63,7 +70,7 @@ impl Parser {
                 let lhs = SQLExpression::Float(float);
 
                 if self.next_token_is_binary_operator() {
-                    let expression = self.parse_binary_expression(lhs)?;
+                    let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
@@ -76,7 +83,7 @@ impl Parser {
                 let lhs = SQLExpression::SelectColumn(select_column.clone());
 
                 if self.next_token_is_binary_operator() {
-                    let expression = self.parse_binary_expression(lhs)?;
+                    let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else if self.next_token_is_left_parentheses() {
                     let SelectColumn {
@@ -85,7 +92,7 @@ impl Parser {
                     } = select_column;
 
                     let expression =
-                        self.parse_function_call_expression(table_name, column_name)?;
+                        self.parse_function_call_expression(table_name, column_name, context)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
@@ -95,7 +102,7 @@ impl Parser {
                 let lhs = SQLExpression::String(string);
 
                 if self.next_token_is_binary_operator() {
-                    let expression = self.parse_binary_expression(lhs)?;
+                    let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
@@ -105,7 +112,7 @@ impl Parser {
                 let lhs = SQLExpression::Boolean(boolean);
 
                 if self.next_token_is_binary_operator() {
-                    let expression = self.parse_binary_expression(lhs)?;
+                    let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
@@ -115,7 +122,7 @@ impl Parser {
                 let lhs = SQLExpression::Null;
 
                 if self.next_token_is_binary_operator() {
-                    let expression = self.parse_binary_expression(lhs)?;
+                    let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
@@ -123,7 +130,7 @@ impl Parser {
             }
             Token::LeftParentheses => {
                 self.unget_next_token(current_token);
-                let expression = self.parse_parentheses_expression()?;
+                let expression = self.parse_parentheses_expression(context)?;
 
                 return Ok(expression);
             }
@@ -155,7 +162,10 @@ impl Parser {
      * 소괄호 파싱
     parenexpr ::= '(' expression ')'
     */
-    pub(crate) fn parse_parentheses_expression(&mut self) -> Result<SQLExpression, Box<dyn Error>> {
+    pub(crate) fn parse_parentheses_expression(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLExpression, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0203 need more tokens"));
         }
@@ -175,7 +185,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let expression = self.parse_expression()?;
+        let expression = self.parse_expression(context)?;
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0205 need more tokens"));
@@ -202,6 +212,7 @@ impl Parser {
     pub(crate) fn parse_binary_expression(
         &mut self,
         lhs: SQLExpression,
+        context: ParserContext,
     ) -> Result<SQLExpression, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0206 need more tokens"));
@@ -214,7 +225,7 @@ impl Parser {
 
         match operator {
             Ok(operator) => {
-                let rhs = self.parse_expression()?;
+                let rhs = self.parse_expression(context)?;
 
                 let current_precedence = operator.get_precedence();
 
@@ -283,6 +294,7 @@ impl Parser {
         &mut self,
         database_name: Option<String>,
         function_name: String,
+        context: ParserContext,
     ) -> Result<SQLExpression, Box<dyn Error>> {
         let mut call_expression = CallExpression {
             function_name: FunctionName {
@@ -317,7 +329,7 @@ impl Parser {
             }
 
             // 표현식 파싱
-            let expression = self.parse_expression()?;
+            let expression = self.parse_expression(context)?;
 
             call_expression.arguments.push(expression);
 
@@ -342,5 +354,42 @@ impl Parser {
         }
 
         Ok(call_expression.into())
+    }
+
+    /**
+     * 2항 연산식 파싱
+     */
+    pub(crate) fn parse_between_expression(
+        &mut self,
+        a: SQLExpression,
+        context: ParserContext,
+    ) -> Result<SQLExpression, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0210 need more tokens"));
+        }
+
+        // between 삼킴
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::Between => {
+                let x = self.parse_expression(context)?;
+
+                // AND 삼킴
+                self.get_next_token();
+
+                let y = self.parse_expression(context)?;
+
+                let expression = BetweenExpression { a, x, y };
+
+                return Ok(expression.into());
+            }
+            _ => {
+                return Err(ParsingError::boxed(format!(
+                    "expected between. but your input is {:?}",
+                    current_token
+                )));
+            }
+        }
     }
 }

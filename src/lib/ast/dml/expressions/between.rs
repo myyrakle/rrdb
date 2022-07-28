@@ -7,3 +7,9 @@ pub struct BetweenExpression {
     pub x: SQLExpression,
     pub y: SQLExpression,
 }
+
+impl Into<SQLExpression> for BetweenExpression {
+    fn into(self) -> SQLExpression {
+        SQLExpression::Between(Box::new(self))
+    }
+}

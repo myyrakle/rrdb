@@ -1,10 +1,10 @@
-#[cfg(test)]
+#![cfg(test)]
+
 use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName, SQLExpression,
     SelectItem, SelectQuery,
 };
 use crate::lib::dml::{UnaryOperator, UnaryOperatorExpression};
-#[cfg(test)]
 use crate::lib::parser::predule::Parser;
 
 #[test]
