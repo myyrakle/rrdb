@@ -13,3 +13,9 @@ impl Into<SQLExpression> for BetweenExpression {
         SQLExpression::Between(Box::new(self))
     }
 }
+
+impl Into<SQLExpression> for Box<BetweenExpression> {
+    fn into(self) -> SQLExpression {
+        SQLExpression::Between(self)
+    }
+}

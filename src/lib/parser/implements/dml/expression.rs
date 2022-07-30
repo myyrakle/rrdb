@@ -28,6 +28,7 @@ impl Parser {
                     let expression = self.parse_expression(context)?;
                     let operator: UnaryOperator = operator.try_into()?;
 
+                    // expression이 2항 표현식일 경우 단항 표현식이 최우선으로 처리되게 구성
                     match expression {
                         SQLExpression::Binary(mut binary) => {
                             binary.lhs = UnaryOperatorExpression {
@@ -37,6 +38,15 @@ impl Parser {
                             .into();
 
                             return Ok(binary.into());
+                        }
+                        SQLExpression::Between(mut between) => {
+                            between.a = UnaryOperatorExpression {
+                                operand: between.a,
+                                operator,
+                            }
+                            .into();
+
+                            return Ok(between.into());
                         }
                         _ => {
                             return Ok(UnaryOperatorExpression {
@@ -72,6 +82,9 @@ impl Parser {
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
@@ -84,6 +97,9 @@ impl Parser {
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
+                    return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
                     return Ok(expression);
                 } else if self.next_token_is_left_parentheses() {
                     let SelectColumn {
@@ -104,6 +120,9 @@ impl Parser {
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
@@ -114,6 +133,9 @@ impl Parser {
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
+                    return Ok(expression);
                 } else {
                     return Ok(lhs);
                 }
@@ -123,6 +145,9 @@ impl Parser {
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
+                    return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
                     return Ok(expression);
                 } else {
                     return Ok(lhs);
