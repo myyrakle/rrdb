@@ -384,7 +384,7 @@ impl Parser {
     }
 
     /**
-     * 2항 연산식 파싱
+     * between 절 파싱
      */
     pub(crate) fn parse_between_expression(
         &mut self,
