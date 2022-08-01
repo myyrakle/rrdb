@@ -3,7 +3,8 @@ use std::error::Error;
 
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    ParenthesesExpression, SQLExpression, UnaryOperator, UnaryOperatorExpression,
+    NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
+    UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -384,7 +385,7 @@ impl Parser {
     }
 
     /**
-     * between 절 파싱
+     * between 및 not between 절 파싱
      */
     pub(crate) fn parse_between_expression(
         &mut self,
@@ -397,7 +398,6 @@ impl Parser {
             return Err(ParsingError::boxed("E0210 need more tokens"));
         }
 
-        // between 삼킴
         let current_token = self.get_next_token();
 
         match current_token {
@@ -412,6 +412,34 @@ impl Parser {
                 let expression = BetweenExpression { a, x, y };
 
                 return Ok(expression.into());
+            }
+            Token::Not => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E0211 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Between => {
+                        let x = self.parse_expression(context)?;
+
+                        // AND 삼킴
+                        self.get_next_token();
+
+                        let y = self.parse_expression(context)?;
+
+                        let expression = NotBetweenExpression { a, x, y };
+
+                        return Ok(expression.into());
+                    }
+                    _ => {
+                        return Err(ParsingError::boxed(format!(
+                            "expected between. but your input is {:?}",
+                            current_token
+                        )));
+                    }
+                }
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
