@@ -441,9 +441,36 @@ impl Parser {
         } else {
             let current_token = self.get_next_token();
 
-            self.unget_next_token(current_token.clone());
-
-            return current_token == Token::Between;
+            match current_token.clone() {
+                Token::Between => {
+                    self.unget_next_token(current_token.clone());
+                    true
+                }
+                Token::Not => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(current_token.clone());
+                        false
+                    } else {
+                        let second_token = self.get_next_token();
+                        match second_token.clone() {
+                            Token::Between => {
+                                self.unget_next_token(second_token.clone());
+                                self.unget_next_token(current_token.clone());
+                                true
+                            }
+                            _ => {
+                                self.unget_next_token(second_token.clone());
+                                self.unget_next_token(current_token.clone());
+                                false
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    self.unget_next_token(current_token.clone());
+                    false
+                }
+            }
         }
     }
 }
