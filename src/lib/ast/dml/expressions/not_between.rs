@@ -7,3 +7,15 @@ pub struct NotBetweenExpression {
     pub x: SQLExpression,
     pub y: SQLExpression,
 }
+
+impl Into<SQLExpression> for NotBetweenExpression {
+    fn into(self) -> SQLExpression {
+        SQLExpression::NotBetween(Box::new(self))
+    }
+}
+
+impl Into<SQLExpression> for Box<NotBetweenExpression> {
+    fn into(self) -> SQLExpression {
+        SQLExpression::NotBetween(self)
+    }
+}
