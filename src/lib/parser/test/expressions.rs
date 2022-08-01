@@ -2,7 +2,8 @@
 
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    SQLExpression, SelectItem, SelectQuery, UnaryOperator, UnaryOperatorExpression,
+    NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
+    UnaryOperatorExpression,
 };
 use crate::lib::parser::predule::Parser;
 
@@ -318,6 +319,34 @@ pub fn between_expression_3() {
                         }
                         .into(),
                         y: SQLExpression::Integer(99),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
+pub fn not_between_expression_1() {
+    let text = r#"
+        SELECT 3 not between 1 and 5 as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    NotBetweenExpression {
+                        a: SQLExpression::Integer(3),
+                        x: SQLExpression::Integer(1),
+                        y: SQLExpression::Integer(5),
                     }
                     .into(),
                 )

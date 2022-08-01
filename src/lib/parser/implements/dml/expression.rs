@@ -2,8 +2,8 @@ use std::convert::TryInto;
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    expression, BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression,
-    FunctionName, NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
+    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
+    NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
     UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
