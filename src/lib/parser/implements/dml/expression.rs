@@ -26,43 +26,23 @@ impl Parser {
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_unary_operator() {
-                    let expression = self.parse_expression(context)?;
                     let operator: UnaryOperator = operator.try_into()?;
+                    let expression = self.parse_unary_expression(operator, context)?;
 
-                    // expression이 2항 표현식일 경우 단항 표현식이 최우선으로 처리되게 구성
-                    match expression {
-                        SQLExpression::Binary(mut binary) => {
-                            binary.lhs = UnaryOperatorExpression {
-                                operand: binary.lhs,
-                                operator,
-                            }
-                            .into();
-
-                            return Ok(binary.into());
-                        }
-                        SQLExpression::Between(mut between) => {
-                            between.a = UnaryOperatorExpression {
-                                operand: between.a,
-                                operator,
-                            }
-                            .into();
-
-                            return Ok(between.into());
-                        }
-                        _ => {
-                            return Ok(UnaryOperatorExpression {
-                                operand: expression,
-                                operator,
-                            }
-                            .into());
-                        }
-                    }
+                    return Ok(expression);
                 } else {
                     return Err(ParsingError::boxed(format!(
                         "unexpected operator: {:?}",
                         operator
                     )));
                 }
+            }
+            Token::Not => {
+                let operator = UnaryOperator::Not;
+
+                let expression = self.parse_unary_expression(operator, context)?;
+
+                return Ok(expression);
             }
             Token::Integer(integer) => {
                 let lhs = SQLExpression::Integer(integer);
@@ -90,31 +70,7 @@ impl Parser {
                     return Ok(lhs);
                 }
             }
-            Token::Identifier(identifier) => {
-                self.unget_next_token(Token::Identifier(identifier));
-                let select_column = self.parse_select_column()?;
 
-                let lhs = SQLExpression::SelectColumn(select_column.clone());
-
-                if self.next_token_is_binary_operator(context) {
-                    let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
-                } else if self.next_token_is_between() {
-                    let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
-                } else if self.next_token_is_left_parentheses() {
-                    let SelectColumn {
-                        table_name,
-                        column_name,
-                    } = select_column;
-
-                    let expression =
-                        self.parse_function_call_expression(table_name, column_name, context)?;
-                    return Ok(expression);
-                } else {
-                    return Ok(lhs);
-                }
-            }
             Token::String(string) => {
                 let lhs = SQLExpression::String(string);
 
@@ -166,20 +122,77 @@ impl Parser {
                     current_token
                 )));
             }
-            Token::As => {
-                unimplemented!("");
-            }
-            Token::Comma => {
-                unimplemented!("");
-            }
-            Token::Not => {
-                unimplemented!("");
+            Token::Identifier(identifier) => {
+                self.unget_next_token(Token::Identifier(identifier));
+                let select_column = self.parse_select_column()?;
+
+                let lhs = SQLExpression::SelectColumn(select_column.clone());
+
+                if self.next_token_is_binary_operator(context) {
+                    let expression = self.parse_binary_expression(lhs, context)?;
+                    return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
+                    return Ok(expression);
+                } else if self.next_token_is_left_parentheses() {
+                    let SelectColumn {
+                        table_name,
+                        column_name,
+                    } = select_column;
+
+                    let expression =
+                        self.parse_function_call_expression(table_name, column_name, context)?;
+                    return Ok(expression);
+                } else {
+                    return Ok(lhs);
+                }
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "E0202 unexpected token: {:?}",
                     current_token
                 )));
+            }
+        }
+    }
+
+    pub(crate) fn parse_unary_expression(
+        &mut self,
+        operator: UnaryOperator,
+        context: ParserContext,
+    ) -> Result<SQLExpression, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0201 need more tokens"));
+        }
+
+        let expression = self.parse_expression(context)?;
+
+        // expression이 2항 표현식일 경우 단항 표현식이 최우선으로 처리되게 구성
+        match expression {
+            SQLExpression::Binary(mut binary) => {
+                binary.lhs = UnaryOperatorExpression {
+                    operand: binary.lhs,
+                    operator,
+                }
+                .into();
+
+                return Ok(binary.into());
+            }
+            SQLExpression::Between(mut between) => {
+                between.a = UnaryOperatorExpression {
+                    operand: between.a,
+                    operator,
+                }
+                .into();
+
+                return Ok(between.into());
+            }
+            _ => {
+                return Ok(UnaryOperatorExpression {
+                    operand: expression,
+                    operator,
+                }
+                .into());
             }
         }
     }

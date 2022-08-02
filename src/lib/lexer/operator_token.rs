@@ -15,6 +15,7 @@ pub enum OperatorToken {
     Gte,      // A >= B
     Eq,       // A = B
     Neq,      // A != B, A <> B
+    Not,      // !A
 }
 
 impl OperatorToken {
@@ -35,7 +36,7 @@ impl OperatorToken {
     }
 
     pub fn is_unary_operator(&self) -> bool {
-        [Self::Plus, Self::Minus].contains(self)
+        [Self::Plus, Self::Minus, Self::Not].contains(self)
     }
 }
 
@@ -54,6 +55,7 @@ impl TryInto<BinaryOperator> for OperatorToken {
             Self::Gte => Ok(BinaryOperator::Gte),
             Self::Eq => Ok(BinaryOperator::Eq),
             Self::Neq => Ok(BinaryOperator::Neq),
+            _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
         }
     }
 }
@@ -65,6 +67,7 @@ impl TryInto<UnaryOperator> for OperatorToken {
         match self {
             Self::Plus => Ok(UnaryOperator::Pos),
             Self::Minus => Ok(UnaryOperator::Neg),
+            Self::Not => Ok(UnaryOperator::Not),
             _ => Err(IntoError::boxed("UnaryOperator Cast Error")),
         }
     }

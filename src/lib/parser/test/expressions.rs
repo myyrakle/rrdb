@@ -8,6 +8,60 @@ use crate::lib::ast::predule::{
 use crate::lib::parser::predule::Parser;
 
 #[test]
+pub fn unary_expression_1() {
+    let text = r#"
+        SELECT Not TRUE AS foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    UnaryOperatorExpression {
+                        operator: UnaryOperator::Not,
+                        operand: SQLExpression::Boolean(true),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
+pub fn unary_expression_2() {
+    let text = r#"
+        SELECT !TRUE AS foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    UnaryOperatorExpression {
+                        operator: UnaryOperator::Not,
+                        operand: SQLExpression::Boolean(true),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
 pub fn arithmetic_expression_1() {
     let text = r#"
         SELECT 3 + 5 AS foo
