@@ -26,37 +26,10 @@ impl Parser {
         match current_token {
             Token::Operator(operator) => {
                 if operator.is_unary_operator() {
-                    let expression = self.parse_expression(context)?;
                     let operator: UnaryOperator = operator.try_into()?;
+                    let expression = self.parse_unary_expression(operator, context)?;
 
-                    // expression이 2항 표현식일 경우 단항 표현식이 최우선으로 처리되게 구성
-                    match expression {
-                        SQLExpression::Binary(mut binary) => {
-                            binary.lhs = UnaryOperatorExpression {
-                                operand: binary.lhs,
-                                operator,
-                            }
-                            .into();
-
-                            return Ok(binary.into());
-                        }
-                        SQLExpression::Between(mut between) => {
-                            between.a = UnaryOperatorExpression {
-                                operand: between.a,
-                                operator,
-                            }
-                            .into();
-
-                            return Ok(between.into());
-                        }
-                        _ => {
-                            return Ok(UnaryOperatorExpression {
-                                operand: expression,
-                                operator,
-                            }
-                            .into());
-                        }
-                    }
+                    return Ok(expression);
                 } else {
                     return Err(ParsingError::boxed(format!(
                         "unexpected operator: {:?}",
@@ -180,6 +153,47 @@ impl Parser {
                     "E0202 unexpected token: {:?}",
                     current_token
                 )));
+            }
+        }
+    }
+
+    pub(crate) fn parse_unary_expression(
+        &mut self,
+        operator: UnaryOperator,
+        context: ParserContext,
+    ) -> Result<SQLExpression, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0201 need more tokens"));
+        }
+
+        let expression = self.parse_expression(context)?;
+
+        // expression이 2항 표현식일 경우 단항 표현식이 최우선으로 처리되게 구성
+        match expression {
+            SQLExpression::Binary(mut binary) => {
+                binary.lhs = UnaryOperatorExpression {
+                    operand: binary.lhs,
+                    operator,
+                }
+                .into();
+
+                return Ok(binary.into());
+            }
+            SQLExpression::Between(mut between) => {
+                between.a = UnaryOperatorExpression {
+                    operand: between.a,
+                    operator,
+                }
+                .into();
+
+                return Ok(between.into());
+            }
+            _ => {
+                return Ok(UnaryOperatorExpression {
+                    operand: expression,
+                    operator,
+                }
+                .into());
             }
         }
     }
