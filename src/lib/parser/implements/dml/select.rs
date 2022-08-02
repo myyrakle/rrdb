@@ -8,7 +8,21 @@ use crate::lib::parser::predule::{Parser, ParserContext};
 impl Parser {
     pub(crate) fn handle_select_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0301: need more tokens"));
+        }
+
+        // SELECT 토큰 삼키기
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Select {
+            return Err(ParsingError::boxed(format!(
+                "E0302: expected 'SELECT'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0303: need more tokens"));
         }
 
         let mut query_builder = SelectQuery::builder();
@@ -48,9 +62,12 @@ impl Parser {
 
         match current_token {
             Token::From => {}
+            Token::LeftParentheses => {
+                todo!("서브쿼리 파싱 구현");
+            }
             _ => {
                 return Err(ParsingError::boxed(format!(
-                    "expected 'FROM'. but your input word is '{:?}'",
+                    "expected 'FROM' clause. but your input word is '{:?}'",
                     current_token
                 )));
             }

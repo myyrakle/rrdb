@@ -34,7 +34,7 @@ impl Parser {
             if self.has_next_token() {
                 let current_token = self.get_next_token();
 
-                match current_token {
+                match current_token.clone() {
                     Token::EOF => {
                         // 루프 종료
                         break;
@@ -46,7 +46,11 @@ impl Parser {
                     Token::Create => statements.push(self.handle_create_query()?),
                     Token::Alter => statements.push(self.handle_alter_query()?),
                     Token::Drop => statements.push(self.handle_drop_query()?),
-                    Token::Select => statements.push(self.handle_select_query()?),
+                    Token::Select => {
+                        self.unget_next_token(current_token);
+                        let query = self.handle_select_query()?;
+                        statements.push(query);
+                    }
                     Token::Update => statements.push(self.handle_update_query()?),
                     Token::Insert => statements.push(self.handle_insert_query()?),
                     Token::Delete => statements.push(self.handle_delete_query()?),
