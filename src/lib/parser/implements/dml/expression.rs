@@ -146,7 +146,11 @@ impl Parser {
                 unimplemented!("");
             }
             Token::Not => {
-                unimplemented!("");
+                let operator = UnaryOperator::Not;
+
+                let expression = self.parse_unary_expression(operator, context)?;
+
+                return Ok(expression);
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
