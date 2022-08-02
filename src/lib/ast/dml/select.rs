@@ -7,7 +7,7 @@ use super::SelectItem;
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectItem>,
-    pub from_table: Option<TableName>,
+    pub from_table: Option<TableName>, // 차후 서브쿼리 사용 가능하게 확장할 필요
     pub where_clause: Option<WhereClause>,
     pub group_by_clause: Option<GroupByClause>,
     pub order_by_clause: Option<OrderByClause>,
@@ -30,6 +30,11 @@ impl SelectQuery {
 
     pub fn add_select_item(mut self, item: SelectItem) -> Self {
         self.select_items.push(item);
+        self
+    }
+
+    pub fn set_from_table(mut self, from: TableName) -> Self {
+        self.from_table = Some(from);
         self
     }
 

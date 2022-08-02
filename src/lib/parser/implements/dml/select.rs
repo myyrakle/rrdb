@@ -61,7 +61,10 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::From => {}
+            Token::From => {
+                let table_name = self.parse_table_name()?;
+                query_builder = query_builder.set_from_table(table_name);
+            }
             Token::LeftParentheses => {
                 todo!("서브쿼리 파싱 구현");
             }
