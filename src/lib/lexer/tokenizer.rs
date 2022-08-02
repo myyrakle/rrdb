@@ -268,6 +268,7 @@ impl Tokenizer {
                 }
                 '+' => Token::Operator(OperatorToken::Plus),
                 '*' => Token::Operator(OperatorToken::Asterisk),
+                '!' => Token::Operator(OperatorToken::Not),
                 _ => {
                     return Err(LexingError::boxed(format!(
                         "unexpected operator: {:?}",
