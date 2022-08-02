@@ -37,6 +37,13 @@ impl Parser {
                     )));
                 }
             }
+            Token::Not => {
+                let operator = UnaryOperator::Not;
+
+                let expression = self.parse_unary_expression(operator, context)?;
+
+                return Ok(expression);
+            }
             Token::Integer(integer) => {
                 let lhs = SQLExpression::Integer(integer);
 
@@ -63,31 +70,7 @@ impl Parser {
                     return Ok(lhs);
                 }
             }
-            Token::Identifier(identifier) => {
-                self.unget_next_token(Token::Identifier(identifier));
-                let select_column = self.parse_select_column()?;
 
-                let lhs = SQLExpression::SelectColumn(select_column.clone());
-
-                if self.next_token_is_binary_operator(context) {
-                    let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
-                } else if self.next_token_is_between() {
-                    let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
-                } else if self.next_token_is_left_parentheses() {
-                    let SelectColumn {
-                        table_name,
-                        column_name,
-                    } = select_column;
-
-                    let expression =
-                        self.parse_function_call_expression(table_name, column_name, context)?;
-                    return Ok(expression);
-                } else {
-                    return Ok(lhs);
-                }
-            }
             Token::String(string) => {
                 let lhs = SQLExpression::String(string);
 
@@ -139,18 +122,30 @@ impl Parser {
                     current_token
                 )));
             }
-            Token::As => {
-                unimplemented!("");
-            }
-            Token::Comma => {
-                unimplemented!("");
-            }
-            Token::Not => {
-                let operator = UnaryOperator::Not;
+            Token::Identifier(identifier) => {
+                self.unget_next_token(Token::Identifier(identifier));
+                let select_column = self.parse_select_column()?;
 
-                let expression = self.parse_unary_expression(operator, context)?;
+                let lhs = SQLExpression::SelectColumn(select_column.clone());
 
-                return Ok(expression);
+                if self.next_token_is_binary_operator(context) {
+                    let expression = self.parse_binary_expression(lhs, context)?;
+                    return Ok(expression);
+                } else if self.next_token_is_between() {
+                    let expression = self.parse_between_expression(lhs, context)?;
+                    return Ok(expression);
+                } else if self.next_token_is_left_parentheses() {
+                    let SelectColumn {
+                        table_name,
+                        column_name,
+                    } = select_column;
+
+                    let expression =
+                        self.parse_function_call_expression(table_name, column_name, context)?;
+                    return Ok(expression);
+                } else {
+                    return Ok(lhs);
+                }
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
