@@ -1,5 +1,5 @@
 use crate::lib::ast::predule::{
-    BetweenExpression, BinaryOperatorExpression, CallExpression, ColumnName, NotBetweenExpression,
+    BetweenExpression, BinaryOperatorExpression, CallExpression, NotBetweenExpression,
     ParenthesesExpression, SQLStatement, SelectColumn, UnaryOperatorExpression,
 };
 
@@ -15,7 +15,6 @@ pub enum SQLExpression {
     Subquery(SQLStatement),                  // SQL 서브쿼리 (미구현)
 
     // 끝단 Primitive 값
-    ColumnName(ColumnName),
     Integer(i64),
     Float(f64),
     Boolean(bool),

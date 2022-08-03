@@ -65,21 +65,16 @@ impl Parser {
 
         match current_token {
             Token::From => {
-                let table_name = self.parse_table_name()?;
-                query_builder = query_builder.set_from_table(table_name);
-
-                if self.next_token_is_as() {
-                    let alias = self.parse_alias()?;
-                    query_builder = query_builder.set_from_alias(alias);
+                if self.next_token_is_left_parentheses() {
+                    let subquery = self.parse_subquery(context)?;
+                    query_builder = query_builder.set_from_subquery(subquery);
+                } else {
+                    let table_name = self.parse_table_name()?;
+                    query_builder = query_builder.set_from_table(table_name);
                 }
-            }
-            Token::LeftParentheses => {
-                self.unget_next_token(current_token);
-                let subquery = self.parse_subquery(context)?;
-                query_builder = query_builder.set_from_subquery(subquery);
 
-                if self.next_token_is_as() {
-                    let alias = self.parse_alias()?;
+                if self.next_token_is_table_alias() {
+                    let alias = self.parse_table_alias()?;
                     query_builder = query_builder.set_from_alias(alias);
                 }
             }

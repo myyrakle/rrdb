@@ -20,7 +20,7 @@ impl Parser {
             builder = builder.set_name(name);
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0028 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -177,7 +177,7 @@ impl Parser {
             }
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0029 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -199,7 +199,7 @@ impl Parser {
             table_name = name;
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0030 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -223,7 +223,7 @@ impl Parser {
                 table_name = name;
             } else {
                 return Err(ParsingError::boxed(format!(
-                    "expected identifier. but your input word is '{:?}'",
+                    "E0031 expected identifier. but your input word is '{:?}'",
                     current_token
                 )));
             }
@@ -321,7 +321,7 @@ impl Parser {
             select_column.column_name = name;
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0032 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -340,7 +340,7 @@ impl Parser {
                     return Ok(select_column);
                 } else {
                     return Err(ParsingError::boxed(format!(
-                        "expected identifier. but your input word is '{:?}'",
+                        "E0033 expected identifier. but your input word is '{:?}'",
                         current_token
                     )));
                 }
@@ -473,7 +473,7 @@ impl Parser {
     }
 
     // 다음 토큰이 AS인지
-    pub(crate) fn next_token_is_as(&mut self) -> bool {
+    pub(crate) fn next_token_is_table_alias(&mut self) -> bool {
         if !self.has_next_token() {
             return false;
         } else {
@@ -481,19 +481,23 @@ impl Parser {
 
             match current_token.clone() {
                 Token::As => {
-                    self.unget_next_token(current_token.clone());
+                    self.unget_next_token(current_token);
+                    true
+                }
+                Token::Identifier(_) => {
+                    self.unget_next_token(current_token);
                     true
                 }
                 _ => {
-                    self.unget_next_token(current_token.clone());
+                    self.unget_next_token(current_token);
                     false
                 }
             }
         }
     }
 
-    // Alias 획득
-    pub(crate) fn parse_alias(&mut self) -> Result<String, Box<dyn Error>> {
+    // Table Alias 획득
+    pub(crate) fn parse_table_alias(&mut self) -> Result<String, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0024 need more tokens"));
@@ -517,6 +521,7 @@ impl Parser {
                     ))),
                 }
             }
+            Token::Identifier(id) => Ok(id),
             _ => Err(ParsingError::boxed(format!(
                 "E0025 expected AS. but your input is {:?}",
                 current_token
