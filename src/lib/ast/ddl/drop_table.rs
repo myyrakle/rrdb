@@ -1,5 +1,4 @@
-use crate::lib::ast::enums::{DDLStatement, SQLStatement};
-use crate::lib::ast::predule::TableName;
+use crate::lib::ast::predule::{DDLStatement, SQLStatement, TableName};
 
 /*
 DROP TABLE [IF EXISTS] [database_name.]table_name;

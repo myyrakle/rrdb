@@ -13,3 +13,6 @@ pub use order_by::*;
 
 pub mod having;
 pub use having::*;
+
+pub mod from;
+pub use from::*;

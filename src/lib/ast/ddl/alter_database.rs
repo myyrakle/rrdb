@@ -1,5 +1,4 @@
-use crate::lib::ast::enums::{DDLStatement, SQLStatement};
-pub use crate::lib::ast::types::Column;
+use crate::lib::ast::predule::{DDLStatement, SQLStatement};
 
 /*
 ALTER DATABASE database_name

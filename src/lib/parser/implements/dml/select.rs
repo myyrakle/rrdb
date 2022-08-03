@@ -6,7 +6,10 @@ use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
-    pub(crate) fn handle_select_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_select_query(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0301: need more tokens"));
         }
@@ -47,7 +50,7 @@ impl Parser {
                 }
                 _ => {
                     self.unget_next_token(current_token);
-                    let select_item = self.parse_select_item()?;
+                    let select_item = self.parse_select_item(context)?;
                     query_builder = query_builder.add_select_item(select_item);
                 }
             }
@@ -89,7 +92,10 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    pub(crate) fn parse_select_item(&mut self) -> Result<SelectItem, Box<dyn Error>> {
+    pub(crate) fn parse_select_item(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SelectItem, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -97,7 +103,7 @@ impl Parser {
         let select_item = SelectItem::builder();
 
         // 표현식 파싱
-        let select_item = select_item.set_item(self.parse_expression(ParserContext::default())?);
+        let select_item = select_item.set_item(self.parse_expression(context)?);
 
         // 더 없을 경우 바로 반환
         if !self.has_next_token() {

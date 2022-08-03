@@ -1,13 +1,13 @@
-use crate::lib::ast::dml::parts::_where::WhereClause;
-use crate::lib::ast::enums::{DMLStatement, SQLStatement};
-use crate::lib::ast::predule::{GroupByClause, OrderByClause, TableName};
+use crate::lib::ast::predule::{
+    DMLStatement, FromClause, GroupByClause, OrderByClause, SQLStatement, TableName, WhereClause,
+};
 
 use super::SelectItem;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectItem>,
-    pub from_table: Option<TableName>, // 차후 서브쿼리 사용 가능하게 확장할 필요
+    pub from_table: Option<FromClause>, // 차후 서브쿼리 사용 가능하게 확장할 필요
     pub where_clause: Option<WhereClause>,
     pub group_by_clause: Option<GroupByClause>,
     pub order_by_clause: Option<OrderByClause>,
@@ -34,11 +34,17 @@ impl SelectQuery {
     }
 
     pub fn set_from_table(mut self, from: TableName) -> Self {
-        self.from_table = Some(from);
+        self.from_table = Some(from.into());
         self
     }
 
     pub fn build(self) -> SQLStatement {
         SQLStatement::DML(DMLStatement::SelectQuery(self))
+    }
+}
+
+impl Into<FromClause> for SelectQuery {
+    fn into(self) -> FromClause {
+        FromClause::Subquery(Box::new(self))
     }
 }

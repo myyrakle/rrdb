@@ -1,3 +1,5 @@
+use crate::lib::ast::predule::FromClause;
+
 // [database_name.]table_name
 // 테이블명을 가리키는 값입니다.
 #[derive(Clone, Debug, PartialEq)]
@@ -12,5 +14,11 @@ impl TableName {
             database_name,
             table_name,
         }
+    }
+}
+
+impl Into<FromClause> for TableName {
+    fn into(self) -> FromClause {
+        FromClause::Table(self)
     }
 }
