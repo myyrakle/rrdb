@@ -80,7 +80,7 @@ impl Parser {
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
-                    "expected 'FROM' clause. but your input word is '{:?}'",
+                    "E0304 expected 'FROM' clause. but your input word is '{:?}'",
                     current_token
                 )));
             }
@@ -104,7 +104,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SelectItem, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0305 need more tokens"));
         }
 
         let select_item = SelectItem::builder();
@@ -123,7 +123,9 @@ impl Parser {
             Token::As => {
                 // 더 없을 경우 바로 반환
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed(format!("expected alias. need more",)));
+                    return Err(ParsingError::boxed(format!(
+                        "E0306 expected alias. need more",
+                    )));
                 }
 
                 let current_token = self.get_next_token();
@@ -134,7 +136,7 @@ impl Parser {
                         Ok(select_item.build())
                     }
                     _ => Err(ParsingError::boxed(format!(
-                        "expected alias, but your input word is '{:?}'",
+                        "E0307 expected alias, but your input word is '{:?}'",
                         current_token
                     ))),
                 }
@@ -144,7 +146,7 @@ impl Parser {
                 Ok(select_item.build())
             }
             _ => Err(ParsingError::boxed(format!(
-                "expected expression. but your input word is '{:?}'",
+                "E0308 expected expression. but your input word is '{:?}'",
                 current_token
             ))),
         }
