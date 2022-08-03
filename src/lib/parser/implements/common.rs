@@ -1,11 +1,9 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{Column, DataType, TableName};
+use crate::lib::ast::predule::{Column, DataType, SQLStatement, SelectColumn, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::{OperatorToken, Token};
-use crate::lib::parser::predule::Parser;
-use crate::lib::parser::predule::ParserContext;
-use crate::lib::types::SelectColumn;
+use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     // 테이블 컬럼 정의 분석
@@ -22,7 +20,7 @@ impl Parser {
             builder = builder.set_name(name);
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0028 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -179,7 +177,7 @@ impl Parser {
             }
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0029 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -201,7 +199,7 @@ impl Parser {
             table_name = name;
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0030 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -225,7 +223,7 @@ impl Parser {
                 table_name = name;
             } else {
                 return Err(ParsingError::boxed(format!(
-                    "expected identifier. but your input word is '{:?}'",
+                    "E0031 expected identifier. but your input word is '{:?}'",
                     current_token
                 )));
             }
@@ -323,7 +321,7 @@ impl Parser {
             select_column.column_name = name;
         } else {
             return Err(ParsingError::boxed(format!(
-                "expected identifier. but your input word is '{:?}'",
+                "E0032 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -342,7 +340,7 @@ impl Parser {
                     return Ok(select_column);
                 } else {
                     return Err(ParsingError::boxed(format!(
-                        "expected identifier. but your input word is '{:?}'",
+                        "E0033 expected identifier. but your input word is '{:?}'",
                         current_token
                     )));
                 }
@@ -472,5 +470,105 @@ impl Parser {
                 }
             }
         }
+    }
+
+    // 다음 토큰이 AS인지
+    pub(crate) fn next_token_is_table_alias(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            match current_token.clone() {
+                Token::As => {
+                    self.unget_next_token(current_token);
+                    true
+                }
+                Token::Identifier(_) => {
+                    self.unget_next_token(current_token);
+                    true
+                }
+                _ => {
+                    self.unget_next_token(current_token);
+                    false
+                }
+            }
+        }
+    }
+
+    // Table Alias 획득
+    pub(crate) fn parse_table_alias(&mut self) -> Result<String, Box<dyn Error>> {
+        // 테이블명 획득 로직
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0024 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::As => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E0026 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Identifier(id) => Ok(id),
+                    _ => Err(ParsingError::boxed(format!(
+                        "E0027 expected identifier. but your input is {:?}",
+                        current_token
+                    ))),
+                }
+            }
+            Token::Identifier(id) => Ok(id),
+            _ => Err(ParsingError::boxed(format!(
+                "E0025 expected AS. but your input is {:?}",
+                current_token
+            ))),
+        }
+    }
+
+    // 서브쿼리 분석
+    pub(crate) fn parse_subquery(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0019 need more tokens"));
+        }
+
+        // ( 삼킴
+        let current_token = self.get_next_token();
+
+        if current_token != Token::LeftParentheses {
+            return Err(ParsingError::boxed(format!(
+                "E0020 expected left parentheses. but your input is {:?}",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0021 need more tokens"));
+        }
+
+        // 서브쿼리 파싱
+        let select = self.handle_select_query(context)?;
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0022 need more tokens"));
+        }
+
+        // ) 삼킴
+        let current_token = self.get_next_token();
+
+        if current_token != Token::RightParentheses {
+            return Err(ParsingError::boxed(format!(
+                "E0023 expected right parentheses. but your input is {:?}",
+                current_token
+            )));
+        }
+
+        Ok(select)
     }
 }

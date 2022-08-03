@@ -6,9 +6,26 @@ use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
-    pub(crate) fn handle_select_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_select_query(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0301: need more tokens"));
+        }
+
+        // SELECT 토큰 삼키기
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Select {
+            return Err(ParsingError::boxed(format!(
+                "E0302: expected 'SELECT'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0303: need more tokens"));
         }
 
         let mut query_builder = SelectQuery::builder();
@@ -33,7 +50,7 @@ impl Parser {
                 }
                 _ => {
                     self.unget_next_token(current_token);
-                    let select_item = self.parse_select_item()?;
+                    let select_item = self.parse_select_item(context)?;
                     query_builder = query_builder.add_select_item(select_item);
                 }
             }
@@ -47,10 +64,23 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::From => {}
+            Token::From => {
+                if self.next_token_is_left_parentheses() {
+                    let subquery = self.parse_subquery(context)?;
+                    query_builder = query_builder.set_from_subquery(subquery);
+                } else {
+                    let table_name = self.parse_table_name()?;
+                    query_builder = query_builder.set_from_table(table_name);
+                }
+
+                if self.next_token_is_table_alias() {
+                    let alias = self.parse_table_alias()?;
+                    query_builder = query_builder.set_from_alias(alias);
+                }
+            }
             _ => {
                 return Err(ParsingError::boxed(format!(
-                    "expected 'FROM'. but your input word is '{:?}'",
+                    "E0304 expected 'FROM' clause. but your input word is '{:?}'",
                     current_token
                 )));
             }
@@ -69,15 +99,18 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    pub(crate) fn parse_select_item(&mut self) -> Result<SelectItem, Box<dyn Error>> {
+    pub(crate) fn parse_select_item(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SelectItem, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E0305 need more tokens"));
         }
 
         let select_item = SelectItem::builder();
 
         // 표현식 파싱
-        let select_item = select_item.set_item(self.parse_expression(ParserContext::default())?);
+        let select_item = select_item.set_item(self.parse_expression(context)?);
 
         // 더 없을 경우 바로 반환
         if !self.has_next_token() {
@@ -90,7 +123,9 @@ impl Parser {
             Token::As => {
                 // 더 없을 경우 바로 반환
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed(format!("expected alias. need more",)));
+                    return Err(ParsingError::boxed(format!(
+                        "E0306 expected alias. need more",
+                    )));
                 }
 
                 let current_token = self.get_next_token();
@@ -101,7 +136,7 @@ impl Parser {
                         Ok(select_item.build())
                     }
                     _ => Err(ParsingError::boxed(format!(
-                        "expected alias, but your input word is '{:?}'",
+                        "E0307 expected alias, but your input word is '{:?}'",
                         current_token
                     ))),
                 }
@@ -111,7 +146,7 @@ impl Parser {
                 Ok(select_item.build())
             }
             _ => Err(ParsingError::boxed(format!(
-                "expected expression. but your input word is '{:?}'",
+                "E0308 expected expression. but your input word is '{:?}'",
                 current_token
             ))),
         }

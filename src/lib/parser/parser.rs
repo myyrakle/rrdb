@@ -1,7 +1,8 @@
 use std::{collections::VecDeque, error::Error};
 
-use crate::lib::ast::enums::SQLStatement;
+use crate::lib::ast::predule::SQLStatement;
 use crate::lib::lexer::predule::{OperatorToken, Token, Tokenizer};
+use crate::lib::parser::predule::ParserContext;
 
 #[derive(Debug)]
 pub struct Parser {
@@ -46,7 +47,11 @@ impl Parser {
                     Token::Create => statements.push(self.handle_create_query()?),
                     Token::Alter => statements.push(self.handle_alter_query()?),
                     Token::Drop => statements.push(self.handle_drop_query()?),
-                    Token::Select => statements.push(self.handle_select_query()?),
+                    Token::Select => {
+                        self.unget_next_token(current_token);
+                        let query = self.handle_select_query(ParserContext::default())?;
+                        statements.push(query);
+                    }
                     Token::Update => statements.push(self.handle_update_query()?),
                     Token::Insert => statements.push(self.handle_insert_query()?),
                     Token::Delete => statements.push(self.handle_delete_query()?),

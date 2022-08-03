@@ -1,4 +1,4 @@
-use crate::lib::ast::enums::SQLStatement;
+use crate::lib::ast::predule::SQLStatement;
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::Parser;

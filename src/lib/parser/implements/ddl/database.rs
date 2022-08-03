@@ -1,7 +1,6 @@
 use crate::lib::parser::predule::Parser;
 
-use crate::lib::ast::ddl::{CreateDatabaseQuery, DropDatabaseQuery};
-use crate::lib::ast::enums::SQLStatement;
+use crate::lib::ast::predule::{CreateDatabaseQuery, DropDatabaseQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use std::error::Error;

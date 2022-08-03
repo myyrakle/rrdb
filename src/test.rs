@@ -11,18 +11,18 @@ use crate::lib::parser::predule::Parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let foo = lib::utils::predule::get_system_env("RRDB_BASE_PATH");
-
-    // println!("{}", foo);
-
     let text = r#"
-    SELECT -2 * 5 AS foo
-"#
+        SELECT boom.number as number
+        FROM (
+            select 1 as number
+            from foo.bar as temp
+        ) as boom
+    "#
     .to_owned();
 
     let mut parser = Parser::new(text).unwrap();
 
-    println!("{:?}", parser.parse().unwrap());
+    parser.parse().unwrap();
 
     Ok(())
 }

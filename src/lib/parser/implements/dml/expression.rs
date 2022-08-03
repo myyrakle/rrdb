@@ -32,7 +32,7 @@ impl Parser {
                     return Ok(expression);
                 } else {
                     return Err(ParsingError::boxed(format!(
-                        "unexpected operator: {:?}",
+                        "E0212 unexpected operator: {:?}",
                         operator
                     )));
                 }
@@ -118,7 +118,7 @@ impl Parser {
             }
             Token::RightParentheses => {
                 return Err(ParsingError::boxed(format!(
-                    "unexpected token: {:?}",
+                    "E0213 unexpected token: {:?}",
                     current_token
                 )));
             }

@@ -1,3 +1,5 @@
+use crate::lib::ast::predule::SQLExpression;
+
 // [table_alias.]column_name
 // SELECT시 컬럼 지정을 가리키는 값입니다.
 #[derive(Clone, Debug, PartialEq)]
@@ -12,5 +14,11 @@ impl SelectColumn {
             column_name,
             table_name,
         }
+    }
+}
+
+impl Into<SQLExpression> for SelectColumn {
+    fn into(self) -> SQLExpression {
+        SQLExpression::SelectColumn(self)
     }
 }
