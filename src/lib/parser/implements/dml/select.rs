@@ -69,7 +69,9 @@ impl Parser {
                 query_builder = query_builder.set_from_table(table_name);
             }
             Token::LeftParentheses => {
-                todo!("서브쿼리 파싱 구현");
+                self.unget_next_token(current_token);
+                let subquery = self.parse_subquery(context)?;
+                query_builder = query_builder.set_from_subquery(subquery);
             }
             _ => {
                 return Err(ParsingError::boxed(format!(

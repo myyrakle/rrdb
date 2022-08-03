@@ -1,11 +1,9 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{Column, DataType, TableName};
+use crate::lib::ast::predule::{Column, DataType, SQLStatement, SelectColumn, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::{OperatorToken, Token};
-use crate::lib::parser::predule::Parser;
-use crate::lib::parser::predule::ParserContext;
-use crate::lib::types::SelectColumn;
+use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     // 테이블 컬럼 정의 분석
@@ -472,5 +470,48 @@ impl Parser {
                 }
             }
         }
+    }
+
+    // 서브쿼리 분석
+    pub(crate) fn parse_subquery(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0019 need more tokens"));
+        }
+
+        // ( 삼킴
+        let current_token = self.get_next_token();
+
+        if current_token != Token::LeftParentheses {
+            return Err(ParsingError::boxed(format!(
+                "E0020 expected left parentheses. but your input is {:?}",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0021 need more tokens"));
+        }
+
+        // 서브쿼리 파싱
+        let select = self.handle_select_query(context)?;
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0022 need more tokens"));
+        }
+
+        // ) 삼킴
+        let current_token = self.get_next_token();
+
+        if current_token != Token::RightParentheses {
+            return Err(ParsingError::boxed(format!(
+                "E0023 expected right parentheses. but your input is {:?}",
+                current_token
+            )));
+        }
+
+        Ok(select)
     }
 }
