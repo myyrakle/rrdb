@@ -35,7 +35,7 @@ impl Parser {
             if self.has_next_token() {
                 let current_token = self.get_next_token();
 
-                match current_token.clone() {
+                match current_token {
                     Token::EOF => {
                         // 루프 종료
                         break;
