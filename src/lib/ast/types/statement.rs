@@ -3,7 +3,7 @@ use crate::lib::ast::ddl::{
     DropTableQuery,
 };
 use crate::lib::ast::dml::{DeleteQuery, InsertQuery, SelectQuery, UpdateQuery};
-use crate::lib::ast::predule::FromClause;
+use crate::lib::ast::predule::{FromClause, FromTarget};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SQLStatement {
@@ -35,6 +35,9 @@ pub enum DCLStatement {}
 
 impl Into<FromClause> for SQLStatement {
     fn into(self) -> FromClause {
-        FromClause::Subquery(Box::new(self))
+        FromClause {
+            from: FromTarget::Subquery(Box::new(self)),
+            alias: None,
+        }
     }
 }

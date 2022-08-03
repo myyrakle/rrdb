@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::FromClause;
+use crate::lib::ast::predule::{FromClause, FromTarget};
 
 // [database_name.]table_name
 // 테이블명을 가리키는 값입니다.
@@ -19,6 +19,9 @@ impl TableName {
 
 impl Into<FromClause> for TableName {
     fn into(self) -> FromClause {
-        FromClause::Table(self)
+        FromClause {
+            from: FromTarget::Table(self),
+            alias: None,
+        }
     }
 }

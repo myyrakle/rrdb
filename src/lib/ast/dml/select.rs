@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+
 use crate::lib::ast::predule::{
     DMLStatement, FromClause, GroupByClause, OrderByClause, SQLStatement, SelectItem, TableName,
     WhereClause,
@@ -39,6 +41,16 @@ impl SelectQuery {
 
     pub fn set_from_subquery(mut self, from: SQLStatement) -> Self {
         self.from_table = Some(from.into());
+        self
+    }
+
+    pub fn set_from_alias(mut self, alias: String) -> Self {
+        if self.from_table.is_some() {
+            self.from_table = self.from_table.map(|mut e| {
+                e.alias = Some(alias);
+                e
+            });
+        }
         self
     }
 

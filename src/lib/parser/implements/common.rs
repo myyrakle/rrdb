@@ -472,6 +472,58 @@ impl Parser {
         }
     }
 
+    // 다음 토큰이 AS인지
+    pub(crate) fn next_token_is_as(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            match current_token.clone() {
+                Token::As => {
+                    self.unget_next_token(current_token.clone());
+                    true
+                }
+                _ => {
+                    self.unget_next_token(current_token.clone());
+                    false
+                }
+            }
+        }
+    }
+
+    // Alias 획득
+    pub(crate) fn parse_alias(&mut self) -> Result<String, Box<dyn Error>> {
+        // 테이블명 획득 로직
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0024 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::As => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E0026 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Identifier(id) => Ok(id),
+                    _ => Err(ParsingError::boxed(format!(
+                        "E0027 expected identifier. but your input is {:?}",
+                        current_token
+                    ))),
+                }
+            }
+            _ => Err(ParsingError::boxed(format!(
+                "E0025 expected AS. but your input is {:?}",
+                current_token
+            ))),
+        }
+    }
+
     // 서브쿼리 분석
     pub(crate) fn parse_subquery(
         &mut self,
