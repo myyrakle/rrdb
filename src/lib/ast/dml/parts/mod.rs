@@ -16,3 +16,6 @@ pub use having::*;
 
 pub mod from;
 pub use from::*;
+
+pub mod join;
+pub use join::*;

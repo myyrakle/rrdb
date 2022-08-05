@@ -1,12 +1,13 @@
 use crate::lib::ast::predule::{
-    DMLStatement, FromClause, GroupByClause, OrderByClause, SQLStatement, SelectItem, TableName,
-    WhereClause,
+    DMLStatement, FromClause, GroupByClause, JoinClause, OrderByClause, SQLStatement, SelectItem,
+    TableName, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectItem>,
     pub from_table: Option<FromClause>,
+    pub join_clause: Vec<JoinClause>,
     pub where_clause: Option<WhereClause>,
     pub group_by_clause: Option<GroupByClause>,
     pub order_by_clause: Option<OrderByClause>,
@@ -19,6 +20,7 @@ impl SelectQuery {
         SelectQuery {
             select_items: vec![],
             from_table: None,
+            join_clause: vec![],
             where_clause: None,
             group_by_clause: None,
             order_by_clause: None,
