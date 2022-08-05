@@ -496,6 +496,91 @@ impl Parser {
         }
     }
 
+    // 다음 토큰이 JOIN 토큰인지
+    pub(crate) fn next_token_is_join_syntax(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            match current_token {
+                Token::Inner | Token::Left | Token::Right => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(current_token);
+                        return false;
+                    } else {
+                        let second_token = self.get_next_token();
+
+                        match second_token {
+                            Token::Join => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
+                                true
+                            }
+                            _ => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
+                                false
+                            }
+                        }
+                    }
+                }
+                Token::Full => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(current_token);
+                        return false;
+                    } else {
+                        let second_token = self.get_next_token();
+
+                        match second_token {
+                            Token::Join => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
+                                true
+                            }
+                            Token::Outer => {
+                                if !self.has_next_token() {
+                                    self.unget_next_token(current_token);
+                                    return false;
+                                } else {
+                                    let third_token = self.get_next_token();
+
+                                    match third_token {
+                                        Token::Join => {
+                                            self.unget_next_token(third_token);
+                                            self.unget_next_token(second_token);
+                                            self.unget_next_token(current_token);
+                                            true
+                                        }
+                                        _ => {
+                                            self.unget_next_token(third_token);
+                                            self.unget_next_token(second_token);
+                                            self.unget_next_token(current_token);
+                                            false
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
+                                false
+                            }
+                        }
+                    }
+                }
+                Token::Join => {
+                    self.unget_next_token(current_token);
+                    true
+                }
+                _ => {
+                    self.unget_next_token(current_token);
+                    false
+                }
+            }
+        }
+    }
+
     // Table Alias 획득
     pub(crate) fn parse_table_alias(&mut self) -> Result<String, Box<dyn Error>> {
         // 테이블명 획득 로직
