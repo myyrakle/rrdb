@@ -39,6 +39,10 @@ impl SelectQuery {
         self
     }
 
+    pub fn has_from_table(mut self, from: TableName) -> bool {
+        self.from_table.is_some()
+    }
+
     pub fn set_from_subquery(mut self, from: SQLStatement) -> Self {
         self.from_table = Some(from.into());
         self
