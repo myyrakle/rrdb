@@ -86,7 +86,16 @@ impl Parser {
             }
         }
 
-        // TODO: JOIN 절 파싱
+        // JOIN 절 파싱
+        while self.next_is_join_syntax() {
+            if query_builder.has_from_table() {
+                // TODO: 파싱 작업
+            } else {
+                return Err(ParsingError::boxed(format!(
+                    "E0309 Joins without tables are not allowed.",
+                )));
+            }
+        }
 
         // TODO: WHERE 절 파싱
 

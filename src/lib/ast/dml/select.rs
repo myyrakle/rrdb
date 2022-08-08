@@ -39,7 +39,7 @@ impl SelectQuery {
         self
     }
 
-    pub fn has_from_table(mut self, from: TableName) -> bool {
+    pub fn has_from_table(&self) -> bool {
         self.from_table.is_some()
     }
 

@@ -497,7 +497,7 @@ impl Parser {
     }
 
     // 다음 토큰이 JOIN 토큰인지
-    pub(crate) fn next_token_is_join_syntax(&mut self) -> bool {
+    pub(crate) fn next_is_join_syntax(&mut self) -> bool {
         if !self.has_next_token() {
             return false;
         } else {
