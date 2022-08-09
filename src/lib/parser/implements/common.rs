@@ -514,7 +514,7 @@ impl Parser {
                         match second_token {
                             Token::Join => {
                                 self.unget_next_token(second_token);
-                                self.unget_next_token(current_token);
+                                self.unget_next_token(current_token.clone());
 
                                 match current_token {
                                     Token::Inner => Some(JoinType::InnerJoin),
