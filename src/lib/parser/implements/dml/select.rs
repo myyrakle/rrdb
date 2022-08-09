@@ -63,6 +63,7 @@ impl Parser {
         // FROM 절 파싱
         let current_token = self.get_next_token();
 
+        let mut has_from_table = false;
         match current_token {
             Token::From => {
                 if self.next_token_is_left_parentheses() {
@@ -77,6 +78,8 @@ impl Parser {
                     let alias = self.parse_table_alias()?;
                     query_builder = query_builder.set_from_alias(alias);
                 }
+
+                has_from_table = true;
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
@@ -87,8 +90,8 @@ impl Parser {
         }
 
         // JOIN 절 파싱
-        while self.next_is_join_syntax() {
-            if query_builder.has_from_table() {
+        while let Some(join_type) = self.get_next_join_type() {
+            if has_from_table {
                 // TODO: 파싱 작업
             } else {
                 return Err(ParsingError::boxed(format!(
