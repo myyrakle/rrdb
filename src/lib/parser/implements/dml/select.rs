@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{SQLStatement, SelectItem, SelectQuery};
+use crate::lib::ast::predule::{JoinClause, JoinType, SQLStatement, SelectItem, SelectQuery};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
@@ -63,7 +63,6 @@ impl Parser {
         // FROM 절 파싱
         let current_token = self.get_next_token();
 
-        let mut has_from_table = false;
         match current_token {
             Token::From => {
                 if self.next_token_is_left_parentheses() {
@@ -78,8 +77,6 @@ impl Parser {
                     let alias = self.parse_table_alias()?;
                     query_builder = query_builder.set_from_alias(alias);
                 }
-
-                has_from_table = true;
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
@@ -91,13 +88,8 @@ impl Parser {
 
         // JOIN 절 파싱
         while let Some(join_type) = self.get_next_join_type() {
-            if has_from_table {
-                // TODO: 파싱 작업
-            } else {
-                return Err(ParsingError::boxed(format!(
-                    "E0309 Joins without tables are not allowed.",
-                )));
-            }
+            let join = self.parse_join(join_type, context)?;
+            query_builder = query_builder.add_join(join);
         }
 
         // TODO: WHERE 절 파싱
@@ -162,5 +154,56 @@ impl Parser {
                 current_token
             ))),
         }
+    }
+
+    pub(crate) fn parse_join(
+        &mut self,
+        join_type: JoinType,
+        context: ParserContext,
+    ) -> Result<JoinClause, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0310 need more tokens"));
+        }
+
+        let left = self.parse_table_name()?;
+
+        let left_alias = if self.next_token_is_table_alias() {
+            None
+        } else {
+            self.parse_table_alias().ok()
+        };
+
+        let right = self.parse_table_name()?;
+
+        let right_alias = if self.next_token_is_table_alias() {
+            None
+        } else {
+            self.parse_table_alias().ok()
+        };
+
+        let on = if !self.has_next_token() {
+            None
+        } else {
+            let current_token = self.get_next_token();
+
+            if current_token == Token::On {
+                let expression = self.parse_expression(context)?;
+                Some(expression)
+            } else {
+                self.unget_next_token(current_token);
+                None
+            }
+        };
+
+        let join = JoinClause {
+            join_type,
+            on,
+            left,
+            left_alias,
+            right,
+            right_alias,
+        };
+
+        Ok(join)
     }
 }

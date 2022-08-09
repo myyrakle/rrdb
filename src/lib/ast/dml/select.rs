@@ -58,6 +58,11 @@ impl SelectQuery {
         self
     }
 
+    pub fn add_join(mut self, join: JoinClause) -> Self {
+        self.join_clause.push(join);
+        self
+    }
+
     pub fn build(self) -> SQLStatement {
         SQLStatement::DML(DMLStatement::SelectQuery(self))
     }
