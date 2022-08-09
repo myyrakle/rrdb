@@ -1,7 +1,8 @@
 #![cfg(test)]
 
 use crate::lib::ast::predule::{
-    JoinClause, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
+    BinaryOperator, BinaryOperatorExpression, JoinClause, JoinType, SQLExpression, SelectColumn,
+    SelectItem, SelectQuery, TableName,
 };
 use crate::lib::parser::predule::Parser;
 
@@ -121,12 +122,20 @@ pub fn select_inner_join_1() {
                 .build(),
         )
         .set_from_table(TableName {
-            database_name: Some("foo".into()),
-            table_name: "bar".into(),
+            database_name: None,
+            table_name: "post".into(),
         })
-        .set_from_alias("boom".into())
+        .set_from_alias("p".into())
         .add_join(JoinClause {
-            left: TableName::new(None, table_name),
+            join_type: JoinType::InnerJoin,
+            right: TableName::new(None, "comment".into()),
+            right_alias: Some("c".into()),
+            on: BinaryOperatorExpression {
+                operator: BinaryOperator::Eq,
+                lhs: SelectColumn::new(Some("p".into()), "id".into()).into(),
+                rhs: SelectColumn::new(Some("c".into()), "post_id".into()).into(),
+            }
+            .into(),
         })
         .build();
 

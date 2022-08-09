@@ -18,3 +18,9 @@ impl Into<SQLExpression> for Box<BinaryOperatorExpression> {
         SQLExpression::Binary(self)
     }
 }
+
+impl Into<Option<SQLExpression>> for BinaryOperatorExpression {
+    fn into(self) -> Option<SQLExpression> {
+        Some(SQLExpression::Binary(Box::new(self)))
+    }
+}
