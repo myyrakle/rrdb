@@ -165,14 +165,6 @@ impl Parser {
             return Err(ParsingError::boxed("E0310 need more tokens"));
         }
 
-        let left = self.parse_table_name()?;
-
-        let left_alias = if self.next_token_is_table_alias() {
-            None
-        } else {
-            self.parse_table_alias().ok()
-        };
-
         let right = self.parse_table_name()?;
 
         let right_alias = if self.next_token_is_table_alias() {
@@ -198,8 +190,6 @@ impl Parser {
         let join = JoinClause {
             join_type,
             on,
-            left,
-            left_alias,
             right,
             right_alias,
         };

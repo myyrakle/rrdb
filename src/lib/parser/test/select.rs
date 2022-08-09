@@ -1,6 +1,8 @@
 #![cfg(test)]
 
-use crate::lib::ast::predule::{SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName};
+use crate::lib::ast::predule::{
+    JoinClause, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
+};
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -92,6 +94,40 @@ pub fn select_from_3() {
                 .build(),
         )
         .set_from_alias("boom".into())
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
+
+#[test]
+pub fn select_inner_join_1() {
+    let text = r#"
+        SELECT 
+            p.content as post
+            , c.content as comment
+        FROM post as p
+        INNER JOIN comment as c
+        on p.id = c.post_id
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SQLExpression::Integer(1).into())
+                .set_alias("asdf".into())
+                .build(),
+        )
+        .set_from_table(TableName {
+            database_name: Some("foo".into()),
+            table_name: "bar".into(),
+        })
+        .set_from_alias("boom".into())
+        .add_join(JoinClause {
+            left: TableName::new(None, table_name),
+        })
         .build();
 
     assert_eq!(parser.parse().unwrap(), vec![expected],);
