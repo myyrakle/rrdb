@@ -154,6 +154,7 @@ impl Tokenizer {
                 "DEFAULT" => Token::Default,
                 "IF" => Token::If,
                 "EXISTS" => Token::Exists,
+                "ON" => Token::On,
                 _ => Token::Identifier(identifier),
             };
 

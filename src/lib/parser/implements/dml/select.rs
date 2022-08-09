@@ -136,7 +136,6 @@ impl Parser {
                 }
 
                 let current_token = self.get_next_token();
-                println!("{:?}", current_token);
 
                 match current_token {
                     Token::Identifier(identifier) => {
@@ -173,9 +172,9 @@ impl Parser {
         let right = self.parse_table_name()?;
 
         let right_alias = if self.next_token_is_table_alias() {
-            None
-        } else {
             self.parse_table_alias().ok()
+        } else {
+            None
         };
 
         let on = if !self.has_next_token() {

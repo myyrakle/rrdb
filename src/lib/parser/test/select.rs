@@ -105,9 +105,9 @@ pub fn select_inner_join_1() {
     let text = r#"
         SELECT 
             p.content as post
-            , c.content as comment
+            , c.content as `comment`
         FROM post as p
-        INNER JOIN comment as c
+        INNER JOIN `comment` as c
         on p.id = c.post_id
     "#
     .to_owned();
@@ -117,8 +117,14 @@ pub fn select_inner_join_1() {
     let expected = SelectQuery::builder()
         .add_select_item(
             SelectItem::builder()
-                .set_item(SQLExpression::Integer(1).into())
-                .set_alias("asdf".into())
+                .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                .set_alias("post".into())
+                .build(),
+        )
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SelectColumn::new(Some("c".into()), "content".into()).into())
+                .set_alias("comment".into())
                 .build(),
         )
         .set_from_table(TableName {

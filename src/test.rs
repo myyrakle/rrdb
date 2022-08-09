@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
         SELECT 
             p.content as post
-            , c.content as comment
+            , c.content as `comment`
         FROM post as p
         INNER JOIN `comment` as c
         on p.id = c.post_id
