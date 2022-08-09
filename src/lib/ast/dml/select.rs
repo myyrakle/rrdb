@@ -39,6 +39,10 @@ impl SelectQuery {
         self
     }
 
+    pub fn has_from_table(&self) -> bool {
+        self.from_table.is_some()
+    }
+
     pub fn set_from_subquery(mut self, from: SQLStatement) -> Self {
         self.from_table = Some(from.into());
         self
@@ -51,6 +55,11 @@ impl SelectQuery {
                 e
             });
         }
+        self
+    }
+
+    pub fn add_join(mut self, join: JoinClause) -> Self {
+        self.join_clause.push(join);
         self
     }
 

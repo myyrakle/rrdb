@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{Column, DataType, SQLStatement, SelectColumn, TableName};
+use crate::lib::ast::predule::{Column, DataType, JoinType, SQLStatement, SelectColumn, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::{OperatorToken, Token};
 use crate::lib::parser::predule::{Parser, ParserContext};
@@ -496,10 +496,10 @@ impl Parser {
         }
     }
 
-    // 다음 토큰이 JOIN 토큰인지
-    pub(crate) fn next_token_is_join_syntax(&mut self) -> bool {
+    // 다음 토큰이 JOIN 토큰이라면 JOIN 타입을 추출해서 반환
+    pub(crate) fn get_next_join_type(&mut self) -> Option<JoinType> {
         if !self.has_next_token() {
-            return false;
+            return None;
         } else {
             let current_token = self.get_next_token();
 
@@ -507,20 +507,21 @@ impl Parser {
                 Token::Inner | Token::Left | Token::Right => {
                     if !self.has_next_token() {
                         self.unget_next_token(current_token);
-                        return false;
+                        return None;
                     } else {
                         let second_token = self.get_next_token();
 
                         match second_token {
-                            Token::Join => {
-                                self.unget_next_token(second_token);
-                                self.unget_next_token(current_token);
-                                true
-                            }
+                            Token::Join => match current_token {
+                                Token::Inner => Some(JoinType::InnerJoin),
+                                Token::Left => Some(JoinType::LeftOuterJoin),
+                                Token::Right => Some(JoinType::RightOuterJoin),
+                                _ => unreachable!(),
+                            },
                             _ => {
                                 self.unget_next_token(second_token);
                                 self.unget_next_token(current_token);
-                                false
+                                None
                             }
                         }
                     }
@@ -528,35 +529,26 @@ impl Parser {
                 Token::Full => {
                     if !self.has_next_token() {
                         self.unget_next_token(current_token);
-                        return false;
+                        return None;
                     } else {
                         let second_token = self.get_next_token();
 
                         match second_token {
-                            Token::Join => {
-                                self.unget_next_token(second_token);
-                                self.unget_next_token(current_token);
-                                true
-                            }
+                            Token::Join => Some(JoinType::FullOuterJoin),
                             Token::Outer => {
                                 if !self.has_next_token() {
                                     self.unget_next_token(current_token);
-                                    return false;
+                                    return None;
                                 } else {
                                     let third_token = self.get_next_token();
 
                                     match third_token {
-                                        Token::Join => {
-                                            self.unget_next_token(third_token);
-                                            self.unget_next_token(second_token);
-                                            self.unget_next_token(current_token);
-                                            true
-                                        }
+                                        Token::Join => Some(JoinType::FullOuterJoin),
                                         _ => {
                                             self.unget_next_token(third_token);
                                             self.unget_next_token(second_token);
                                             self.unget_next_token(current_token);
-                                            false
+                                            None
                                         }
                                     }
                                 }
@@ -564,18 +556,15 @@ impl Parser {
                             _ => {
                                 self.unget_next_token(second_token);
                                 self.unget_next_token(current_token);
-                                false
+                                None
                             }
                         }
                     }
                 }
-                Token::Join => {
-                    self.unget_next_token(current_token);
-                    true
-                }
+                Token::Join => Some(JoinType::InnerJoin),
                 _ => {
                     self.unget_next_token(current_token);
-                    false
+                    None
                 }
             }
         }
