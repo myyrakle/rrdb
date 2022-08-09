@@ -10,6 +10,8 @@ impl Parser {
         &mut self,
         context: ParserContext,
     ) -> Result<SQLStatement, Box<dyn Error>> {
+        self.show_tokens();
+
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0301: need more tokens"));
         }
@@ -48,6 +50,7 @@ impl Parser {
                     // from 없는 select절로 간주. 종료.
                     return Ok(query_builder.build());
                 }
+                Token::Comma => continue,
                 _ => {
                     self.unget_next_token(current_token);
                     let select_item = self.parse_select_item(context)?;
@@ -133,6 +136,7 @@ impl Parser {
                 }
 
                 let current_token = self.get_next_token();
+                println!("{:?}", current_token);
 
                 match current_token {
                     Token::Identifier(identifier) => {
@@ -146,6 +150,7 @@ impl Parser {
                 }
             }
             Token::Comma => {
+                self.unget_next_token(current_token);
                 // 현재 select_item은 종료된 것으로 판단.
                 Ok(select_item.build())
             }

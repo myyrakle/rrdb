@@ -12,11 +12,12 @@ use crate::lib::parser::predule::Parser;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
-        SELECT boom.number as number
-        FROM (
-            select 1 as number
-            from foo.bar as temp
-        ) as boom
+        SELECT 
+            p.content as post
+            , c.content as comment
+        FROM post as p
+        INNER JOIN `comment` as c
+        on p.id = c.post_id
     "#
     .to_owned();
 
