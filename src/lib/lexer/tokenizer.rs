@@ -54,7 +54,7 @@ impl Tokenizer {
         self.last_char == '.'
     }
 
-    pub fn is_backtic(&self) -> bool {
+    pub fn is_backtick(&self) -> bool {
         self.last_char == '`'
     }
 
@@ -154,6 +154,7 @@ impl Tokenizer {
                 "DEFAULT" => Token::Default,
                 "IF" => Token::If,
                 "EXISTS" => Token::Exists,
+                "ON" => Token::On,
                 _ => Token::Identifier(identifier),
             };
 
@@ -268,7 +269,10 @@ impl Tokenizer {
                 }
                 '+' => Token::Operator(OperatorToken::Plus),
                 '*' => Token::Operator(OperatorToken::Asterisk),
-                '!' => Token::Operator(OperatorToken::Not),
+                '!' => Token::Operator(OperatorToken::Not), // TODO: != 연산자 처리
+                '=' => Token::Operator(OperatorToken::Eq),
+                '<' => Token::Operator(OperatorToken::Lt), // TODO: <= 연산자 처리
+                '>' => Token::Operator(OperatorToken::Gt), // TODO: >= 연산자 처리
                 _ => {
                     return Err(LexingError::boxed(format!(
                         "unexpected operator: {:?}",
@@ -320,6 +324,32 @@ impl Tokenizer {
             } else {
                 Token::UnknownCharacter(self.last_char)
             }
+        } else if self.is_backtick() {
+            let mut string = vec![];
+
+            self.read_char();
+            while !self.is_eof() {
+                if self.last_char == '`' {
+                    self.read_char();
+
+                    // `` 의 형태일 경우 `로 이스케이프
+                    // 아닐 경우 문자열 종료
+                    if self.last_char == '`' {
+                        string.push(self.last_char);
+                    } else {
+                        self.unread_char();
+                        break;
+                    }
+                } else {
+                    string.push(self.last_char);
+                }
+
+                self.read_char();
+            }
+
+            let string: String = string.into_iter().collect::<String>();
+
+            Token::Identifier(string)
         }
         // 세미콜론
         else if self.is_semicolon() {

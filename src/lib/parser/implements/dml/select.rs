@@ -10,6 +10,8 @@ impl Parser {
         &mut self,
         context: ParserContext,
     ) -> Result<SQLStatement, Box<dyn Error>> {
+        self.show_tokens();
+
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0301: need more tokens"));
         }
@@ -48,6 +50,7 @@ impl Parser {
                     // from 없는 select절로 간주. 종료.
                     return Ok(query_builder.build());
                 }
+                Token::Comma => continue,
                 _ => {
                     self.unget_next_token(current_token);
                     let select_item = self.parse_select_item(context)?;
@@ -146,6 +149,7 @@ impl Parser {
                 }
             }
             Token::Comma => {
+                self.unget_next_token(current_token);
                 // 현재 select_item은 종료된 것으로 판단.
                 Ok(select_item.build())
             }
@@ -165,20 +169,12 @@ impl Parser {
             return Err(ParsingError::boxed("E0310 need more tokens"));
         }
 
-        let left = self.parse_table_name()?;
-
-        let left_alias = if self.next_token_is_table_alias() {
-            None
-        } else {
-            self.parse_table_alias().ok()
-        };
-
         let right = self.parse_table_name()?;
 
         let right_alias = if self.next_token_is_table_alias() {
-            None
-        } else {
             self.parse_table_alias().ok()
+        } else {
+            None
         };
 
         let on = if !self.has_next_token() {
@@ -198,8 +194,6 @@ impl Parser {
         let join = JoinClause {
             join_type,
             on,
-            left,
-            left_alias,
             right,
             right_alias,
         };
