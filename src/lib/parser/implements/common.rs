@@ -504,7 +504,7 @@ impl Parser {
             let current_token = self.get_next_token();
 
             match current_token {
-                Token::Inner | Token::Left | Token::Right => {
+                Token::Inner => {
                     if !self.has_next_token() {
                         self.unget_next_token(current_token);
                         return None;
@@ -512,12 +512,47 @@ impl Parser {
                         let second_token = self.get_next_token();
 
                         match second_token {
-                            Token::Join => match current_token {
-                                Token::Inner => Some(JoinType::InnerJoin),
-                                Token::Left => Some(JoinType::LeftOuterJoin),
-                                Token::Right => Some(JoinType::RightOuterJoin),
-                                _ => unreachable!(),
-                            },
+                            Token::Join => Some(JoinType::InnerJoin),
+                            _ => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
+                                None
+                            }
+                        }
+                    }
+                }
+                Token::Left | Token::Right => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(current_token);
+                        return None;
+                    } else {
+                        let second_token = self.get_next_token();
+
+                        match second_token {
+                            Token::Join => Some(JoinType::InnerJoin),
+                            Token::Outer => {
+                                if !self.has_next_token() {
+                                    self.unget_next_token(second_token);
+                                    self.unget_next_token(current_token);
+                                    None
+                                } else {
+                                    let third_token = self.get_next_token();
+
+                                    match third_token {
+                                        Token::Join => match current_token {
+                                            Token::Left => Some(JoinType::LeftOuterJoin),
+                                            Token::Right => Some(JoinType::RightOuterJoin),
+                                            _ => unreachable!(),
+                                        },
+                                        _ => {
+                                            self.unget_next_token(third_token);
+                                            self.unget_next_token(second_token);
+                                            self.unget_next_token(current_token);
+                                            None
+                                        }
+                                    }
+                                }
+                            }
                             _ => {
                                 self.unget_next_token(second_token);
                                 self.unget_next_token(current_token);
