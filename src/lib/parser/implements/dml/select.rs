@@ -1,6 +1,8 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{JoinClause, JoinType, SQLStatement, SelectItem, SelectQuery};
+use crate::lib::ast::predule::{
+    JoinClause, JoinType, SQLStatement, SelectItem, SelectQuery, WhereClause,
+};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
@@ -95,9 +97,17 @@ impl Parser {
             query_builder = query_builder.add_join(join);
         }
 
-        // TODO: WHERE 절 파싱
+        // WHERE 절 파싱
+        if self.next_token_is_where() {
+            let where_clause = self.parse_where(context)?;
+            query_builder = query_builder.set_where(where_clause);
+        }
 
         // TODO: Order By 절 파싱
+
+        // TODO: Group By 절 파싱
+
+        // TODO: Having 절 파싱
 
         // TODO: Limit 절 파싱
 
@@ -199,5 +209,27 @@ impl Parser {
         };
 
         Ok(join)
+    }
+
+    pub(crate) fn parse_where(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<WhereClause, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0311 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Where {
+            return Err(ParsingError::boxed(format!(
+                "E0312 expected 'WHERE'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        let expression = self.parse_expression(context)?;
+
+        Ok(expression.into())
     }
 }
