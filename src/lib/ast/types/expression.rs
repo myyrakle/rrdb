@@ -1,6 +1,6 @@
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperatorExpression, CallExpression, NotBetweenExpression,
-    ParenthesesExpression, SQLStatement, SelectColumn, UnaryOperatorExpression,
+    ParenthesesExpression, SQLStatement, SelectColumn, UnaryOperatorExpression, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -28,6 +28,14 @@ impl SQLExpression {
         match self.clone() {
             Self::Unary(_) => true,
             _ => false,
+        }
+    }
+}
+
+impl Into<WhereClause> for SQLExpression {
+    fn into(self) -> WhereClause {
+        WhereClause {
+            expression: Some(Box::new(self)),
         }
     }
 }

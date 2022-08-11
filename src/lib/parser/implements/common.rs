@@ -496,6 +496,26 @@ impl Parser {
         }
     }
 
+    // 다음 토큰이 AS인지
+    pub(crate) fn next_token_is_where(&mut self) -> bool {
+        if !self.has_next_token() {
+            return false;
+        } else {
+            let current_token = self.get_next_token();
+
+            match current_token.clone() {
+                Token::Where => {
+                    self.unget_next_token(current_token);
+                    true
+                }
+                _ => {
+                    self.unget_next_token(current_token);
+                    false
+                }
+            }
+        }
+    }
+
     // 다음 토큰이 JOIN 토큰이라면 JOIN 타입을 추출해서 반환
     pub(crate) fn get_next_join_type(&mut self) -> Option<JoinType> {
         if !self.has_next_token() {

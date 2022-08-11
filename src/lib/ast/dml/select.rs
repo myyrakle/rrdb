@@ -63,6 +63,11 @@ impl SelectQuery {
         self
     }
 
+    pub fn set_where(mut self, where_clause: WhereClause) -> Self {
+        self.where_clause = Some(where_clause);
+        self
+    }
+
     pub fn build(self) -> SQLStatement {
         SQLStatement::DML(DMLStatement::SelectQuery(self))
     }
