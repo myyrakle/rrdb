@@ -5,6 +5,7 @@ pub struct GlobalConfig {
     pub databases: Vec<GlobalConfigDatabase>,
 }
 
+#[allow(clippy::derivable_impls)]
 impl std::default::Default for GlobalConfig {
     fn default() -> Self {
         Self { databases: vec![] }
