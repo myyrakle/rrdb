@@ -1,7 +1,8 @@
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    JoinClause, JoinType, SQLStatement, SelectItem, SelectQuery, WhereClause,
+    JoinClause, JoinType, OrderByClause, OrderByItem, OrderByType, SQLStatement, SelectItem,
+    SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -122,9 +123,8 @@ impl Parser {
                     }
                     Token::Comma => continue,
                     _ => {
-                        self.unget_next_token(current_token);
-                        let select_item = self.parse_select_item(context)?;
-                        query_builder = query_builder.add_select_item(select_item);
+                        let order_by_item = self.parse_order_by_item(context)?;
+                        query_builder = query_builder.add_order_by(order_by_item);
                     }
                 }
             }
@@ -192,6 +192,45 @@ impl Parser {
                 "E0308 expected expression. but your input word is '{:?}'",
                 current_token
             ))),
+        }
+    }
+
+    pub(crate) fn parse_order_by_item(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<OrderByItem, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0313 need more tokens"));
+        }
+
+        // 표현식 파싱
+        let item = self.parse_expression(context)?;
+
+        let mut order_by_item = OrderByItem {
+            item,
+            order_type: OrderByType::Asc,
+        };
+
+        // 더 없을 경우 바로 반환
+        if !self.has_next_token() {
+            return Ok(order_by_item);
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::Asc => {
+                order_by_item.order_type = OrderByType::Asc;
+                Ok(order_by_item)
+            }
+            Token::Desc => {
+                order_by_item.order_type = OrderByType::Desc;
+                Ok(order_by_item)
+            }
+            _ => {
+                self.unget_next_token(current_token);
+                Ok(order_by_item)
+            }
         }
     }
 
