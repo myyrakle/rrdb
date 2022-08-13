@@ -525,7 +525,7 @@ pub fn select_where_1() {
 pub fn select_order_by_1() {
     let text = r#"
         SELECT 
-            p.content as post
+            p.content as post1
         FROM post as p
         ORDER BY p.user_id ASC
     "#

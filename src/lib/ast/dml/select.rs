@@ -75,7 +75,7 @@ impl SelectQuery {
             }
             None => {
                 self.order_by_clause = Some(OrderByClause {
-                    order_by_items: vec![],
+                    order_by_items: vec![item],
                 })
             }
         }
