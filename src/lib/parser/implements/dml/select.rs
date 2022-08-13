@@ -103,7 +103,32 @@ impl Parser {
             query_builder = query_builder.set_where(where_clause);
         }
 
-        // TODO: Order By 절 파싱
+        // Order By 절 파싱
+        if self.next_token_is_order_by() {
+            // ORDER BY 삼킴
+            self.get_next_token();
+            self.get_next_token();
+
+            loop {
+                if !self.has_next_token() {
+                    break;
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::Comma => continue,
+                    _ => {
+                        self.unget_next_token(current_token);
+                        let select_item = self.parse_select_item(context)?;
+                        query_builder = query_builder.add_select_item(select_item);
+                    }
+                }
+            }
+        }
 
         // TODO: Group By 절 파싱
 

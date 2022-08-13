@@ -1,4 +1,13 @@
+use crate::lib::ast::predule::SQLExpression;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct OrderByClause {
-    // TODO: 항목 추가 정의 필요
+    pub expression: Box<SQLExpression>,
+    pub order_type: OrderByType,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum OrderByType {
+    AST,
+    DESC,
 }
