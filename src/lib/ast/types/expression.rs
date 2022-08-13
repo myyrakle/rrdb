@@ -25,6 +25,7 @@ pub enum SQLExpression {
 
 impl SQLExpression {
     pub fn is_unary(&self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
         match self.clone() {
             Self::Unary(_) => true,
             _ => false,

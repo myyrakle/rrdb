@@ -39,7 +39,7 @@ impl CreateTableQuery {
         }
     }
 
-    pub fn set_table<'a>(mut self, table: TableName) -> Self {
+    pub fn set_table(mut self, table: TableName) -> Self {
         self.table = Some(table);
         self
     }
