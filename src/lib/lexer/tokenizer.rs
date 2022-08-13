@@ -170,13 +170,11 @@ impl Tokenizer {
                 if self.is_digit() || self.is_dot() {
                     number_string.push(self.last_char);
                     continue;
+                } else if self.is_eof() {
+                    break;
                 } else {
-                    if self.is_eof() {
-                        break;
-                    } else {
-                        self.unread_char();
-                        break;
-                    }
+                    self.unread_char();
+                    break;
                 }
             }
 

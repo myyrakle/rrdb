@@ -5,6 +5,6 @@ pub struct FloatExpression {
 
 impl FloatExpression {
     pub fn new(value: f64) -> Self {
-        Self { value: value }
+        Self { value }
     }
 }
