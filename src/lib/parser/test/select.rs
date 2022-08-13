@@ -553,3 +553,40 @@ pub fn select_order_by_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected],);
 }
+
+#[test]
+pub fn select_order_by_2() {
+    let text = r#"
+        SELECT 
+            p.content as post
+        FROM post as p
+        ORDER BY p.user_id ASC, p.id DESC
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                .set_alias("post".into())
+                .build(),
+        )
+        .set_from_table(TableName {
+            database_name: None,
+            table_name: "post".into(),
+        })
+        .set_from_alias("p".into())
+        .add_order_by(OrderByItem {
+            item: SelectColumn::new(Some("p".into()), "content".into()).into(),
+            order_type: OrderByType::Asc,
+        })
+        .add_order_by(OrderByItem {
+            item: SelectColumn::new(Some("p".into()), "id".into()).into(),
+            order_type: OrderByType::Desc,
+        })
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
