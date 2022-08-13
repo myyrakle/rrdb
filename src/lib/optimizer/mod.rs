@@ -1,2 +1,2 @@
-pub mod optimizer;
+pub mod core;
 pub mod predule;

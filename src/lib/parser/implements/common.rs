@@ -192,17 +192,16 @@ impl Parser {
 
         // 첫번째로 오는 이름은 테이블명으로 추정
         let current_token = self.get_next_token();
-        let mut table_name;
         let mut database_name = None;
 
-        if let Token::Identifier(name) = current_token {
-            table_name = name;
+        let mut table_name = if let Token::Identifier(name) = current_token {
+            name
         } else {
             return Err(ParsingError::boxed(format!(
                 "E0030 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
-        }
+        };
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0011 need more tokens"));
@@ -258,22 +257,22 @@ impl Parser {
                 let current_token = self.get_next_token();
 
                 if Token::Exists == current_token {
-                    return Ok(true);
+                    Ok(true)
                 } else {
-                    return Err(ParsingError::boxed(format!(
+                    Err(ParsingError::boxed(format!(
                         "expected keyword is 'exists'. but your input word is '{:?}'",
                         current_token
-                    )));
+                    )))
                 }
             } else {
-                return Err(ParsingError::boxed(format!(
+                Err(ParsingError::boxed(format!(
                     "expected keyword is 'not'. but your input word is '{:?}'",
                     current_token
-                )));
+                )))
             }
         } else {
             self.unget_next_token(current_token);
-            return Ok(false);
+            Ok(false)
         }
     }
 
@@ -294,16 +293,16 @@ impl Parser {
             let current_token = self.get_next_token();
 
             if Token::Exists == current_token {
-                return Ok(true);
+                Ok(true)
             } else {
-                return Err(ParsingError::boxed(format!(
+                Err(ParsingError::boxed(format!(
                     "expected keyword is 'exists'. but your input word is '{:?}'",
                     current_token
-                )));
+                )))
             }
         } else {
             self.unget_next_token(current_token);
-            return Ok(false);
+            Ok(false)
         }
     }
 
@@ -327,7 +326,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Ok(select_column);
+            Ok(select_column)
         } else {
             let current_token = self.get_next_token();
 
@@ -337,16 +336,16 @@ impl Parser {
                 if let Token::Identifier(name) = current_token {
                     select_column.table_name = Some(select_column.column_name);
                     select_column.column_name = name;
-                    return Ok(select_column);
+                    Ok(select_column)
                 } else {
-                    return Err(ParsingError::boxed(format!(
+                    Err(ParsingError::boxed(format!(
                         "E0033 expected identifier. but your input word is '{:?}'",
                         current_token
-                    )));
+                    )))
                 }
             } else {
                 self.unget_next_token(current_token);
-                return Ok(select_column);
+                Ok(select_column)
             }
         }
     }
@@ -354,7 +353,7 @@ impl Parser {
     // 다음 토큰이 2항 연산자/키워드인지
     pub(crate) fn next_token_is_binary_operator(&mut self, context: ParserContext) -> bool {
         if !self.has_next_token() {
-            return false;
+            false
         } else {
             let current_token = self.get_next_token();
 
@@ -364,31 +363,28 @@ impl Parser {
             match current_token {
                 Token::And => {
                     // BETWEEN 파싱중이면서 괄호가 없는 상태라면 연산자가 아닌 것으로 간주.
+                    #[allow(clippy::needless_bool)]
                     if context.in_between_clause && !context.in_parentheses {
                         false
                     } else {
                         true
                     }
                 }
-                Token::Or | Token::Like => return true,
-                Token::Operator(operator) => {
-                    return [
-                        OperatorToken::Plus,
-                        OperatorToken::Minus,
-                        OperatorToken::Asterisk,
-                        OperatorToken::Slash,
-                        OperatorToken::Lt,
-                        OperatorToken::Lte,
-                        OperatorToken::Gt,
-                        OperatorToken::Gte,
-                        OperatorToken::Eq,
-                        OperatorToken::Neq,
-                    ]
-                    .contains(&operator)
-                }
-                _ => {
-                    return false;
-                }
+                Token::Or | Token::Like => true,
+                Token::Operator(operator) => [
+                    OperatorToken::Plus,
+                    OperatorToken::Minus,
+                    OperatorToken::Asterisk,
+                    OperatorToken::Slash,
+                    OperatorToken::Lt,
+                    OperatorToken::Lte,
+                    OperatorToken::Gt,
+                    OperatorToken::Gte,
+                    OperatorToken::Eq,
+                    OperatorToken::Neq,
+                ]
+                .contains(&operator),
+                _ => false,
             }
         }
     }
@@ -396,76 +392,76 @@ impl Parser {
     // 다음 토큰이 여는 괄호인지
     pub(crate) fn next_token_is_left_parentheses(&mut self) -> bool {
         if !self.has_next_token() {
-            return false;
+            false
         } else {
             let current_token = self.get_next_token();
 
             self.unget_next_token(current_token.clone());
 
-            return current_token == Token::LeftParentheses;
+            current_token == Token::LeftParentheses
         }
     }
 
     // 다음 토큰이 닫는 괄호인지
     pub(crate) fn next_token_is_right_parentheses(&mut self) -> bool {
         if !self.has_next_token() {
-            return false;
+            false
         } else {
             let current_token = self.get_next_token();
 
             self.unget_next_token(current_token.clone());
 
-            return current_token == Token::RightParentheses;
+            current_token == Token::RightParentheses
         }
     }
 
     // 다음 토큰이 쉼표인지
     pub(crate) fn next_token_is_comma(&mut self) -> bool {
         if !self.has_next_token() {
-            return false;
+            false
         } else {
             let current_token = self.get_next_token();
 
             self.unget_next_token(current_token.clone());
 
-            return current_token == Token::Comma;
+            current_token == Token::Comma
         }
     }
 
     // 다음 토큰이 여는 괄호인지
     pub(crate) fn next_token_is_between(&mut self) -> bool {
         if !self.has_next_token() {
-            return false;
+            false
         } else {
             let current_token = self.get_next_token();
 
-            match current_token.clone() {
+            match current_token {
                 Token::Between => {
-                    self.unget_next_token(current_token.clone());
+                    self.unget_next_token(current_token);
                     true
                 }
                 Token::Not => {
                     if !self.has_next_token() {
-                        self.unget_next_token(current_token.clone());
+                        self.unget_next_token(current_token);
                         false
                     } else {
                         let second_token = self.get_next_token();
                         match second_token.clone() {
                             Token::Between => {
-                                self.unget_next_token(second_token.clone());
-                                self.unget_next_token(current_token.clone());
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
                                 true
                             }
                             _ => {
-                                self.unget_next_token(second_token.clone());
-                                self.unget_next_token(current_token.clone());
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
                                 false
                             }
                         }
                     }
                 }
                 _ => {
-                    self.unget_next_token(current_token.clone());
+                    self.unget_next_token(current_token);
                     false
                 }
             }
@@ -475,7 +471,7 @@ impl Parser {
     // 다음 토큰이 AS인지
     pub(crate) fn next_token_is_table_alias(&mut self) -> bool {
         if !self.has_next_token() {
-            return false;
+            false
         } else {
             let current_token = self.get_next_token();
 
@@ -499,7 +495,7 @@ impl Parser {
     // 다음 토큰이 AS인지
     pub(crate) fn next_token_is_where(&mut self) -> bool {
         if !self.has_next_token() {
-            return false;
+            false
         } else {
             let current_token = self.get_next_token();
 
@@ -516,10 +512,47 @@ impl Parser {
         }
     }
 
+    // 다음 토큰이 ORDER BY인지
+    pub(crate) fn next_token_is_order_by(&mut self) -> bool {
+        if !self.has_next_token() {
+            false
+        } else {
+            let current_token = self.get_next_token();
+
+            match current_token {
+                Token::Order => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(current_token);
+                        return false;
+                    }
+
+                    let second_token = self.get_next_token();
+
+                    match second_token {
+                        Token::By => {
+                            self.unget_next_token(second_token);
+                            self.unget_next_token(current_token);
+                            true
+                        }
+                        _ => {
+                            self.unget_next_token(second_token);
+                            self.unget_next_token(current_token);
+                            false
+                        }
+                    }
+                }
+                _ => {
+                    self.unget_next_token(current_token);
+                    false
+                }
+            }
+        }
+    }
+
     // 다음 토큰이 JOIN 토큰이라면 JOIN 타입을 추출해서 반환
     pub(crate) fn get_next_join_type(&mut self) -> Option<JoinType> {
         if !self.has_next_token() {
-            return None;
+            None
         } else {
             let current_token = self.get_next_token();
 
@@ -527,7 +560,7 @@ impl Parser {
                 Token::Inner => {
                     if !self.has_next_token() {
                         self.unget_next_token(current_token);
-                        return None;
+                        None
                     } else {
                         let second_token = self.get_next_token();
 
@@ -544,7 +577,7 @@ impl Parser {
                 Token::Left | Token::Right => {
                     if !self.has_next_token() {
                         self.unget_next_token(current_token);
-                        return None;
+                        None
                     } else {
                         let second_token = self.get_next_token();
 
@@ -588,7 +621,7 @@ impl Parser {
                 Token::Full => {
                     if !self.has_next_token() {
                         self.unget_next_token(current_token);
-                        return None;
+                        None
                     } else {
                         let second_token = self.get_next_token();
 
@@ -597,7 +630,7 @@ impl Parser {
                             Token::Outer => {
                                 if !self.has_next_token() {
                                     self.unget_next_token(current_token);
-                                    return None;
+                                    None
                                 } else {
                                     let third_token = self.get_next_token();
 

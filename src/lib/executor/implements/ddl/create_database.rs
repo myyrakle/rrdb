@@ -15,7 +15,7 @@ impl Executor {
         let database_name = query
             .database_name
             .clone()
-            .ok_or(ExecuteError::boxed("no database name"))?;
+            .ok_or_else(|| ExecuteError::boxed("no database name"))?;
 
         database_path.push(&database_name);
         tokio::fs::create_dir(database_path.clone()).await?;

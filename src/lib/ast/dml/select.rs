@@ -1,6 +1,6 @@
 use crate::lib::ast::predule::{
-    DMLStatement, FromClause, GroupByClause, JoinClause, OrderByClause, SQLStatement, SelectItem,
-    TableName, WhereClause,
+    DMLStatement, FromClause, GroupByClause, JoinClause, OrderByClause, OrderByItem, SQLStatement,
+    SelectItem, TableName, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -65,6 +65,21 @@ impl SelectQuery {
 
     pub fn set_where(mut self, where_clause: WhereClause) -> Self {
         self.where_clause = Some(where_clause);
+        self
+    }
+
+    pub fn add_order_by(mut self, item: OrderByItem) -> Self {
+        match self.order_by_clause {
+            Some(ref mut order_by_clause) => {
+                order_by_clause.order_by_items.push(item);
+            }
+            None => {
+                self.order_by_clause = Some(OrderByClause {
+                    order_by_items: vec![item],
+                })
+            }
+        }
+
         self
     }
 

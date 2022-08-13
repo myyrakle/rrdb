@@ -25,6 +25,7 @@ pub enum SQLExpression {
 
 impl SQLExpression {
     pub fn is_unary(&self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
         match self.clone() {
             Self::Unary(_) => true,
             _ => false,
@@ -32,10 +33,10 @@ impl SQLExpression {
     }
 }
 
-impl Into<WhereClause> for SQLExpression {
-    fn into(self) -> WhereClause {
+impl From<SQLExpression> for WhereClause {
+    fn from(value: SQLExpression) -> WhereClause {
         WhereClause {
-            expression: Some(Box::new(self)),
+            expression: Some(Box::new(value)),
         }
     }
 }

@@ -8,20 +8,20 @@ pub struct BetweenExpression {
     pub y: SQLExpression,
 }
 
-impl Into<SQLExpression> for BetweenExpression {
-    fn into(self) -> SQLExpression {
-        SQLExpression::Between(Box::new(self))
+impl From<BetweenExpression> for SQLExpression {
+    fn from(value: BetweenExpression) -> SQLExpression {
+        SQLExpression::Between(Box::new(value))
     }
 }
 
-impl Into<SQLExpression> for Box<BetweenExpression> {
-    fn into(self) -> SQLExpression {
-        SQLExpression::Between(self)
+impl From<Box<BetweenExpression>> for SQLExpression {
+    fn from(value: Box<BetweenExpression>) -> SQLExpression {
+        SQLExpression::Between(value)
     }
 }
 
-impl Into<Option<Box<SQLExpression>>> for BetweenExpression {
-    fn into(self) -> Option<Box<SQLExpression>> {
-        Some(Box::new(SQLExpression::Between(Box::new(self))))
+impl From<BetweenExpression> for Option<Box<SQLExpression>> {
+    fn from(value: BetweenExpression) -> Option<Box<SQLExpression>> {
+        Some(Box::new(SQLExpression::Between(Box::new(value))))
     }
 }

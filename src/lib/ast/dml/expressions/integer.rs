@@ -5,6 +5,6 @@ pub struct IntegerExpression {
 
 impl IntegerExpression {
     pub fn new(value: i64) -> Self {
-        Self { value: value }
+        Self { value }
     }
 }

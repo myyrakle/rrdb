@@ -29,12 +29,12 @@ impl Parser {
                     let operator: UnaryOperator = operator.try_into()?;
                     let expression = self.parse_unary_expression(operator, context)?;
 
-                    return Ok(expression);
+                    Ok(expression)
                 } else {
-                    return Err(ParsingError::boxed(format!(
+                    Err(ParsingError::boxed(format!(
                         "E0212 unexpected operator: {:?}",
                         operator
-                    )));
+                    )))
                 }
             }
             Token::Not => {
@@ -42,19 +42,19 @@ impl Parser {
 
                 let expression = self.parse_unary_expression(operator, context)?;
 
-                return Ok(expression);
+                Ok(expression)
             }
             Token::Integer(integer) => {
                 let lhs = SQLExpression::Integer(integer);
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else if self.next_token_is_between() {
                     let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else {
-                    return Ok(lhs);
+                    Ok(lhs)
                 }
             }
             Token::Float(float) => {
@@ -62,12 +62,12 @@ impl Parser {
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else if self.next_token_is_between() {
                     let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else {
-                    return Ok(lhs);
+                    Ok(lhs)
                 }
             }
 
@@ -76,12 +76,12 @@ impl Parser {
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else if self.next_token_is_between() {
                     let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else {
-                    return Ok(lhs);
+                    Ok(lhs)
                 }
             }
             Token::Boolean(boolean) => {
@@ -89,12 +89,12 @@ impl Parser {
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else if self.next_token_is_between() {
                     let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else {
-                    return Ok(lhs);
+                    Ok(lhs)
                 }
             }
             Token::Null => {
@@ -102,26 +102,24 @@ impl Parser {
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else if self.next_token_is_between() {
                     let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else {
-                    return Ok(lhs);
+                    Ok(lhs)
                 }
             }
             Token::LeftParentheses => {
                 self.unget_next_token(current_token);
                 let expression = self.parse_parentheses_expression(context)?;
 
-                return Ok(expression);
+                Ok(expression)
             }
-            Token::RightParentheses => {
-                return Err(ParsingError::boxed(format!(
-                    "E0213 unexpected token: {:?}",
-                    current_token
-                )));
-            }
+            Token::RightParentheses => Err(ParsingError::boxed(format!(
+                "E0213 unexpected token: {:?}",
+                current_token
+            ))),
             Token::Identifier(identifier) => {
                 self.unget_next_token(Token::Identifier(identifier));
                 let select_column = self.parse_select_column()?;
@@ -130,10 +128,10 @@ impl Parser {
 
                 if self.next_token_is_binary_operator(context) {
                     let expression = self.parse_binary_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else if self.next_token_is_between() {
                     let expression = self.parse_between_expression(lhs, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else if self.next_token_is_left_parentheses() {
                     let SelectColumn {
                         table_name,
@@ -142,17 +140,15 @@ impl Parser {
 
                     let expression =
                         self.parse_function_call_expression(table_name, column_name, context)?;
-                    return Ok(expression);
+                    Ok(expression)
                 } else {
-                    return Ok(lhs);
+                    Ok(lhs)
                 }
             }
-            _ => {
-                return Err(ParsingError::boxed(format!(
-                    "E0202 unexpected token: {:?}",
-                    current_token
-                )));
-            }
+            _ => Err(ParsingError::boxed(format!(
+                "E0202 unexpected token: {:?}",
+                current_token
+            ))),
         }
     }
 
@@ -176,7 +172,7 @@ impl Parser {
                 }
                 .into();
 
-                return Ok(binary.into());
+                Ok(binary.into())
             }
             SQLExpression::Between(mut between) => {
                 between.a = UnaryOperatorExpression {
@@ -185,15 +181,13 @@ impl Parser {
                 }
                 .into();
 
-                return Ok(between.into());
+                Ok(between.into())
             }
-            _ => {
-                return Ok(UnaryOperatorExpression {
-                    operand: expression,
-                    operator,
-                }
-                .into());
+            _ => Ok(UnaryOperatorExpression {
+                operand: expression,
+                operator,
             }
+            .into()),
         }
     }
 
@@ -290,18 +284,18 @@ impl Parser {
                             rhs: rhs_binary.lhs,
                             operator,
                         };
-                        return Ok(BinaryOperatorExpression {
+                        Ok(BinaryOperatorExpression {
                             lhs: new_lhs.into(),
                             rhs: rhs_binary.rhs,
                             operator: rhs_binary.operator,
                         }
-                        .into());
+                        .into())
                     }
                     // 2항연산식일 경우
                     else {
                         // 오른쪽 연산자의 우선순위가 더 크거나, 소괄호가 있을 경우 오른쪽을 먼저 묶어서 바인딩
                         if next_precedence > current_precedence || rhs_has_parentheses {
-                            return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
+                            Ok(BinaryOperatorExpression { lhs, rhs, operator }.into())
                         }
                         // 아니라면 왼쪽으로 묶어서 바인딩
                         else {
@@ -310,21 +304,19 @@ impl Parser {
                                 rhs: rhs_binary.lhs,
                                 operator,
                             };
-                            return Ok(BinaryOperatorExpression {
+                            Ok(BinaryOperatorExpression {
                                 lhs: new_lhs.into(),
                                 rhs: rhs_binary.rhs,
                                 operator: rhs_binary.operator,
                             }
-                            .into());
+                            .into())
                         }
                     }
                 } else {
-                    return Ok(BinaryOperatorExpression { lhs, rhs, operator }.into());
+                    Ok(BinaryOperatorExpression { lhs, rhs, operator }.into())
                 }
             }
-            Err(error) => {
-                return Err(error);
-            }
+            Err(error) => Err(error),
         }
     }
 
@@ -424,7 +416,7 @@ impl Parser {
 
                 let expression = BetweenExpression { a, x, y };
 
-                return Ok(expression.into());
+                Ok(expression.into())
             }
             Token::Not => {
                 if !self.has_next_token() {
@@ -444,22 +436,18 @@ impl Parser {
 
                         let expression = NotBetweenExpression { a, x, y };
 
-                        return Ok(expression.into());
+                        Ok(expression.into())
                     }
-                    _ => {
-                        return Err(ParsingError::boxed(format!(
-                            "expected between. but your input is {:?}",
-                            current_token
-                        )));
-                    }
+                    _ => Err(ParsingError::boxed(format!(
+                        "expected between. but your input is {:?}",
+                        current_token
+                    ))),
                 }
             }
-            _ => {
-                return Err(ParsingError::boxed(format!(
-                    "expected between. but your input is {:?}",
-                    current_token
-                )));
-            }
+            _ => Err(ParsingError::boxed(format!(
+                "expected between. but your input is {:?}",
+                current_token
+            ))),
         }
     }
 }

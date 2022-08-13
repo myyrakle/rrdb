@@ -15,6 +15,6 @@ impl Parser {
 
     // 다음 토큰 유무 확인
     pub(crate) fn has_next_token(&self) -> bool {
-        self.tokens.len() != 0 && !self.tokens.front().unwrap().is_eof()
+        !self.tokens.is_empty() && !self.tokens.front().unwrap().is_eof()
     }
 }

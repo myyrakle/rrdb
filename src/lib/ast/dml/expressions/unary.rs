@@ -6,14 +6,14 @@ pub struct UnaryOperatorExpression {
     pub operand: SQLExpression,
 }
 
-impl Into<SQLExpression> for UnaryOperatorExpression {
-    fn into(self) -> SQLExpression {
-        SQLExpression::Unary(Box::new(self))
+impl From<UnaryOperatorExpression> for SQLExpression {
+    fn from(value: UnaryOperatorExpression) -> SQLExpression {
+        SQLExpression::Unary(Box::new(value))
     }
 }
 
-impl Into<Option<Box<SQLExpression>>> for UnaryOperatorExpression {
-    fn into(self) -> Option<Box<SQLExpression>> {
-        Some(Box::new(SQLExpression::Unary(Box::new(self))))
+impl From<UnaryOperatorExpression> for Option<Box<SQLExpression>> {
+    fn from(value: UnaryOperatorExpression) -> Option<Box<SQLExpression>> {
+        Some(Box::new(SQLExpression::Unary(Box::new(value))))
     }
 }

@@ -1,7 +1,8 @@
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    JoinClause, JoinType, SQLStatement, SelectItem, SelectQuery, WhereClause,
+    JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement, SelectItem, SelectQuery,
+    WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -12,8 +13,6 @@ impl Parser {
         &mut self,
         context: ParserContext,
     ) -> Result<SQLStatement, Box<dyn Error>> {
-        self.show_tokens();
-
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0301: need more tokens"));
         }
@@ -103,7 +102,32 @@ impl Parser {
             query_builder = query_builder.set_where(where_clause);
         }
 
-        // TODO: Order By 절 파싱
+        // Order By 절 파싱
+        if self.next_token_is_order_by() {
+            // ORDER BY 삼킴
+            self.get_next_token();
+            self.get_next_token();
+
+            loop {
+                if !self.has_next_token() {
+                    break;
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::Comma => continue,
+                    _ => {
+                        self.unget_next_token(current_token);
+                        let order_by_item = self.parse_order_by_item(context)?;
+                        query_builder = query_builder.add_order_by(order_by_item);
+                    }
+                }
+            }
+        }
 
         // TODO: Group By 절 파싱
 
@@ -140,9 +164,7 @@ impl Parser {
             Token::As => {
                 // 더 없을 경우 바로 반환
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed(format!(
-                        "E0306 expected alias. need more",
-                    )));
+                    return Err(ParsingError::boxed("E0306 expected alias. need more"));
                 }
 
                 let current_token = self.get_next_token();
@@ -167,6 +189,45 @@ impl Parser {
                 "E0308 expected expression. but your input word is '{:?}'",
                 current_token
             ))),
+        }
+    }
+
+    pub(crate) fn parse_order_by_item(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<OrderByItem, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0313 need more tokens"));
+        }
+
+        // 표현식 파싱
+        let item = self.parse_expression(context)?;
+
+        let mut order_by_item = OrderByItem {
+            item,
+            order_type: OrderByType::Asc,
+        };
+
+        // 더 없을 경우 바로 반환
+        if !self.has_next_token() {
+            return Ok(order_by_item);
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::Asc => {
+                order_by_item.order_type = OrderByType::Asc;
+                Ok(order_by_item)
+            }
+            Token::Desc => {
+                order_by_item.order_type = OrderByType::Desc;
+                Ok(order_by_item)
+            }
+            _ => {
+                self.unget_next_token(current_token);
+                Ok(order_by_item)
+            }
         }
     }
 

@@ -7,26 +7,26 @@ pub struct BinaryOperatorExpression {
     pub rhs: SQLExpression,
 }
 
-impl Into<SQLExpression> for BinaryOperatorExpression {
-    fn into(self) -> SQLExpression {
-        SQLExpression::Binary(Box::new(self))
+impl From<BinaryOperatorExpression> for SQLExpression {
+    fn from(value: BinaryOperatorExpression) -> SQLExpression {
+        SQLExpression::Binary(Box::new(value))
     }
 }
 
-impl Into<SQLExpression> for Box<BinaryOperatorExpression> {
-    fn into(self) -> SQLExpression {
-        SQLExpression::Binary(self)
+impl From<Box<BinaryOperatorExpression>> for SQLExpression {
+    fn from(value: Box<BinaryOperatorExpression>) -> SQLExpression {
+        SQLExpression::Binary(value)
     }
 }
 
-impl Into<Option<SQLExpression>> for BinaryOperatorExpression {
-    fn into(self) -> Option<SQLExpression> {
-        Some(SQLExpression::Binary(Box::new(self)))
+impl From<BinaryOperatorExpression> for Option<SQLExpression> {
+    fn from(value: BinaryOperatorExpression) -> Option<SQLExpression> {
+        Some(SQLExpression::Binary(Box::new(value)))
     }
 }
 
-impl Into<Option<Box<SQLExpression>>> for BinaryOperatorExpression {
-    fn into(self) -> Option<Box<SQLExpression>> {
-        Some(Box::new(SQLExpression::Binary(Box::new(self))))
+impl From<BinaryOperatorExpression> for Option<Box<SQLExpression>> {
+    fn from(value: BinaryOperatorExpression) -> Option<Box<SQLExpression>> {
+        Some(Box::new(SQLExpression::Binary(Box::new(value))))
     }
 }

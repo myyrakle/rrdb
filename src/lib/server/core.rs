@@ -19,7 +19,7 @@ async fn process_query(query: String) -> Result<(), Box<dyn std::error::Error>> 
     for ast in ast_list {
         match ast {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
-                return Ok(executor.create_database(query).await?);
+                return executor.create_database(query).await;
             }
             _ => {
                 println!("?: {:?}", ast);

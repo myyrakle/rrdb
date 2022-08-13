@@ -95,6 +95,7 @@ pub enum Token {
 
 impl Token {
     pub fn is_eof(&self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
         match self {
             Token::EOF => true,
             _ => false,
@@ -107,9 +108,7 @@ impl TryInto<BinaryOperator> for Token {
 
     fn try_into(self) -> Result<BinaryOperator, Box<dyn Error>> {
         match self {
-            Token::Operator(operator) => {
-                return operator.try_into();
-            }
+            Token::Operator(operator) => operator.try_into(),
             Token::And => Ok(BinaryOperator::And),
             Token::Or => Ok(BinaryOperator::Or),
             Token::Like => Ok(BinaryOperator::Like),

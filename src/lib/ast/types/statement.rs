@@ -33,10 +33,10 @@ pub enum DMLStatement {
 #[derive(Clone, Debug, PartialEq)]
 pub enum DCLStatement {}
 
-impl Into<FromClause> for SQLStatement {
-    fn into(self) -> FromClause {
+impl From<SQLStatement> for FromClause {
+    fn from(value: SQLStatement) -> FromClause {
         FromClause {
-            from: FromTarget::Subquery(Box::new(self)),
+            from: FromTarget::Subquery(Box::new(value)),
             alias: None,
         }
     }
