@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         SubCommand::Run(run) => {
             let server_option = ServerOption {
                 port: run.value.port.unwrap_or(DEFAULT_PORT),
-                host: run.value.host.unwrap_or(DEFAULT_HOST.into()),
+                host: run.value.host.unwrap_or_else(|| DEFAULT_HOST.into()),
             };
             let server = Server::new(server_option);
 

@@ -33,14 +33,10 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Table => {
-                return self.handle_alter_table_query();
-            }
-            _ => {
-                return Err(ParsingError::boxed(
-                    "not supported command. possible commands: (alter table)",
-                ));
-            }
+            Token::Table => self.handle_alter_table_query(),
+            _ => Err(ParsingError::boxed(
+                "not supported command. possible commands: (alter table)",
+            )),
         }
     }
 
@@ -52,17 +48,11 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Table => {
-                return self.handle_drop_table_query();
-            }
-            Token::Database => {
-                return self.handle_drop_database_query();
-            }
-            _ => {
-                return Err(ParsingError::boxed(
-                    "not supported command. possible commands: (create table)",
-                ));
-            }
+            Token::Table => self.handle_drop_table_query(),
+            Token::Database => self.handle_drop_database_query(),
+            _ => Err(ParsingError::boxed(
+                "not supported command. possible commands: (create table)",
+            )),
         }
     }
 }

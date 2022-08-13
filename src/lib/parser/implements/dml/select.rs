@@ -164,9 +164,7 @@ impl Parser {
             Token::As => {
                 // 더 없을 경우 바로 반환
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed(format!(
-                        "E0306 expected alias. need more",
-                    )));
+                    return Err(ParsingError::boxed("E0306 expected alias. need more"));
                 }
 
                 let current_token = self.get_next_token();

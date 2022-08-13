@@ -78,7 +78,7 @@ impl Tokenizer {
 
     // 보관했던 문자 하나를 다시 버퍼에 돌려놓습니다.
     pub fn unread_char(&mut self) {
-        if self.buffer_index <= 0 {
+        if self.buffer_index == 0 {
             self.last_char = ' ';
         } else {
             self.buffer_index -= 1;

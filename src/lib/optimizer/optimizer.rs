@@ -5,3 +5,9 @@ impl Optimizer {
         Self {}
     }
 }
+
+impl Default for Optimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}

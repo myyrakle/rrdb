@@ -64,7 +64,7 @@ impl ColumnBuilder {
         Column {
             name: self.name.unwrap(),
             data_type: self.data_type.unwrap(),
-            comment: self.comment.unwrap_or("".into()),
+            comment: self.comment.unwrap_or_else(|| "".into()),
             default: self.default,
             not_null: self.not_null.unwrap_or(false),
             primary_key: self.primary_key.unwrap_or(false),
