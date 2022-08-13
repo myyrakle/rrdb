@@ -95,6 +95,7 @@ pub enum Token {
 
 impl Token {
     pub fn is_eof(&self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
         match self {
             Token::EOF => true,
             _ => false,

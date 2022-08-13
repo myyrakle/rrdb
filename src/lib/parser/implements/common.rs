@@ -287,7 +287,7 @@ impl Parser {
 
         if Token::If == current_token {
             if !self.has_next_token() {
-                Err(ParsingError::boxed("E0017 need more tokens"))
+                return Err(ParsingError::boxed("E0017 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -326,7 +326,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Ok(select_column);
+            Ok(select_column)
         } else {
             let current_token = self.get_next_token();
 
@@ -336,16 +336,16 @@ impl Parser {
                 if let Token::Identifier(name) = current_token {
                     select_column.table_name = Some(select_column.column_name);
                     select_column.column_name = name;
-                    return Ok(select_column);
+                    Ok(select_column)
                 } else {
-                    return Err(ParsingError::boxed(format!(
+                    Err(ParsingError::boxed(format!(
                         "E0033 expected identifier. but your input word is '{:?}'",
                         current_token
-                    )));
+                    )))
                 }
             } else {
                 self.unget_next_token(current_token);
-                return Ok(select_column);
+                Ok(select_column)
             }
         }
     }
@@ -363,6 +363,7 @@ impl Parser {
             match current_token {
                 Token::And => {
                     // BETWEEN 파싱중이면서 괄호가 없는 상태라면 연산자가 아닌 것으로 간주.
+                    #[allow(clippy::needless_bool)]
                     if context.in_between_clause && !context.in_parentheses {
                         false
                     } else {
@@ -434,33 +435,33 @@ impl Parser {
         } else {
             let current_token = self.get_next_token();
 
-            match current_token.clone() {
+            match current_token {
                 Token::Between => {
-                    self.unget_next_token(current_token.clone());
+                    self.unget_next_token(current_token);
                     true
                 }
                 Token::Not => {
                     if !self.has_next_token() {
-                        self.unget_next_token(current_token.clone());
+                        self.unget_next_token(current_token);
                         false
                     } else {
                         let second_token = self.get_next_token();
                         match second_token.clone() {
                             Token::Between => {
-                                self.unget_next_token(second_token.clone());
-                                self.unget_next_token(current_token.clone());
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
                                 true
                             }
                             _ => {
-                                self.unget_next_token(second_token.clone());
-                                self.unget_next_token(current_token.clone());
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
                                 false
                             }
                         }
                     }
                 }
                 _ => {
-                    self.unget_next_token(current_token.clone());
+                    self.unget_next_token(current_token);
                     false
                 }
             }
