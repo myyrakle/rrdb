@@ -17,10 +17,10 @@ impl TableName {
     }
 }
 
-impl Into<FromClause> for TableName {
-    fn into(self) -> FromClause {
+impl From<TableName> for FromClause {
+    fn from(value: TableName) -> FromClause {
         FromClause {
-            from: FromTarget::Table(self),
+            from: FromTarget::Table(value),
             alias: None,
         }
     }

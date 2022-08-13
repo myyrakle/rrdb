@@ -8,14 +8,14 @@ pub struct NotBetweenExpression {
     pub y: SQLExpression,
 }
 
-impl Into<SQLExpression> for NotBetweenExpression {
-    fn into(self) -> SQLExpression {
-        SQLExpression::NotBetween(Box::new(self))
+impl From<NotBetweenExpression> for SQLExpression {
+    fn from(value: NotBetweenExpression) -> SQLExpression {
+        SQLExpression::NotBetween(Box::new(value))
     }
 }
 
-impl Into<SQLExpression> for Box<NotBetweenExpression> {
-    fn into(self) -> SQLExpression {
-        SQLExpression::NotBetween(self)
+impl From<Box<NotBetweenExpression>> for SQLExpression {
+    fn from(value: Box<NotBetweenExpression>) -> SQLExpression {
+        SQLExpression::NotBetween(value)
     }
 }

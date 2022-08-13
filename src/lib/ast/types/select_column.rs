@@ -17,8 +17,8 @@ impl SelectColumn {
     }
 }
 
-impl Into<SQLExpression> for SelectColumn {
-    fn into(self) -> SQLExpression {
-        SQLExpression::SelectColumn(self)
+impl From<SelectColumn> for SQLExpression {
+    fn from(value: SelectColumn) -> SQLExpression {
+        SQLExpression::SelectColumn(value)
     }
 }

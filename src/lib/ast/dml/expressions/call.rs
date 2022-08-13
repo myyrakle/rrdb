@@ -6,8 +6,8 @@ pub struct CallExpression {
     pub arguments: Vec<SQLExpression>,
 }
 
-impl Into<SQLExpression> for CallExpression {
-    fn into(self) -> SQLExpression {
-        SQLExpression::FunctionCall(self)
+impl From<CallExpression> for SQLExpression {
+    fn from(value: CallExpression) -> SQLExpression {
+        SQLExpression::FunctionCall(value)
     }
 }

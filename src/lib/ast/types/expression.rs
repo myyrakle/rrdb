@@ -32,10 +32,10 @@ impl SQLExpression {
     }
 }
 
-impl Into<WhereClause> for SQLExpression {
-    fn into(self) -> WhereClause {
+impl From<SQLExpression> for WhereClause {
+    fn from(value: SQLExpression) -> WhereClause {
         WhereClause {
-            expression: Some(Box::new(self)),
+            expression: Some(Box::new(value)),
         }
     }
 }
