@@ -525,7 +525,7 @@ pub fn select_where_1() {
 pub fn select_order_by_1() {
     let text = r#"
         SELECT 
-            p.content as post1
+            p.content as post
         FROM post as p
         ORDER BY p.user_id ASC
     "#
@@ -546,7 +546,7 @@ pub fn select_order_by_1() {
         })
         .set_from_alias("p".into())
         .add_order_by(OrderByItem {
-            item: SelectColumn::new(Some("p".into()), "content".into()).into(),
+            item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
             order_type: OrderByType::Asc,
         })
         .build();
@@ -579,7 +579,7 @@ pub fn select_order_by_2() {
         })
         .set_from_alias("p".into())
         .add_order_by(OrderByItem {
-            item: SelectColumn::new(Some("p".into()), "content".into()).into(),
+            item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
             order_type: OrderByType::Asc,
         })
         .add_order_by(OrderByItem {
