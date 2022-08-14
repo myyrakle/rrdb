@@ -192,8 +192,24 @@ impl Parser {
         }
 
         // Limit & Offset 절 파싱
-        if self.next_token_is_offset() {}
-        if self.next_token_is_limit() {}
+        // Offset이 먼저인 경우와, Limit이 먼저인 경우 둘다 대응
+        if self.next_token_is_offset() {
+            let offset = self.parse_offset(context)?;
+            query_builder = query_builder.set_offset(offset);
+
+            if self.next_token_is_limit() {
+                let limit = self.parse_limit(context)?;
+                query_builder = query_builder.set_limit(limit);
+            }
+        } else if self.next_token_is_limit() {
+            let limit = self.parse_limit(context)?;
+            query_builder = query_builder.set_limit(limit);
+
+            if self.next_token_is_offset() {
+                let offset = self.parse_offset(context)?;
+                query_builder = query_builder.set_offset(offset);
+            }
+        }
 
         Ok(query_builder.build())
     }
