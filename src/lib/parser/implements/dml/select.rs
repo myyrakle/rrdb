@@ -120,10 +120,21 @@ impl Parser {
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
-                    _ => {
+                    Token::Group | Token::Limit | Token::Offset => {
                         self.unget_next_token(current_token);
-                        let order_by_item = self.parse_order_by_item(context)?;
-                        query_builder = query_builder.add_order_by(order_by_item);
+                        break;
+                    }
+                    _ => {
+                        if current_token.is_expression() {
+                            self.unget_next_token(current_token);
+                            let order_by_item = self.parse_order_by_item(context)?;
+                            query_builder = query_builder.add_order_by(order_by_item);
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E0318 unexpected token '{:?}'",
+                                current_token
+                            )));
+                        }
                     }
                 }
             }
@@ -147,11 +158,21 @@ impl Parser {
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
-                    Token::Having | Token::Limit | Token::Offset => break,
-                    _ => {
+                    Token::Having | Token::Limit | Token::Offset => {
                         self.unget_next_token(current_token);
-                        let group_by_item = self.parse_group_by_item(context)?;
-                        query_builder = query_builder.add_group_by(group_by_item);
+                        break;
+                    }
+                    _ => {
+                        if current_token.is_expression() {
+                            self.unget_next_token(current_token);
+                            let group_by_item = self.parse_group_by_item(context)?;
+                            query_builder = query_builder.add_group_by(group_by_item);
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E0319 unexpected token '{:?}'",
+                                current_token
+                            )));
+                        }
                     }
                 }
             }

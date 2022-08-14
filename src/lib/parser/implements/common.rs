@@ -594,7 +594,10 @@ impl Parser {
             let current_token = self.get_next_token();
 
             match current_token {
-                Token::Having => true,
+                Token::Having => {
+                    self.unget_next_token(current_token);
+                    true
+                }
                 _ => {
                     self.unget_next_token(current_token);
                     false

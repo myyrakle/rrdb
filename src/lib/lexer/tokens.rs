@@ -102,6 +102,13 @@ impl Token {
         }
     }
 
+    pub fn is_unary_operator(&self) -> bool {
+        match self {
+            Token::Operator(operator) => operator.is_unary_operator(),
+            _ => false,
+        }
+    }
+
     pub fn is_expression(&self) -> bool {
         match self {
             Token::Identifier(_)
@@ -111,6 +118,7 @@ impl Token {
             | Token::String(_)
             | Token::Null
             | Token::Not => true,
+            Token::Operator(operator) => operator.is_unary_operator(),
             _ => false,
         }
     }
