@@ -392,7 +392,7 @@ impl Parser {
         })
     }
 
-    pub(crate) fn parse_offset(&mut self, context: ParserContext) -> Result<u32, Box<dyn Error>> {
+    pub(crate) fn parse_offset(&mut self, _context: ParserContext) -> Result<u32, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0320 need more tokens"));
         }
@@ -427,6 +427,47 @@ impl Parser {
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "E0324 expected positive numbers. but your input word is '{:?}'",
+                    current_token
+                )));
+            }
+        }
+    }
+
+    pub(crate) fn parse_limit(&mut self, _context: ParserContext) -> Result<u32, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0325 need more tokens"));
+        }
+
+        // OFFSET 삼키기
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Offset {
+            return Err(ParsingError::boxed(format!(
+                "E0326 expected 'Limit'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        // OFFSET 숫자값 획득
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0327 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::Integer(integer) => {
+                if integer >= 0 {
+                    Ok(integer as u32)
+                } else {
+                    Err(ParsingError::boxed(
+                        "E0327 Limit can only contain positive numbers.",
+                    ))
+                }
+            }
+            _ => {
+                return Err(ParsingError::boxed(format!(
+                    "E0328 expected positive numbers. but your input word is '{:?}'",
                     current_token
                 )));
             }
