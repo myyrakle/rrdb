@@ -1,6 +1,7 @@
 use crate::lib::ast::predule::{
-    DMLStatement, FromClause, GroupByClause, GroupByItem, HavingClause, JoinClause, OrderByClause,
-    OrderByItem, SQLStatement, SelectItem, TableName, WhereClause,
+    DMLStatement, FromClause, FromTarget, GroupByClause, GroupByItem, HavingClause, JoinClause,
+    OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectItem, SubqueryExpression,
+    TableName, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -45,8 +46,11 @@ impl SelectQuery {
         self.from_table.is_some()
     }
 
-    pub fn set_from_subquery(mut self, from: SQLStatement) -> Self {
-        self.from_table = Some(from.into());
+    pub fn set_from_subquery(mut self, from: SubqueryExpression) -> Self {
+        self.from_table = Some(FromClause {
+            from: FromTarget::Subquery(from),
+            alias: None,
+        });
         self
     }
 
@@ -122,7 +126,25 @@ impl SelectQuery {
         self
     }
 
-    pub fn build(self) -> SQLStatement {
-        SQLStatement::DML(DMLStatement::SelectQuery(self))
+    pub fn build(self) -> SelectQuery {
+        self
+    }
+}
+
+impl From<SelectQuery> for SQLStatement {
+    fn from(value: SelectQuery) -> SQLStatement {
+        SQLStatement::DML(DMLStatement::SelectQuery(value))
+    }
+}
+
+impl From<SelectQuery> for SubqueryExpression {
+    fn from(value: SelectQuery) -> SubqueryExpression {
+        SubqueryExpression::Select(Box::new(value))
+    }
+}
+
+impl From<SelectQuery> for SQLExpression {
+    fn from(value: SelectQuery) -> SQLExpression {
+        SQLExpression::Subquery(SubqueryExpression::Select(Box::new(value)))
     }
 }

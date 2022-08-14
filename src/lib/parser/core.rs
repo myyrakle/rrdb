@@ -50,11 +50,11 @@ impl Parser {
                     Token::Select => {
                         self.unget_next_token(current_token);
                         let query = self.handle_select_query(ParserContext::default())?;
-                        statements.push(query);
+                        statements.push(query.into());
                     }
-                    Token::Update => statements.push(self.handle_update_query()?),
-                    Token::Insert => statements.push(self.handle_insert_query()?),
-                    Token::Delete => statements.push(self.handle_delete_query()?),
+                    Token::Update => statements.push(self.handle_update_query()?.into()),
+                    Token::Insert => statements.push(self.handle_insert_query()?.into()),
+                    Token::Delete => statements.push(self.handle_delete_query()?.into()),
                     Token::Operator(operator) if operator == OperatorToken::Slash => {
                         // TODO: 추후 구현 필요. \c, \d 등...
                         continue;

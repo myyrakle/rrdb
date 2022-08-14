@@ -117,6 +117,7 @@ impl Token {
             | Token::Boolean(_)
             | Token::String(_)
             | Token::Null
+            | Token::LeftParentheses
             | Token::Not => true,
             Token::Operator(operator) => operator.is_unary_operator(),
             _ => false,
