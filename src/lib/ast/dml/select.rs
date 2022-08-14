@@ -1,6 +1,6 @@
 use crate::lib::ast::predule::{
-    DMLStatement, FromClause, GroupByClause, JoinClause, OrderByClause, OrderByItem, SQLStatement,
-    SelectItem, TableName, WhereClause,
+    DMLStatement, FromClause, GroupByClause, GroupByItem, JoinClause, OrderByClause, OrderByItem,
+    SQLStatement, SelectItem, TableName, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -76,6 +76,21 @@ impl SelectQuery {
             None => {
                 self.order_by_clause = Some(OrderByClause {
                     order_by_items: vec![item],
+                })
+            }
+        }
+
+        self
+    }
+
+    pub fn add_group_by(mut self, item: GroupByItem) -> Self {
+        match self.group_by_clause {
+            Some(ref mut group_by_clause) => {
+                group_by_clause.group_by_items.push(item);
+            }
+            None => {
+                self.group_by_clause = Some(GroupByClause {
+                    group_by_items: vec![item],
                 })
             }
         }

@@ -149,6 +149,7 @@ impl Parser {
                     Token::Comma => continue,
                     _ => {
                         self.unget_next_token(current_token);
+                        let group_by_item = self.parse_group_by_item(context)?;
                         //... 파싱
                     }
                 }
