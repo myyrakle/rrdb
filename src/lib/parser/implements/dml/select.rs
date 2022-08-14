@@ -156,7 +156,15 @@ impl Parser {
             }
         }
 
-        // TODO: Having 절 파싱
+        // Having 절 파싱
+        if self.next_token_is_having() {
+            if query_builder.has_group_by() {
+            } else {
+                return Err(ParsingError::boxed(
+                    "E0315 Having without group by is invalid.",
+                ));
+            }
+        }
 
         // TODO: Limit 절 파싱
 
