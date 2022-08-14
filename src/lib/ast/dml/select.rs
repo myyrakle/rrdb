@@ -106,8 +106,14 @@ impl SelectQuery {
             None => false,
         }
     }
+
     pub fn set_having(mut self, having_clause: HavingClause) -> Self {
         self.having_clause = Some(having_clause);
+        self
+    }
+
+    pub fn set_offset(mut self, offset: u32) -> Self {
+        self.offset = Some(offset);
         self
     }
 
