@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::thread::current;
 
 use crate::lib::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement,

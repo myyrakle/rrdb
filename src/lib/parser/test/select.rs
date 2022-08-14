@@ -699,3 +699,33 @@ pub fn select_group_by_having_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected],);
 }
+
+#[test]
+pub fn select_offset_1() {
+    let text = r#"
+        SELECT 
+            p.content as post
+        FROM post as p
+        OFFSET 5
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                .set_alias("post".into())
+                .build(),
+        )
+        .set_from_table(TableName {
+            database_name: None,
+            table_name: "post".into(),
+        })
+        .set_from_alias("p".into())
+        .set_offset(5)
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
