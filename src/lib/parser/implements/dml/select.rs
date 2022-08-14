@@ -70,7 +70,7 @@ impl Parser {
         match current_token {
             Token::From => {
                 if self.next_token_is_left_parentheses() {
-                    let subquery = self.parse_subquery(context)?.into();
+                    let subquery = self.parse_subquery(context)?;
                     query_builder = query_builder.set_from_subquery(subquery);
                 } else {
                     let table_name = self.parse_table_name()?;

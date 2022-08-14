@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{CreateTableQuery, UpdateQuery};
+use crate::lib::ast::predule::UpdateQuery;
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::parser::predule::Parser;
 
@@ -12,7 +12,6 @@ impl Parser {
 
         let _current_token = self.get_next_token();
 
-        let query_builder = CreateTableQuery::builder();
         // TODO: impl
 
         todo!();
