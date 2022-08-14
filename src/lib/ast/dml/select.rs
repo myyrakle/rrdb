@@ -1,7 +1,7 @@
 use crate::lib::ast::predule::{
     DMLStatement, FromClause, FromTarget, GroupByClause, GroupByItem, HavingClause, JoinClause,
-    OrderByClause, OrderByItem, SQLStatement, SelectItem, SubqueryExpression, TableName,
-    WhereClause,
+    OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectItem, SubqueryExpression,
+    TableName, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -140,5 +140,11 @@ impl From<SelectQuery> for SQLStatement {
 impl From<SelectQuery> for SubqueryExpression {
     fn from(value: SelectQuery) -> SubqueryExpression {
         SubqueryExpression::Select(Box::new(value))
+    }
+}
+
+impl From<SelectQuery> for SQLExpression {
+    fn from(value: SelectQuery) -> SQLExpression {
+        SQLExpression::Subquery(SubqueryExpression::Select(Box::new(value)))
     }
 }

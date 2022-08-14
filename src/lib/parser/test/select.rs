@@ -824,3 +824,58 @@ pub fn select_limit_offset_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
+
+#[test]
+pub fn select_subquery_1() {
+    let text = r#"
+        SELECT 
+            ff.number as number,
+            (
+                select 1 as number
+                from foo.bar as temp
+                limit 1
+            ) as asdf
+        FROM foo.foo as ff
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SelectColumn::new(Some("ff".into()), "number".into()).into())
+                .set_alias("number".into())
+                .build(),
+        )
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    SelectQuery::builder()
+                        .add_select_item(
+                            SelectItem::builder()
+                                .set_item(SQLExpression::Integer(1).into())
+                                .set_alias("number".into())
+                                .build(),
+                        )
+                        .set_from_table(TableName {
+                            database_name: Some("foo".into()),
+                            table_name: "bar".into(),
+                        })
+                        .set_from_alias("temp".into())
+                        .set_limit(1)
+                        .build()
+                        .into(),
+                )
+                .set_alias("asdf".into())
+                .build(),
+        )
+        .set_from_table(TableName {
+            database_name: Some("foo".into()),
+            table_name: "foo".into(),
+        })
+        .set_from_alias("ff".into())
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+}
