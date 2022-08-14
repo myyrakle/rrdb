@@ -12,8 +12,8 @@ pub struct SelectQuery {
     pub order_by_clause: Option<OrderByClause>,
     pub group_by_clause: Option<GroupByClause>,
     pub having_clause: Option<HavingClause>,
-    pub limit: Option<i32>,
-    pub offset: Option<i32>,
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
 }
 
 impl SelectQuery {
@@ -106,8 +106,19 @@ impl SelectQuery {
             None => false,
         }
     }
+
     pub fn set_having(mut self, having_clause: HavingClause) -> Self {
         self.having_clause = Some(having_clause);
+        self
+    }
+
+    pub fn set_offset(mut self, offset: u32) -> Self {
+        self.offset = Some(offset);
+        self
+    }
+
+    pub fn set_limit(mut self, limit: u32) -> Self {
+        self.limit = Some(limit);
         self
     }
 
