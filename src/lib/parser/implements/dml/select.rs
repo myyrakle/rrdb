@@ -147,6 +147,7 @@ impl Parser {
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
+                    Token::Having | Token::Limit | Token::Offset => break,
                     _ => {
                         self.unget_next_token(current_token);
                         let group_by_item = self.parse_group_by_item(context)?;

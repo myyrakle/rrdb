@@ -101,6 +101,19 @@ impl Token {
             _ => false,
         }
     }
+
+    pub fn is_expression(&self) -> bool {
+        match self {
+            Token::Identifier(_)
+            | Token::Integer(_)
+            | Token::Float(_)
+            | Token::Boolean(_)
+            | Token::String(_)
+            | Token::Null
+            | Token::Not => true,
+            _ => false,
+        }
+    }
 }
 
 impl TryInto<BinaryOperator> for Token {
