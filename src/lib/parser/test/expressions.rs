@@ -31,7 +31,7 @@ pub fn unary_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -58,7 +58,7 @@ pub fn unary_expression_2() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -86,7 +86,7 @@ pub fn arithmetic_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -119,7 +119,7 @@ pub fn arithmetic_expression_2() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -152,7 +152,7 @@ pub fn arithmetic_expression_3() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -190,7 +190,7 @@ pub fn arithmetic_expression_4() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -225,7 +225,7 @@ pub fn arithmetic_expression_5() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -257,7 +257,7 @@ pub fn arithmetic_expression_6() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -287,7 +287,7 @@ pub fn function_call_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -315,7 +315,7 @@ pub fn between_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -348,7 +348,7 @@ pub fn between_expression_2() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -381,7 +381,7 @@ pub fn between_expression_3() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
 
 #[test]
@@ -409,5 +409,5 @@ pub fn not_between_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }

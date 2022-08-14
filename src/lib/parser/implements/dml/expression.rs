@@ -70,7 +70,6 @@ impl Parser {
                     Ok(lhs)
                 }
             }
-
             Token::String(string) => {
                 let lhs = SQLExpression::String(string);
 
@@ -111,10 +110,26 @@ impl Parser {
                 }
             }
             Token::LeftParentheses => {
-                self.unget_next_token(current_token);
-                let expression = self.parse_parentheses_expression(context)?;
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E0214 need more tokens"));
+                }
 
-                Ok(expression)
+                let second_token = self.get_next_token();
+
+                match second_token {
+                    Token::Select => {
+                        self.unget_next_token(second_token);
+                        self.unget_next_token(current_token);
+                        let expression = self.parse_subquery(context)?.into();
+                        Ok(expression)
+                    }
+                    _ => {
+                        self.unget_next_token(second_token);
+                        self.unget_next_token(current_token);
+                        let expression = self.parse_parentheses_expression(context)?;
+                        Ok(expression)
+                    }
+                }
             }
             Token::RightParentheses => Err(ParsingError::boxed(format!(
                 "E0213 unexpected token: {:?}",

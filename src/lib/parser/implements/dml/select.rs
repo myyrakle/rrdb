@@ -1,8 +1,8 @@
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement,
-    SelectItem, SelectQuery, WhereClause,
+    GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
+    SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -12,7 +12,7 @@ impl Parser {
     pub(crate) fn handle_select_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error>> {
+    ) -> Result<SelectQuery, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0301: need more tokens"));
         }
@@ -70,7 +70,7 @@ impl Parser {
         match current_token {
             Token::From => {
                 if self.next_token_is_left_parentheses() {
-                    let subquery = self.parse_subquery(context)?;
+                    let subquery = self.parse_subquery(context)?.into();
                     query_builder = query_builder.set_from_subquery(subquery);
                 } else {
                     let table_name = self.parse_table_name()?;

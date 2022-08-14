@@ -50,7 +50,7 @@ impl Parser {
                     Token::Select => {
                         self.unget_next_token(current_token);
                         let query = self.handle_select_query(ParserContext::default())?;
-                        statements.push(query);
+                        statements.push(query.into());
                     }
                     Token::Update => statements.push(self.handle_update_query()?),
                     Token::Insert => statements.push(self.handle_insert_query()?),

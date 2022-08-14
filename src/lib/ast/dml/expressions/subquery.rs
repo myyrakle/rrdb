@@ -2,7 +2,7 @@ use crate::lib::ast::predule::{SQLExpression, SelectQuery};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SubqueryExpression {
-    Select(SelectQuery),
+    Select(Box<SelectQuery>),
 }
 
 impl From<SubqueryExpression> for SQLExpression {

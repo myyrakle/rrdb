@@ -1,6 +1,8 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{Column, DataType, JoinType, SQLStatement, SelectColumn, TableName};
+use crate::lib::ast::predule::{
+    Column, DataType, JoinType, SelectColumn, SubqueryExpression, TableName,
+};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::{OperatorToken, Token};
 use crate::lib::parser::predule::{Parser, ParserContext};
@@ -403,7 +405,7 @@ impl Parser {
     }
 
     // 다음 토큰이 여는 괄호인지
-    pub(crate) fn next_token_is_subquery(&mut self) -> bool {
+    pub(crate) fn _next_token_is_subquery(&mut self) -> bool {
         if !self.has_next_token() {
             false
         } else {
@@ -827,7 +829,7 @@ impl Parser {
     pub(crate) fn parse_subquery(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error>> {
+    ) -> Result<SubqueryExpression, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0019 need more tokens"));
         }
@@ -863,6 +865,6 @@ impl Parser {
             )));
         }
 
-        Ok(select)
+        Ok(select.into())
     }
 }
