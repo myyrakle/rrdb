@@ -456,7 +456,7 @@ impl Parser {
         // OFFSET 삼키기
         let current_token = self.get_next_token();
 
-        if current_token != Token::Offset {
+        if current_token != Token::Limit {
             return Err(ParsingError::boxed(format!(
                 "E0326 expected 'Limit'. but your input word is '{:?}'",
                 current_token
