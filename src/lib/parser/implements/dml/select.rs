@@ -150,7 +150,7 @@ impl Parser {
                     _ => {
                         self.unget_next_token(current_token);
                         let group_by_item = self.parse_group_by_item(context)?;
-                        //... 파싱
+                        query_builder = query_builder.add_group_by(group_by_item);
                     }
                 }
             }
