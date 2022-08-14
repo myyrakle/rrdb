@@ -1,8 +1,8 @@
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    GroupByItem, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement, SelectItem,
-    SelectQuery, WhereClause,
+    GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement,
+    SelectItem, SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -341,5 +341,29 @@ impl Parser {
         let expression = self.parse_expression(context)?;
 
         Ok(expression.into())
+    }
+
+    pub(crate) fn parse_having(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<HavingClause, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0316 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Where {
+            return Err(ParsingError::boxed(format!(
+                "E0317 expected 'WHERE'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        let expression = self.parse_expression(context)?;
+
+        Ok(HavingClause {
+            expression: expression.into(),
+        })
     }
 }
