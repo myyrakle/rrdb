@@ -25,6 +25,12 @@ impl From<BinaryOperatorExpression> for Option<SQLExpression> {
     }
 }
 
+impl From<BinaryOperatorExpression> for Box<SQLExpression> {
+    fn from(value: BinaryOperatorExpression) -> Box<SQLExpression> {
+        Box::new(SQLExpression::Binary(Box::new(value)))
+    }
+}
+
 impl From<BinaryOperatorExpression> for Option<Box<SQLExpression>> {
     fn from(value: BinaryOperatorExpression) -> Option<Box<SQLExpression>> {
         Some(Box::new(SQLExpression::Binary(Box::new(value))))

@@ -355,9 +355,9 @@ impl Parser {
 
         let current_token = self.get_next_token();
 
-        if current_token != Token::Where {
+        if current_token != Token::Having {
             return Err(ParsingError::boxed(format!(
-                "E0317 expected 'WHERE'. but your input word is '{:?}'",
+                "E0317 expected 'Having'. but your input word is '{:?}'",
                 current_token
             )));
         }
