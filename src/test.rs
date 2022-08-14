@@ -13,9 +13,10 @@ use crate::lib::parser::predule::Parser;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
     SELECT 
-    p.content as post
-FROM post as p
-ORDER BY p.user_id ASC
+            p.content as post
+        FROM post as p
+        GROUP BY p.content
+        HAVING p.content = 'FOO'
     "#
     .to_owned();
 

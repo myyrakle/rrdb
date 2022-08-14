@@ -1,6 +1,6 @@
 use crate::lib::ast::predule::{
-    DMLStatement, FromClause, GroupByClause, GroupByItem, JoinClause, OrderByClause, OrderByItem,
-    SQLStatement, SelectItem, TableName, WhereClause,
+    DMLStatement, FromClause, GroupByClause, GroupByItem, HavingClause, JoinClause, OrderByClause,
+    OrderByItem, SQLStatement, SelectItem, TableName, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,8 +9,9 @@ pub struct SelectQuery {
     pub from_table: Option<FromClause>,
     pub join_clause: Vec<JoinClause>,
     pub where_clause: Option<WhereClause>,
-    pub group_by_clause: Option<GroupByClause>,
     pub order_by_clause: Option<OrderByClause>,
+    pub group_by_clause: Option<GroupByClause>,
+    pub having_clause: Option<HavingClause>,
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -23,6 +24,7 @@ impl SelectQuery {
             join_clause: vec![],
             where_clause: None,
             group_by_clause: None,
+            having_clause: None,
             order_by_clause: None,
             limit: None,
             offset: None,
@@ -95,6 +97,17 @@ impl SelectQuery {
             }
         }
 
+        self
+    }
+
+    pub fn has_group_by(&self) -> bool {
+        match self.group_by_clause {
+            Some(ref group_by_clause) => !group_by_clause.group_by_items.is_empty(),
+            None => false,
+        }
+    }
+    pub fn set_having(mut self, having_clause: HavingClause) -> Self {
+        self.having_clause = Some(having_clause);
         self
     }
 

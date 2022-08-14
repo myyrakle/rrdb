@@ -1,8 +1,8 @@
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    GroupByItem, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement, SelectItem,
-    SelectQuery, WhereClause,
+    GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement,
+    SelectItem, SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -120,10 +120,21 @@ impl Parser {
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
-                    _ => {
+                    Token::Group | Token::Limit | Token::Offset => {
                         self.unget_next_token(current_token);
-                        let order_by_item = self.parse_order_by_item(context)?;
-                        query_builder = query_builder.add_order_by(order_by_item);
+                        break;
+                    }
+                    _ => {
+                        if current_token.is_expression() {
+                            self.unget_next_token(current_token);
+                            let order_by_item = self.parse_order_by_item(context)?;
+                            query_builder = query_builder.add_order_by(order_by_item);
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E0318 unexpected token '{:?}'",
+                                current_token
+                            )));
+                        }
                     }
                 }
             }
@@ -147,16 +158,37 @@ impl Parser {
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
-                    _ => {
+                    Token::Having | Token::Limit | Token::Offset => {
                         self.unget_next_token(current_token);
-                        let group_by_item = self.parse_group_by_item(context)?;
-                        query_builder = query_builder.add_group_by(group_by_item);
+                        break;
+                    }
+                    _ => {
+                        if current_token.is_expression() {
+                            self.unget_next_token(current_token);
+                            let group_by_item = self.parse_group_by_item(context)?;
+                            query_builder = query_builder.add_group_by(group_by_item);
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E0319 unexpected token '{:?}'",
+                                current_token
+                            )));
+                        }
                     }
                 }
             }
         }
 
-        // TODO: Having 절 파싱
+        // Having 절 파싱
+        if self.next_token_is_having() {
+            if query_builder.has_group_by() {
+                let having_clause = self.parse_having(context)?;
+                query_builder = query_builder.set_having(having_clause);
+            } else {
+                return Err(ParsingError::boxed(
+                    "E0315 Having without group by is invalid.",
+                ));
+            }
+        }
 
         // TODO: Limit 절 파싱
 
@@ -333,5 +365,29 @@ impl Parser {
         let expression = self.parse_expression(context)?;
 
         Ok(expression.into())
+    }
+
+    pub(crate) fn parse_having(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<HavingClause, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0316 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Having {
+            return Err(ParsingError::boxed(format!(
+                "E0317 expected 'Having'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        let expression = self.parse_expression(context)?;
+
+        Ok(HavingClause {
+            expression: expression.into(),
+        })
     }
 }
