@@ -402,6 +402,37 @@ impl Parser {
         }
     }
 
+    // 다음 토큰이 여는 괄호인지
+    pub(crate) fn next_token_is_subquery(&mut self) -> bool {
+        if !self.has_next_token() {
+            false
+        } else {
+            let current_token = self.get_next_token();
+
+            if current_token == Token::LeftParentheses {
+                if !self.has_next_token() {
+                    self.unget_next_token(current_token);
+                    false
+                } else {
+                    let second_token = self.get_next_token();
+
+                    if second_token == Token::Select {
+                        self.unget_next_token(second_token);
+                        self.unget_next_token(current_token);
+                        true
+                    } else {
+                        self.unget_next_token(second_token);
+                        self.unget_next_token(current_token);
+                        false
+                    }
+                }
+            } else {
+                self.unget_next_token(current_token);
+                false
+            }
+        }
+    }
+
     // 다음 토큰이 닫는 괄호인지
     pub(crate) fn next_token_is_right_parentheses(&mut self) -> bool {
         if !self.has_next_token() {
