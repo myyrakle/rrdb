@@ -1,8 +1,8 @@
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement, SelectItem, SelectQuery,
-    WhereClause,
+    GroupByItem, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement, SelectItem,
+    SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -129,7 +129,32 @@ impl Parser {
             }
         }
 
-        // TODO: Group By 절 파싱
+        // Group By 절 파싱
+        if self.next_token_is_group_by() {
+            // GROUP BY 삼킴
+            self.get_next_token();
+            self.get_next_token();
+
+            loop {
+                if !self.has_next_token() {
+                    break;
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::Comma => continue,
+                    _ => {
+                        self.unget_next_token(current_token);
+                        let group_by_item = self.parse_group_by_item(context)?;
+                        query_builder = query_builder.add_group_by(group_by_item);
+                    }
+                }
+            }
+        }
 
         // TODO: Having 절 파싱
 
@@ -229,6 +254,22 @@ impl Parser {
                 Ok(order_by_item)
             }
         }
+    }
+
+    pub(crate) fn parse_group_by_item(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<GroupByItem, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0314 need more tokens"));
+        }
+
+        // 표현식 파싱
+        let item = self.parse_expression(context)?;
+
+        let order_by_item = GroupByItem { item };
+
+        Ok(order_by_item)
     }
 
     pub(crate) fn parse_join(
