@@ -117,6 +117,11 @@ impl SelectQuery {
         self
     }
 
+    pub fn set_limit(mut self, limit: u32) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+
     pub fn build(self) -> SQLStatement {
         SQLStatement::DML(DMLStatement::SelectQuery(self))
     }
