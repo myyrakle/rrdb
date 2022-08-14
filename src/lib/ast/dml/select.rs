@@ -98,6 +98,13 @@ impl SelectQuery {
         self
     }
 
+    pub fn has_group_by(&self) -> bool {
+        match self.group_by_clause {
+            Some(ref group_by_clause) => !group_by_clause.group_by_items.is_empty(),
+            None => false,
+        }
+    }
+
     pub fn build(self) -> SQLStatement {
         SQLStatement::DML(DMLStatement::SelectQuery(self))
     }
