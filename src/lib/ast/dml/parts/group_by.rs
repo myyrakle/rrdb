@@ -1,4 +1,11 @@
+use crate::lib::ast::predule::SQLExpression;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct GroupByClause {
-    // TODO: 항목 추가 정의 필요
+    pub group_by_items: Vec<GroupByItem>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct GroupByItem {
+    pub item: SQLExpression,
 }
