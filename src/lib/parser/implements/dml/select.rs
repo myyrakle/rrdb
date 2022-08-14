@@ -159,6 +159,8 @@ impl Parser {
         // Having 절 파싱
         if self.next_token_is_having() {
             if query_builder.has_group_by() {
+                let having_clause = self.parse_having(context)?;
+                query_builder = query_builder.set_having(having_clause);
             } else {
                 return Err(ParsingError::boxed(
                     "E0315 Having without group by is invalid.",
