@@ -129,7 +129,31 @@ impl Parser {
             }
         }
 
-        // TODO: Group By 절 파싱
+        // Group By 절 파싱
+        if self.next_token_is_group_by() {
+            // GROUP BY 삼킴
+            self.get_next_token();
+            self.get_next_token();
+
+            loop {
+                if !self.has_next_token() {
+                    break;
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::Comma => continue,
+                    _ => {
+                        self.unget_next_token(current_token);
+                        //... 파싱
+                    }
+                }
+            }
+        }
 
         // TODO: Having 절 파싱
 
