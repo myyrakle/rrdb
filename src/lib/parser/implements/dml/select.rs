@@ -1,8 +1,8 @@
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement, SelectItem, SelectQuery,
-    WhereClause,
+    GroupByItem, JoinClause, JoinType, OrderByItem, OrderByType, SQLStatement, SelectItem,
+    SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -253,6 +253,22 @@ impl Parser {
                 Ok(order_by_item)
             }
         }
+    }
+
+    pub(crate) fn parse_group_by_item(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<GroupByItem, Box<dyn Error>> {
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0314 need more tokens"));
+        }
+
+        // 표현식 파싱
+        let item = self.parse_expression(context)?;
+
+        let order_by_item = GroupByItem { item };
+
+        Ok(order_by_item)
     }
 
     pub(crate) fn parse_join(
