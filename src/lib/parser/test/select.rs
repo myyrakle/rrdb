@@ -622,3 +622,38 @@ pub fn select_group_by_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected],);
 }
+
+#[test]
+pub fn select_group_by_2() {
+    let text = r#"
+        SELECT 
+            p.content as post
+        FROM post as p
+        GROUP BY p.content, p.user_id
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                .set_alias("post".into())
+                .build(),
+        )
+        .set_from_table(TableName {
+            database_name: None,
+            table_name: "post".into(),
+        })
+        .set_from_alias("p".into())
+        .add_group_by(GroupByItem {
+            item: SelectColumn::new(Some("p".into()), "content".into()).into(),
+        })
+        .add_group_by(GroupByItem {
+            item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
+        })
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected],);
+}
