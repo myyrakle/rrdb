@@ -12,11 +12,7 @@ use crate::lib::parser::predule::Parser;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
-    SELECT 
-            p.content as post
-        FROM post as p
-        GROUP BY p.content
-        HAVING p.content = 'FOO'
+    SELECT (1, 2, 3, 4) as foo
     "#
     .to_owned();
 

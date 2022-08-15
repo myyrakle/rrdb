@@ -254,9 +254,9 @@ impl Parser {
             }
             // 리스트 표현식
             Token::Comma => {
-                self.unget_next_token(current_token);
-
-                let mut list = ListExpression { value: vec![] };
+                let mut list = ListExpression {
+                    value: vec![expression],
+                };
 
                 loop {
                     if !self.has_next_token() {
@@ -269,6 +269,7 @@ impl Parser {
                         Token::RightParentheses => break,
                         Token::Comma => continue,
                         _ => {
+                            self.unget_next_token(current_token);
                             let expression = self.parse_expression(context)?;
                             list.value.push(expression);
                             continue;
