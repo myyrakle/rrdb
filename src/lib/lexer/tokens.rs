@@ -65,6 +65,7 @@ pub enum Token {
     Between,
     Like,
     In,
+    Is,
 
     // primary expression
     Identifier(String),
@@ -109,6 +110,34 @@ impl Token {
         }
     }
 
+    // 복합 토큰으로 구성된 연산자일 수 있는 경우
+    // IS NOT, NOT IN 등
+    pub fn can_be_multi_token_operator(&self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
+        match self {
+            Token::Not | Token::Is => true,
+            _ => false,
+        }
+    }
+
+    pub fn try_into_multi_token_operator(
+        self,
+        second_token: Self,
+    ) -> Result<BinaryOperator, Box<dyn Error>> {
+        match self {
+            Token::Not => match second_token {
+                Token::Like => Ok(BinaryOperator::NotLike),
+                Token::In => Ok(BinaryOperator::NotIn),
+                _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
+            },
+            Token::Is => match second_token {
+                Token::Not => Ok(BinaryOperator::IsNot),
+                _ => Ok(BinaryOperator::Is),
+            },
+            _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
+        }
+    }
+
     pub fn is_expression(&self) -> bool {
         match self {
             Token::Identifier(_)
@@ -134,6 +163,8 @@ impl TryInto<BinaryOperator> for Token {
             Token::And => Ok(BinaryOperator::And),
             Token::Or => Ok(BinaryOperator::Or),
             Token::Like => Ok(BinaryOperator::Like),
+            Token::In => Ok(BinaryOperator::In),
+            Token::Is => Ok(BinaryOperator::Is),
             _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
         }
     }

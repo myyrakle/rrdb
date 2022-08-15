@@ -441,3 +441,73 @@ pub fn list_expression_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
+
+#[test]
+pub fn in_expression_1() {
+    let text = r#"
+        SELECT 1 in (1,2,3) as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::In,
+                        lhs: SQLExpression::Integer(1),
+                        rhs: ListExpression {
+                            value: vec![
+                                SQLExpression::Integer(1),
+                                SQLExpression::Integer(2),
+                                SQLExpression::Integer(3),
+                            ],
+                        }
+                        .into(),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+}
+
+#[test]
+pub fn not_in_expression_1() {
+    let text = r#"
+        SELECT 1 not in (1,2,3) as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::NotIn,
+                        lhs: SQLExpression::Integer(1),
+                        rhs: ListExpression {
+                            value: vec![
+                                SQLExpression::Integer(1),
+                                SQLExpression::Integer(2),
+                                SQLExpression::Integer(3),
+                            ],
+                        }
+                        .into(),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+}

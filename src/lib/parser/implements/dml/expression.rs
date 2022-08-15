@@ -303,7 +303,13 @@ impl Parser {
         // 연산자 획득
         let current_token = self.get_next_token();
 
-        let operator: Result<BinaryOperator, _> = current_token.try_into();
+        let operator: Result<BinaryOperator, _> =
+            if current_token.can_be_multi_token_operator() && self.has_next_token() {
+                let second_token = self.get_next_token();
+                current_token.try_into_multi_token_operator(second_token)
+            } else {
+                current_token.try_into()
+            };
 
         match operator {
             Ok(operator) => {

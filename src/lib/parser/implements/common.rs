@@ -359,11 +359,11 @@ impl Parser {
         } else {
             let current_token = self.get_next_token();
 
-            self.unget_next_token(current_token.clone());
-
             // 2항 키워드, 연산자일 경우에만 true 반환
             match current_token {
                 Token::And => {
+                    self.unget_next_token(current_token);
+
                     // BETWEEN 파싱중이면서 괄호가 없는 상태라면 연산자가 아닌 것으로 간주.
                     #[allow(clippy::needless_bool)]
                     if context.in_between_clause && !context.in_parentheses {
@@ -372,21 +372,58 @@ impl Parser {
                         true
                     }
                 }
-                Token::Or | Token::Like => true,
-                Token::Operator(operator) => [
-                    OperatorToken::Plus,
-                    OperatorToken::Minus,
-                    OperatorToken::Asterisk,
-                    OperatorToken::Slash,
-                    OperatorToken::Lt,
-                    OperatorToken::Lte,
-                    OperatorToken::Gt,
-                    OperatorToken::Gte,
-                    OperatorToken::Eq,
-                    OperatorToken::Neq,
-                ]
-                .contains(&operator),
-                _ => false,
+                Token::Or | Token::Like | Token::In => {
+                    self.unget_next_token(current_token);
+                    true
+                }
+                Token::Operator(ref operator) => {
+                    let result = [
+                        OperatorToken::Plus,
+                        OperatorToken::Minus,
+                        OperatorToken::Asterisk,
+                        OperatorToken::Slash,
+                        OperatorToken::Lt,
+                        OperatorToken::Lte,
+                        OperatorToken::Gt,
+                        OperatorToken::Gte,
+                        OperatorToken::Eq,
+                        OperatorToken::Neq,
+                    ]
+                    .contains(operator);
+
+                    self.unget_next_token(current_token);
+
+                    result
+                }
+                Token::Is => {
+                    self.unget_next_token(current_token);
+                    true
+                }
+                Token::Not => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(current_token);
+                        false
+                    } else {
+                        let second_token = self.get_next_token();
+
+                        match second_token {
+                            Token::In | Token::Like => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
+                                true
+                            }
+                            _ => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(current_token);
+                                false
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    self.unget_next_token(current_token);
+                    false
+                }
             }
         }
     }

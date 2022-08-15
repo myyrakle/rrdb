@@ -148,6 +148,7 @@ impl Tokenizer {
                 "BETWEEN" => Token::Between,
                 "LIKE" => Token::Like,
                 "IN" => Token::In,
+                "IS" => Token::Is,
                 "TRUE" => Token::Boolean(true),
                 "FALSE" => Token::Boolean(false),
                 "NULL" => Token::Null,
