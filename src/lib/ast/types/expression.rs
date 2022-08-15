@@ -1,6 +1,7 @@
 use crate::lib::ast::predule::{
-    BetweenExpression, BinaryOperatorExpression, CallExpression, NotBetweenExpression,
-    ParenthesesExpression, SelectColumn, SubqueryExpression, UnaryOperatorExpression, WhereClause,
+    BetweenExpression, BinaryOperatorExpression, CallExpression, ListExpression,
+    NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
+    UnaryOperatorExpression, WhereClause,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -19,6 +20,7 @@ pub enum SQLExpression {
     Float(f64),
     Boolean(bool),
     String(String),
+    List(ListExpression),
     SelectColumn(SelectColumn),
     Null,
 }

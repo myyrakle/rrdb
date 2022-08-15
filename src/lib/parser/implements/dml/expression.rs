@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
+    ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
     UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
@@ -207,8 +207,9 @@ impl Parser {
     }
 
     /**
-     * 소괄호 파싱
+     * 소괄호연산자, 혹은 리스트 파싱
     parenexpr ::= '(' expression ')'
+    parenexpr ::= '(' 1, 2, 3 ')'
     */
     pub(crate) fn parse_parentheses_expression(
         &mut self,
@@ -244,16 +245,47 @@ impl Parser {
         // ) 삼킴
         let current_token = self.get_next_token();
 
-        if current_token != Token::RightParentheses {
-            return Err(ParsingError::boxed(format!(
-                "expected right parentheses. but your input is {:?}",
-                current_token
-            )));
+        match current_token {
+            // 우선순위 연산자
+            Token::RightParentheses => {
+                let expression = ParenthesesExpression { expression };
+
+                Ok(expression.into())
+            }
+            // 리스트 표현식
+            Token::Comma => {
+                let mut list = ListExpression {
+                    value: vec![expression],
+                };
+
+                loop {
+                    if !self.has_next_token() {
+                        return Err(ParsingError::boxed("E0215 need more tokens"));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    match current_token {
+                        Token::RightParentheses => break,
+                        Token::Comma => continue,
+                        _ => {
+                            self.unget_next_token(current_token);
+                            let expression = self.parse_expression(context)?;
+                            list.value.push(expression);
+                            continue;
+                        }
+                    }
+                }
+
+                Ok(list.into())
+            }
+            _ => {
+                return Err(ParsingError::boxed(format!(
+                    "expected right parentheses. but your input is {:?}",
+                    current_token
+                )))
+            }
         }
-
-        let expression = ParenthesesExpression { expression };
-
-        Ok(expression.into())
     }
 
     /**
