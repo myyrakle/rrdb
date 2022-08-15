@@ -2,7 +2,7 @@
 
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
+    ListExpression, NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
     UnaryOperatorExpression,
 };
 use crate::lib::parser::predule::Parser;
@@ -401,6 +401,36 @@ pub fn not_between_expression_1() {
                         a: SQLExpression::Integer(3),
                         x: SQLExpression::Integer(1),
                         y: SQLExpression::Integer(5),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+}
+
+#[test]
+pub fn list_expression_1() {
+    let text = r#"
+        SELECT (1,2,3) as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    ListExpression {
+                        value: vec![
+                            SQLExpression::Integer(1),
+                            SQLExpression::Integer(2),
+                            SQLExpression::Integer(3),
+                        ],
                     }
                     .into(),
                 )
