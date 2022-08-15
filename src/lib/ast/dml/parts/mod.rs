@@ -19,3 +19,6 @@ pub use from::*;
 
 pub mod join;
 pub use join::*;
+
+pub mod insert_values;
+pub use insert_values::*;
