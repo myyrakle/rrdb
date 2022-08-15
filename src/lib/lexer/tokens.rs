@@ -65,6 +65,7 @@ pub enum Token {
     Between,
     Like,
     In,
+    Is,
 
     // primary expression
     Identifier(String),
@@ -134,6 +135,8 @@ impl TryInto<BinaryOperator> for Token {
             Token::And => Ok(BinaryOperator::And),
             Token::Or => Ok(BinaryOperator::Or),
             Token::Like => Ok(BinaryOperator::Like),
+            Token::In => Ok(BinaryOperator::In),
+            Token::Is => Ok(BinaryOperator::Is),
             _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
         }
     }
