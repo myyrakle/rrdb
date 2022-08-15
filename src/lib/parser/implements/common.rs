@@ -389,7 +389,7 @@ impl Parser {
                         OperatorToken::Eq,
                         OperatorToken::Neq,
                     ]
-                    .contains(&operator);
+                    .contains(operator);
 
                     self.unget_next_token(current_token);
 

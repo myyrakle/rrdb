@@ -113,6 +113,7 @@ impl Token {
     // 복합 토큰으로 구성된 연산자일 수 있는 경우
     // IS NOT, NOT IN 등
     pub fn can_be_multi_token_operator(&self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
         match self {
             Token::Not | Token::Is => true,
             _ => false,
