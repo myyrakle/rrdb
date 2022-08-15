@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
+    ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
     UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
@@ -256,6 +256,8 @@ impl Parser {
             Token::Comma => {
                 self.unget_next_token(current_token);
 
+                let mut list = ListExpression { value: vec![] };
+
                 loop {
                     if !self.has_next_token() {
                         return Err(ParsingError::boxed("E0215 need more tokens"));
@@ -266,14 +268,15 @@ impl Parser {
                     match current_token {
                         Token::RightParentheses => break,
                         Token::Comma => continue,
-
                         _ => {
-                            todo!();
+                            let expression = self.parse_expression(context)?;
+                            list.value.push(expression);
+                            continue;
                         }
                     }
                 }
 
-                todo!()
+                Ok(list.into())
             }
             _ => {
                 return Err(ParsingError::boxed(format!(
