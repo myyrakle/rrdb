@@ -65,7 +65,10 @@ impl Parser {
                 let values = self.parse_insert_values(context)?;
                 query_builder = query_builder.set_values(values);
             }
-            Token::Select => {}
+            Token::Select => {
+                let select = self.handle_select_query(context)?;
+                query_builder = query_builder.set_select(select);
+            }
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "E0414 expected 'Values'. but your input word is '{:?}'",
