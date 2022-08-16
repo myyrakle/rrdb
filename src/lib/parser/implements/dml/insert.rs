@@ -62,10 +62,12 @@ impl Parser {
 
         match current_token {
             Token::Values => {
+                self.unget_next_token(current_token);
                 let values = self.parse_insert_values(context)?;
                 query_builder = query_builder.set_values(values);
             }
             Token::Select => {
+                self.unget_next_token(current_token);
                 let select = self.handle_select_query(context)?;
                 query_builder = query_builder.set_select(select);
             }
@@ -155,7 +157,7 @@ impl Parser {
             let mut list: Vec<SQLExpression> = vec![];
 
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("E0410 need more tokens"));
+                break;
             }
 
             let current_token = self.get_next_token();
@@ -186,8 +188,10 @@ impl Parser {
                     }
                     _ => {
                         if current_token.is_expression() {
+                            self.unget_next_token(current_token);
                             let expression = self.parse_expression(context)?;
                             list.push(expression);
+                            continue;
                         }
                     }
                 }
