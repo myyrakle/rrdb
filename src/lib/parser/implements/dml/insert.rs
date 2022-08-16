@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::InsertQuery;
+use crate::lib::ast::predule::{InsertQuery, InsertValue};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
@@ -8,7 +8,7 @@ use crate::lib::parser::predule::{Parser, ParserContext};
 impl Parser {
     pub(crate) fn handle_insert_query(
         &mut self,
-        _context: ParserContext,
+        context: ParserContext,
     ) -> Result<InsertQuery, Box<dyn Error>> {
         let mut query_builder = InsertQuery::builder();
 
@@ -50,9 +50,96 @@ impl Parser {
             return Err(ParsingError::boxed("E0405 need more tokens"));
         }
 
+        // 컬럼명 지정 파싱
+        let columns = self.parse_insert_columns(context)?;
+        query_builder = query_builder.set_columns(columns);
+
+        // Values 파싱
+        let mut values: Vec<InsertValue> = vec![];
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0409 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Values {
+            return Err(ParsingError::boxed(format!(
+                "E0408 expected 'Values'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0410 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::LeftParentheses {
+            return Err(ParsingError::boxed(format!(
+                "expected '('. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0411 need more tokens"));
+        }
+
+        // 컬럼명 지정 파싱
         let mut names = vec![];
         loop {
-            // 컬럼명 지정 파싱
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("E0412 need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            match current_token {
+                Token::Identifier(identifier) => {
+                    names.push(identifier);
+                    continue;
+                }
+                Token::Comma => {
+                    continue;
+                }
+                Token::RightParentheses => {
+                    self.unget_next_token(current_token);
+                    break;
+                }
+                _ => {
+                    return Err(ParsingError::boxed(format!(
+                        "E0413 unexpected input word '{:?}'",
+                        current_token
+                    )));
+                }
+            }
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::RightParentheses {
+            return Err(ParsingError::boxed(format!(
+                "E0408 expected ')'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        // TODO: On Conflict 절 파싱
+
+        // TODO: Returning 절 파싱
+
+        Ok(query_builder.build())
+    }
+
+    // INSERT 컬럼명 지정
+    pub(crate) fn parse_insert_columns(
+        &mut self,
+        _context: ParserContext,
+    ) -> Result<Vec<String>, Box<dyn Error>> {
+        let mut names = vec![];
+        loop {
             if !self.has_next_token() {
                 return Err(ParsingError::boxed("E0406 need more tokens"));
             }
@@ -89,12 +176,6 @@ impl Parser {
             )));
         }
 
-        // TODO: Values 파싱
-
-        // TODO: On Conflict 절 파싱
-
-        // TODO: Returning 절 파싱
-
-        Ok(query_builder.build())
+        Ok(names)
     }
 }
