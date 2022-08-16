@@ -23,6 +23,11 @@ impl InsertQuery {
         self
     }
 
+    pub fn set_columns(mut self, columns: Vec<String>) -> Self {
+        self.columns = columns;
+        self
+    }
+
     pub fn build(self) -> Self {
         self
     }

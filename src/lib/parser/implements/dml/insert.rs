@@ -32,7 +32,62 @@ impl Parser {
         let table_name = self.parse_table_name()?;
         query_builder = query_builder.set_into_table(table_name);
 
-        // TODO: 컬럼명 지정
+        // 컬럼명 지정 파싱
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0404 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::LeftParentheses {
+            return Err(ParsingError::boxed(format!(
+                "expected '('. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0405 need more tokens"));
+        }
+
+        let mut names = vec![];
+        loop {
+            // 컬럼명 지정 파싱
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("E0406 need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            match current_token {
+                Token::Identifier(identifier) => {
+                    names.push(identifier);
+                    continue;
+                }
+                Token::Comma => {
+                    continue;
+                }
+                Token::RightParentheses => {
+                    self.unget_next_token(current_token);
+                    break;
+                }
+                _ => {
+                    return Err(ParsingError::boxed(format!(
+                        "E0407 unexpected input word '{:?}'",
+                        current_token
+                    )));
+                }
+            }
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::RightParentheses {
+            return Err(ParsingError::boxed(format!(
+                "E0408 expected ')'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
 
         // TODO: Values 파싱
 
