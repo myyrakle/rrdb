@@ -86,7 +86,9 @@ impl Parser {
         Ok(query_builder.build())
     }
 
-    // INSERT 컬럼명 지정
+    // INSERT의 컬럼명 지정 부분 파싱
+    // INSERT INTO (A, B, C) Values (1, 2, 3);
+    //              ^^^^^^^
     pub(crate) fn parse_insert_columns(
         &mut self,
         _context: ParserContext,
@@ -132,7 +134,9 @@ impl Parser {
         Ok(names)
     }
 
-    // INSERT 컬럼명 지정
+    // Values 절 파싱
+    // INSERT INTO (A, B, C) Values(1, 2, 3);
+    //                       ^^^^^^^^^^^^^^^
     pub(crate) fn parse_insert_values(
         &mut self,
         context: ParserContext,
