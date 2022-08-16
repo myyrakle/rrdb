@@ -197,6 +197,11 @@ impl Parser {
                 }
             }
 
+            // 쉼표가 있으면 삼키기
+            if self.pick_next_token() == Token::Comma {
+                self.get_next_token();
+            }
+
             let value = InsertValue { list };
 
             values.push(value);
