@@ -28,6 +28,11 @@ impl InsertQuery {
         self
     }
 
+    pub fn set_values(mut self, values: Vec<InsertValue>) -> Self {
+        self.values = values;
+        self
+    }
+
     pub fn build(self) -> Self {
         self
     }

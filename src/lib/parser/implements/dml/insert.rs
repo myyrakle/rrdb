@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{InsertQuery, InsertValue};
+use crate::lib::ast::predule::{InsertQuery, InsertValue, SQLExpression};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
@@ -54,76 +54,24 @@ impl Parser {
         let columns = self.parse_insert_columns(context)?;
         query_builder = query_builder.set_columns(columns);
 
-        // Values 파싱
-        let mut values: Vec<InsertValue> = vec![];
-
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0409 need more tokens"));
+            return Err(ParsingError::boxed("E0413 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
-        if current_token != Token::Values {
-            return Err(ParsingError::boxed(format!(
-                "E0408 expected 'Values'. but your input word is '{:?}'",
-                current_token
-            )));
-        }
-
-        if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0410 need more tokens"));
-        }
-
-        let current_token = self.get_next_token();
-
-        if current_token != Token::LeftParentheses {
-            return Err(ParsingError::boxed(format!(
-                "expected '('. but your input word is '{:?}'",
-                current_token
-            )));
-        }
-
-        if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0411 need more tokens"));
-        }
-
-        // 컬럼명 지정 파싱
-        let mut names = vec![];
-        loop {
-            if !self.has_next_token() {
-                return Err(ParsingError::boxed("E0412 need more tokens"));
+        match current_token {
+            Token::Values => {
+                let values = self.parse_insert_values(context)?;
+                query_builder = query_builder.set_values(values);
             }
-
-            let current_token = self.get_next_token();
-
-            match current_token {
-                Token::Identifier(identifier) => {
-                    names.push(identifier);
-                    continue;
-                }
-                Token::Comma => {
-                    continue;
-                }
-                Token::RightParentheses => {
-                    self.unget_next_token(current_token);
-                    break;
-                }
-                _ => {
-                    return Err(ParsingError::boxed(format!(
-                        "E0413 unexpected input word '{:?}'",
-                        current_token
-                    )));
-                }
+            Token::Select => {}
+            _ => {
+                return Err(ParsingError::boxed(format!(
+                    "E0414 expected 'Values'. but your input word is '{:?}'",
+                    current_token
+                )))
             }
-        }
-
-        let current_token = self.get_next_token();
-
-        if current_token != Token::RightParentheses {
-            return Err(ParsingError::boxed(format!(
-                "E0408 expected ')'. but your input word is '{:?}'",
-                current_token
-            )));
         }
 
         // TODO: On Conflict 절 파싱
@@ -177,5 +125,76 @@ impl Parser {
         }
 
         Ok(names)
+    }
+
+    // INSERT 컬럼명 지정
+    pub(crate) fn parse_insert_values(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<Vec<InsertValue>, Box<dyn Error>> {
+        // Values 파싱
+        let mut values: Vec<InsertValue> = vec![];
+
+        if !self.has_next_token() {
+            return Err(ParsingError::boxed("E0409 need more tokens"));
+        }
+
+        let current_token = self.get_next_token();
+
+        if current_token != Token::Values {
+            return Err(ParsingError::boxed(format!(
+                "E0408 expected 'Values'. but your input word is '{:?}'",
+                current_token
+            )));
+        }
+
+        loop {
+            let mut list: Vec<SQLExpression> = vec![];
+
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("E0410 need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+
+            if current_token != Token::LeftParentheses {
+                self.unget_next_token(current_token);
+                break;
+            }
+
+            if !self.has_next_token() {
+                return Err(ParsingError::boxed("E0411 need more tokens"));
+            }
+
+            // 각 Value 절 파싱. (A, B, C, D...)
+            loop {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E0412 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Comma => {
+                        continue;
+                    }
+                    Token::RightParentheses => {
+                        break;
+                    }
+                    _ => {
+                        if current_token.is_expression() {
+                            let expression = self.parse_expression(context)?;
+                            list.push(expression);
+                        }
+                    }
+                }
+            }
+
+            let value = InsertValue { list };
+
+            values.push(value);
+        }
+
+        Ok(values)
     }
 }
