@@ -30,3 +30,40 @@ pub fn insert_into_values_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
+
+#[test]
+pub fn insert_into_values_2() {
+    let text = r#"
+        INSERT INTO foo.bar(a, b, c)
+        Values(1, 2, 3), (4, 5, 6)
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = InsertQuery::builder()
+        .set_into_table(TableName {
+            database_name: Some("foo".into()),
+            table_name: "bar".into(),
+        })
+        .set_columns(vec!["a".into(), "b".into(), "c".into()])
+        .set_values(vec![
+            InsertValue {
+                list: vec![
+                    SQLExpression::Integer(1),
+                    SQLExpression::Integer(2),
+                    SQLExpression::Integer(3),
+                ],
+            },
+            InsertValue {
+                list: vec![
+                    SQLExpression::Integer(4),
+                    SQLExpression::Integer(5),
+                    SQLExpression::Integer(6),
+                ],
+            },
+        ])
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+}
