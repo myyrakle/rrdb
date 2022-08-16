@@ -1,12 +1,17 @@
-use crate::lib::ast::predule::{DMLStatement, SQLStatement, TableName};
-
-use super::InsertValue;
+use crate::lib::ast::predule::{DMLStatement, InsertValue, SQLStatement, SelectQuery, TableName};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InsertQuery {
     pub into_table: Option<TableName>,
     pub columns: Vec<String>,
-    pub values: Vec<InsertValue>,
+    pub data: InsertData,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum InsertData {
+    Select(SelectQuery),
+    Values(Vec<InsertValue>),
+    None,
 }
 
 impl InsertQuery {
@@ -14,7 +19,7 @@ impl InsertQuery {
         Self {
             columns: vec![],
             into_table: None,
-            values: vec![],
+            data: InsertData::None,
         }
     }
 
@@ -29,7 +34,7 @@ impl InsertQuery {
     }
 
     pub fn set_values(mut self, values: Vec<InsertValue>) -> Self {
-        self.values = values;
+        self.data = InsertData::Values(values);
         self
     }
 
