@@ -38,6 +38,11 @@ impl InsertQuery {
         self
     }
 
+    pub fn set_select(mut self, select: SelectQuery) -> Self {
+        self.data = InsertData::Select(select);
+        self
+    }
+
     pub fn build(self) -> Self {
         self
     }
