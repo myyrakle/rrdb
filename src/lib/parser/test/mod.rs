@@ -5,4 +5,5 @@ pub(crate) mod create_table;
 pub(crate) mod drop_table;
 pub(crate) mod expressions;
 
+pub(crate) mod insert;
 pub(crate) mod select;
