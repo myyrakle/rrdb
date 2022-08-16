@@ -8,6 +8,11 @@ impl Parser {
         self.tokens.pop_front().unwrap()
     }
 
+    // 다음 토큰 미리보기
+    pub(crate) fn pick_next_token(&mut self) -> Token {
+        self.tokens.front().unwrap().to_owned()
+    }
+
     // 토큰 획득 롤백
     pub(crate) fn unget_next_token(&mut self, token: Token) {
         self.tokens.push_front(token)

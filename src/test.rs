@@ -12,7 +12,8 @@ use crate::lib::parser::predule::Parser;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
-    SELECT (1, 2, 3, 4) as foo
+    INSERT INTO foo.bar(a, b, c)
+        Values(1, 2, 3)
     "#
     .to_owned();
 
