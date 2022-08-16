@@ -10,7 +10,7 @@ impl Parser {
 
     // 다음 토큰 미리보기
     pub(crate) fn pick_next_token(&mut self) -> Token {
-        self.tokens.front().clone().unwrap().to_owned()
+        self.tokens.front().unwrap().to_owned()
     }
 
     // 토큰 획득 롤백

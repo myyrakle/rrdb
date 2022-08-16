@@ -24,7 +24,7 @@ impl InsertQuery {
     }
 
     pub fn set_into_table(mut self, from: TableName) -> Self {
-        self.into_table = Some(from.into());
+        self.into_table = Some(from);
         self
     }
 
