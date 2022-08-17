@@ -58,7 +58,11 @@ impl Parser {
                         let query = self.handle_insert_query(ParserContext::default())?;
                         statements.push(query.into());
                     }
-                    Token::Delete => statements.push(self.handle_delete_query()?.into()),
+                    Token::Delete => {
+                        self.unget_next_token(current_token);
+                        let query = self.handle_delete_query(ParserContext::default())?;
+                        statements.push(query.into());
+                    }
                     Token::Operator(operator) if operator == OperatorToken::Slash => {
                         // TODO: 추후 구현 필요. \c, \d 등...
                         continue;
