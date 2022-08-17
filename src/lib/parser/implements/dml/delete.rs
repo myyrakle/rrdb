@@ -41,6 +41,10 @@ impl Parser {
 
         let mut query_builder = DeleteQuery::builder();
 
+        // 테이블명 파싱
+        let table_name = self.parse_table_name()?;
+        query_builder = query_builder.set_from_table(table_name);
+
         Ok(query_builder.build())
     }
 }
