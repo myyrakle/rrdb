@@ -49,6 +49,12 @@ impl Parser {
         let table_name = self.parse_table_name()?;
         query_builder = query_builder.set_from_table(table_name);
 
+        // 테이블 alias 파싱
+        if self.next_token_is_table_alias() {
+            let alias = self.parse_table_alias()?;
+            query_builder = query_builder.set_from_alias(alias);
+        }
+
         // WHERE 절 파싱
         if self.next_token_is_where() {
             let where_clause = self.parse_where(context)?;
