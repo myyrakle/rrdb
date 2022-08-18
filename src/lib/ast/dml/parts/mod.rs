@@ -22,3 +22,6 @@ pub use join::*;
 
 pub mod insert_values;
 pub use insert_values::*;
+
+pub mod update_item;
+pub use update_item::*;
