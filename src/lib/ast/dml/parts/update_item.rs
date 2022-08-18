@@ -1,7 +1,7 @@
-use crate::lib::ast::predule::{SQLExpression, SelectColumn};
+use crate::lib::ast::predule::SQLExpression;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpdateItem {
-    column: SelectColumn,         // update할 컬럼
-    value: Option<SQLExpression>, // 수정할 값
+    pub column: String,       // update할 컬럼
+    pub value: SQLExpression, // 수정할 값
 }

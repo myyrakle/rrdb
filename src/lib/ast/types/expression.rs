@@ -42,3 +42,9 @@ impl From<SQLExpression> for WhereClause {
         }
     }
 }
+
+impl From<SQLExpression> for Option<Box<SQLExpression>> {
+    fn from(value: SQLExpression) -> Option<Box<SQLExpression>> {
+        Some(Box::new(value))
+    }
+}
