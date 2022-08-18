@@ -42,6 +42,10 @@ impl UpdateQuery {
         self.where_clause = Some(where_clause);
         self
     }
+
+    pub fn build(self) -> Self {
+        self
+    }
 }
 
 impl From<UpdateQuery> for SQLStatement {
