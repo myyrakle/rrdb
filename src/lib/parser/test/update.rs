@@ -27,3 +27,33 @@ pub fn update_set_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
+
+#[test]
+pub fn update_set_2() {
+    let text = r#"
+        Update foo.bar
+        set
+            a = 1,
+            b = 2
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = UpdateQuery::builder()
+        .set_target_table(TableName {
+            database_name: Some("foo".into()),
+            table_name: "bar".into(),
+        })
+        .add_update_item(UpdateItem {
+            column: "a".into(),
+            value: SQLExpression::Integer(1),
+        })
+        .add_update_item(UpdateItem {
+            column: "b".into(),
+            value: SQLExpression::Integer(2),
+        })
+        .build();
+
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+}
