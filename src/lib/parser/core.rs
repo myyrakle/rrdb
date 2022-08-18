@@ -52,7 +52,11 @@ impl Parser {
                         let query = self.handle_select_query(ParserContext::default())?;
                         statements.push(query.into());
                     }
-                    Token::Update => statements.push(self.handle_update_query()?.into()),
+                    Token::Update => {
+                        self.unget_next_token(current_token);
+                        let query = self.handle_update_query(ParserContext::default())?;
+                        statements.push(query.into());
+                    }
                     Token::Insert => {
                         self.unget_next_token(current_token);
                         let query = self.handle_insert_query(ParserContext::default())?;
