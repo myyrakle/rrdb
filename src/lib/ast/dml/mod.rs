@@ -13,3 +13,6 @@ pub use parts::*;
 
 pub mod expressions;
 pub use expressions::*;
+
+pub mod plan;
+pub use plan::*;
