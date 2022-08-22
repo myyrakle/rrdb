@@ -4,4 +4,12 @@ pub struct SelectPlan {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SelectPlanItem {}
+pub enum SelectPlanItem {
+    From,
+    Subquery,
+    Join,
+    Order,
+    Group,
+    Offset(u32),
+    Limit(u32),
+}

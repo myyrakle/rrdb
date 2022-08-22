@@ -27,3 +27,6 @@ pub use statement::*;
 
 pub mod expression;
 pub use expression::*;
+
+pub mod index;
+pub use index::*;
