@@ -1,4 +1,6 @@
-use super::{from::SelectFromPlan, SelectJoinPlan, SelectSubqueryPlan};
+use crate::lib::ast::predule::{
+    GroupByClause, OrderByClause, SelectFromPlan, SelectJoinPlan, SelectSubqueryPlan,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectPlan {
@@ -10,8 +12,8 @@ pub enum SelectPlanItem {
     From(SelectFromPlan),
     Subquery(SelectSubqueryPlan),
     Join(SelectJoinPlan),
-    Order,
-    Group,
+    Order(OrderByClause),
+    Group(GroupByClause),
     Offset(u32),
     Limit(u32),
 }
