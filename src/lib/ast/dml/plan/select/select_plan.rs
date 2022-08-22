@@ -1,4 +1,4 @@
-use super::{from::SelectFromPlan, SelectSubqueryPlan};
+use super::{from::SelectFromPlan, SelectJoinPlan, SelectSubqueryPlan};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectPlan {
@@ -9,7 +9,7 @@ pub struct SelectPlan {
 pub enum SelectPlanItem {
     From(SelectFromPlan),
     Subquery(SelectSubqueryPlan),
-    Join,
+    Join(SelectJoinPlan),
     Order,
     Group,
     Offset(u32),

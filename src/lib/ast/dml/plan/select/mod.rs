@@ -9,3 +9,6 @@ pub use from::*;
 
 pub mod subquery;
 pub use subquery::*;
+
+pub mod join;
+pub use join::*;
