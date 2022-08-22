@@ -1,3 +1,5 @@
+use super::{from::SelectFromPlan, SelectSubqueryPlan};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectPlan {
     list: Vec<SelectPlanItem>,
@@ -5,8 +7,8 @@ pub struct SelectPlan {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SelectPlanItem {
-    From,
-    Subquery,
+    From(SelectFromPlan),
+    Subquery(SelectSubqueryPlan),
     Join,
     Order,
     Group,
