@@ -1,5 +1,6 @@
 use crate::lib::ast::predule::{DDLStatement, SQLStatement};
 use crate::lib::executor::predule::Executor;
+use crate::lib::optimizer::predule::Optimizer;
 use crate::lib::parser::predule::Parser;
 use crate::lib::server::predule::ServerOption;
 
@@ -14,8 +15,13 @@ async fn process_query(query: String) -> Result<(), Box<dyn std::error::Error>> 
     let mut parser = Parser::new(query)?;
     let executor = Executor::new();
 
-    let ast_list = parser.parse()?;
+    let mut ast_list = parser.parse()?;
 
+    // 최적화 작업
+    let optimizer = Optimizer::new();
+    ast_list.iter_mut().for_each(|e| optimizer.optimize(e));
+
+    // 쿼리 실행
     for ast in ast_list {
         match ast {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
