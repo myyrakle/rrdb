@@ -26,6 +26,10 @@ path-absolutize = "3.0.13"
 whoami = "1.2.1"
 thiserror = "1.0.32"
 async-trait = "0.1.57"
+bytes = "1.2.1"
+tokio-util = { version = "0.7", features = [ "codec" ] }
+sqlparser = "0.21.0"
+futures = "0.3.23"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
