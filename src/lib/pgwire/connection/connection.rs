@@ -8,9 +8,16 @@ use std::collections::HashMap;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
-use crate::lib::pgwire::engine::Engine;
-
-use super::ConnectionState;
+use crate::lib::pgwire::{
+    connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
+    engine::{Engine, Portal},
+    protocol::{
+        AuthenticationOk, BindComplete, BindFormat, ClientMessage, CommandComplete,
+        ConnectionCodec, DataRowBatch, Describe, EmptyQueryResponse, ErrorResponse, FormatCode,
+        NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
+        RowDescription, Severity, SqlState,
+    },
+};
 
 /// Describes a connection using a specific engine.
 /// Contains connection state including prepared statements and portals.

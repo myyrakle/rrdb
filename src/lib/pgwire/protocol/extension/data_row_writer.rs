@@ -1,10 +1,10 @@
+use bytes::BufMut;
 use chrono::{NaiveDate, NaiveDateTime};
 
 use crate::lib::pgwire::protocol::FormatCode;
 
 use super::DataRowBatch;
 
-#[macro_export]
 macro_rules! primitive_write {
     ($name: ident, $type: ident) => {
         #[allow(missing_docs)]
@@ -24,7 +24,7 @@ pub struct DataRowWriter<'a> {
 }
 
 impl<'a> DataRowWriter<'a> {
-    fn new(parent: &'a mut DataRowBatch) -> Self {
+    pub fn new(parent: &'a mut DataRowBatch) -> Self {
         parent.row.put_i16(parent.num_cols as i16);
         Self {
             current_col: 0,

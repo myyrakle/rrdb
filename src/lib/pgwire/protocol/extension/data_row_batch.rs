@@ -1,10 +1,7 @@
 use bytes::BytesMut;
 use tokio_util::codec::Encoder;
 
-use crate::lib::pgwire::{
-    connection::ProtocolError,
-    protocol::{ConnectionCodec, FormatCode, RowDescription},
-};
+use crate::lib::pgwire::protocol::{ConnectionCodec, FormatCode, ProtocolError, RowDescription};
 
 use super::data_row_writer::DataRowWriter;
 
@@ -12,11 +9,11 @@ use super::data_row_writer::DataRowWriter;
 ///
 /// NB: this struct only performs limited validation of column consistency across rows.
 pub struct DataRowBatch {
-    format_code: FormatCode,
-    num_cols: usize,
-    num_rows: usize,
-    data: BytesMut,
-    row: BytesMut,
+    pub(crate) format_code: FormatCode,
+    pub(crate) num_cols: usize,
+    pub(crate) num_rows: usize,
+    pub(crate) data: BytesMut,
+    pub(crate) row: BytesMut,
 }
 
 impl DataRowBatch {

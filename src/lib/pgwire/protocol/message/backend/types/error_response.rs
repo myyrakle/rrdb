@@ -1,11 +1,8 @@
 use std::fmt::Display;
 
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 
-use crate::lib::pgwire::{
-    connection::SqlState,
-    protocol::{BackendMessage, Severity},
-};
+use crate::lib::pgwire::protocol::{BackendMessage, Severity, SqlState};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub struct ErrorResponse {

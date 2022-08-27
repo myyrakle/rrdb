@@ -1,4 +1,4 @@
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 
 use crate::lib::pgwire::protocol::BackendMessage;
 

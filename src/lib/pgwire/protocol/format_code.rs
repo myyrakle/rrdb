@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::lib::pgwire::predule::ProtocolError;
+use crate::lib::pgwire::protocol::ProtocolError;
 
 /// Describes how to format a given value or set of values.
 #[derive(Debug, Copy, Clone)]

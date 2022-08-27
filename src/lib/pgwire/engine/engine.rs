@@ -1,7 +1,9 @@
-use crate::protocol::{ErrorResponse, FieldDescription};
-use crate::protocol_ext::DataRowBatch;
 use async_trait::async_trait;
 use sqlparser::ast::Statement;
+
+use crate::lib::pgwire::protocol::{ErrorResponse, FieldDescription};
+
+use super::Portal;
 
 /// The engine trait is the core of the `convergence` crate, and is responsible for dispatching most SQL operations.
 ///
