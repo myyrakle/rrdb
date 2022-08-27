@@ -10,7 +10,7 @@ pub struct JoinClause {
 
 impl JoinClause {}
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JoinType {
     InnerJoin,
     LeftOuterJoin,

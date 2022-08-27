@@ -3,14 +3,13 @@ use std::error::Error;
 
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, UnaryOperator,
-    UnaryOperatorExpression,
+    ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, SelectColumn,
+    UnaryOperator, UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::Parser;
 use crate::lib::parser::predule::ParserContext;
-use crate::lib::types::SelectColumn;
 
 impl Parser {
     pub(crate) fn parse_expression(
@@ -279,12 +278,10 @@ impl Parser {
 
                 Ok(list.into())
             }
-            _ => {
-                return Err(ParsingError::boxed(format!(
-                    "expected right parentheses. but your input is {:?}",
-                    current_token
-                )))
-            }
+            _ => Err(ParsingError::boxed(format!(
+                "expected right parentheses. but your input is {:?}",
+                current_token
+            ))),
         }
     }
 

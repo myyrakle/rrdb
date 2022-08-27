@@ -1,6 +1,6 @@
 use std::string::ToString;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IntoError {
     pub message: String,
 }

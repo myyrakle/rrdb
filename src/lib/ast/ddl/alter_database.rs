@@ -6,7 +6,7 @@ ALTER DATABASE database_name
     RENAME TO new_database_name
 };
 */
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlterDatabaseQuery {
     pub database_name: Option<String>,
     pub action: Option<AlterDatabaseAction>,
@@ -35,12 +35,12 @@ impl AlterDatabaseQuery {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlterDatabaseAction {
     RenameTo(AlterDatabaseRenameTo),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlterDatabaseRenameTo {
     pub name: String,
 }

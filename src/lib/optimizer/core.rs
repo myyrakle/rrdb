@@ -7,7 +7,7 @@ impl Optimizer {
         Self {}
     }
 
-    pub fn optimize(&self, _sql: &mut SQLStatement) -> () {
+    pub fn optimize(&self, _sql: &mut SQLStatement) {
         // TODO: 최적화 작업
     }
 }

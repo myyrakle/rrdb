@@ -3,7 +3,7 @@ use std::{convert::TryInto, error::Error};
 use crate::lib::ast::predule::{BinaryOperator, UnaryOperator};
 use crate::lib::errors::predule::IntoError;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OperatorToken {
     Plus,     // +
     Minus,    // -

@@ -1,6 +1,6 @@
 use crate::lib::ast::predule::DataType;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Column {
     pub name: String,
     pub data_type: DataType,
