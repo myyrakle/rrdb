@@ -166,10 +166,10 @@ impl Parser {
 
                         Ok(DataType::Varchar(integer))
                     } else {
-                        return Err(ParsingError::boxed(format!(
+                        Err(ParsingError::boxed(format!(
                             "expected integer number. but your input word is '{:?}'",
                             current_token
-                        )));
+                        )))
                     }
                 }
                 _ => Err(ParsingError::boxed(format!(
@@ -178,10 +178,10 @@ impl Parser {
                 ))),
             }
         } else {
-            return Err(ParsingError::boxed(format!(
+            Err(ParsingError::boxed(format!(
                 "E0029 expected identifier. but your input word is '{:?}'",
                 current_token
-            )));
+            )))
         }
     }
 

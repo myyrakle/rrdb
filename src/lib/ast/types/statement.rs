@@ -11,7 +11,7 @@ pub enum SQLStatement {
     DCL(DCLStatement),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DDLStatement {
     CreateDatabaseQuery(CreateDatabaseQuery),
     AlterDatabase(AlterDatabaseQuery),
@@ -29,5 +29,5 @@ pub enum DMLStatement {
     SelectQuery(SelectQuery),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DCLStatement {}

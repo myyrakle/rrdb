@@ -444,12 +444,10 @@ impl Parser {
                     ))
                 }
             }
-            _ => {
-                return Err(ParsingError::boxed(format!(
-                    "E0324 expected positive numbers. but your input word is '{:?}'",
-                    current_token
-                )));
-            }
+            _ => Err(ParsingError::boxed(format!(
+                "E0324 expected positive numbers. but your input word is '{:?}'",
+                current_token
+            ))),
         }
     }
 
@@ -485,12 +483,10 @@ impl Parser {
                     ))
                 }
             }
-            _ => {
-                return Err(ParsingError::boxed(format!(
-                    "E0328 expected positive numbers. but your input word is '{:?}'",
-                    current_token
-                )));
-            }
+            _ => Err(ParsingError::boxed(format!(
+                "E0328 expected positive numbers. but your input word is '{:?}'",
+                current_token
+            ))),
         }
     }
 }

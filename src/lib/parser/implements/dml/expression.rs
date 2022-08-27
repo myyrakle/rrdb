@@ -278,12 +278,10 @@ impl Parser {
 
                 Ok(list.into())
             }
-            _ => {
-                return Err(ParsingError::boxed(format!(
-                    "expected right parentheses. but your input is {:?}",
-                    current_token
-                )))
-            }
+            _ => Err(ParsingError::boxed(format!(
+                "expected right parentheses. but your input is {:?}",
+                current_token
+            ))),
         }
     }
 

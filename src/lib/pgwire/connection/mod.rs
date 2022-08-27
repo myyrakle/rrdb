@@ -1,8 +1,9 @@
 pub mod error;
 pub use error::*;
 
-pub mod connection;
-pub use connection::*;
+#[path = "./connection.rs"]
+pub mod connection_impl;
+pub use connection_impl::*;
 
 pub mod state;
 pub use state::*;

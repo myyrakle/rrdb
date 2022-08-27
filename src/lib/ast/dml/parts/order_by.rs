@@ -11,7 +11,7 @@ pub struct OrderByItem {
     pub order_type: OrderByType,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrderByType {
     Asc,
     Desc,

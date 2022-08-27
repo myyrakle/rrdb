@@ -23,7 +23,7 @@ impl Tokenizer {
     }
 
     pub fn is_digit(&self) -> bool {
-        self.last_char.is_digit(10)
+        self.last_char.is_ascii_digit()
     }
 
     pub fn is_alphabet(&self) -> bool {

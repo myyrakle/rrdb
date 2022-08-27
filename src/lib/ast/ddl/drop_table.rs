@@ -3,7 +3,7 @@ use crate::lib::ast::predule::{DDLStatement, SQLStatement, TableName};
 /*
 DROP TABLE [IF EXISTS] [database_name.]table_name;
 */
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DropTableQuery {
     pub table: Option<TableName>,
     pub if_exists: bool,

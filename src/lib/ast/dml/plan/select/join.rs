@@ -11,7 +11,7 @@ pub struct SelectJoinPlan {
     filter: Option<SQLExpression>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JoinScanType {
     NestedLoop,
     Hash,

@@ -3,7 +3,7 @@ pub use crate::lib::ast::predule::{Column, DDLStatement, SQLStatement};
 /*
 DROP DATABASE [IF EXISTS] database_name;
 */
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DropDatabaseQuery {
     pub database_name: Option<String>,
     pub if_exists: bool,
