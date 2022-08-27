@@ -21,3 +21,6 @@ pub use protocol_error::*;
 
 pub mod constants;
 pub use constants::*;
+
+pub mod extension;
+pub use extension::*;

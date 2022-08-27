@@ -1,8 +1,5 @@
 //! Contains the [Connection] struct, which represents an individual Postgres session, and related types.
 
-use crate::engine::{Engine, Portal};
-use crate::protocol::*;
-use crate::protocol_ext::DataRowBatch;
 use futures::{SinkExt, StreamExt};
 use sqlparser::ast::Statement;
 use sqlparser::dialect::PostgreSqlDialect;
@@ -10,6 +7,10 @@ use sqlparser::parser::Parser;
 use std::collections::HashMap;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
+
+use crate::lib::pgwire::engine::Engine;
+
+use super::ConnectionState;
 
 /// Describes a connection using a specific engine.
 /// Contains connection state including prepared statements and portals.
