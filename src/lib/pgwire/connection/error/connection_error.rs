@@ -5,25 +5,13 @@ use crate::lib::pgwire::protocol::{ErrorResponse, ProtocolError};
 pub enum ConnectionError {
     /// A protocol error was encountered, e.g. an invalid message for a connection's current state.
     #[error("protocol error: {0}")]
-    Protocol(ProtocolError),
+    Protocol(#[from] ProtocolError),
     /// A Postgres error containing a SqlState code and message occurred.
     /// May result in connection termination depending on the severity.
     #[error("error response: {0}")]
-    ErrorResponse(ErrorResponse),
+    ErrorResponse(#[from] ErrorResponse),
     /// The connection was closed.
     /// This always implies connection termination.
     #[error("connection closed")]
     ConnectionClosed,
-}
-
-impl From<ProtocolError> for ConnectionError {
-    fn from(value: ProtocolError) -> ConnectionError {
-        ConnectionError::Protocol(value)
-    }
-}
-
-impl From<ErrorResponse> for ConnectionError {
-    fn from(value: ErrorResponse) -> ConnectionError {
-        ConnectionError::ErrorResponse(value)
-    }
 }
