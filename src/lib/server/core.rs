@@ -57,9 +57,7 @@ impl Server {
 
         let result = tokio::spawn(async move {
             loop {
-                println!("??");
                 let (stream, _) = listener.accept().await.unwrap();
-                println!("22");
                 let engine_func = Arc::new(|| Box::pin(async { RRDBEngine }));
                 tokio::spawn(async move {
                     let mut conn = Connection::new(engine_func().await);
