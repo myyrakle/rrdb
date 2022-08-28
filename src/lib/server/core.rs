@@ -1,6 +1,8 @@
+use std::error::Error;
 use std::sync::Arc;
 
 use crate::lib::ast::predule::{DDLStatement, SQLStatement};
+use crate::lib::errors::server_error::ServerError;
 use crate::lib::executor::predule::Executor;
 use crate::lib::optimizer::predule::Optimizer;
 use crate::lib::parser::predule::Parser;
@@ -49,22 +51,28 @@ impl Server {
     /// running as a background task, and returns the listener's local port.
     ///
     /// Useful for creating test harnesses binding to port 0 to select a random port.
-    pub async fn run(&self) -> std::io::Result<u16> {
+    pub async fn run(&self) -> Result<(), Box<dyn Error>> {
         let listener =
             TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
         let port = listener.local_addr()?.port();
 
-        tokio::spawn(async move {
+        let result = tokio::spawn(async move {
             loop {
+                println!("??");
                 let (stream, _) = listener.accept().await.unwrap();
+                println!("22");
                 let engine_func = Arc::new(|| Box::pin(async { RRDBEngine }));
                 tokio::spawn(async move {
                     let mut conn = Connection::new(engine_func().await);
                     conn.run(stream).await.unwrap();
                 });
             }
-        });
+        })
+        .await;
 
-        Ok(port)
+        match result {
+            Ok(_) => Ok(()),
+            Err(error) => Err(ServerError::new(error.to_string())),
+        }
     }
 }
