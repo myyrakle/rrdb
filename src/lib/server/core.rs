@@ -54,7 +54,6 @@ impl Server {
     pub async fn run(&self) -> Result<(), Box<dyn Error>> {
         let listener =
             TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
-        let port = listener.local_addr()?.port();
 
         let result = tokio::spawn(async move {
             loop {
@@ -72,7 +71,7 @@ impl Server {
 
         match result {
             Ok(_) => Ok(()),
-            Err(error) => Err(ServerError::new(error.to_string())),
+            Err(error) => Err(ServerError::boxed(error.to_string())),
         }
     }
 }
