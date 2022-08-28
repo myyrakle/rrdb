@@ -13,3 +13,6 @@ pub use prepared_statement::*;
 
 pub mod bound_portal;
 pub use bound_portal::*;
+
+pub mod engine_func;
+pub use engine_func::*;
