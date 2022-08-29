@@ -1,10 +1,8 @@
 use async_trait::async_trait;
-use sqlparser::ast::{Expr, SelectItem, SetExpr, Statement};
 
+use crate::lib::ast::predule::SQLStatement;
 use crate::lib::pgwire::engine::{Engine, Portal};
-use crate::lib::pgwire::protocol::{
-    DataRowBatch, DataTypeOid, ErrorResponse, FieldDescription, SqlState,
-};
+use crate::lib::pgwire::protocol::{DataRowBatch, DataTypeOid, ErrorResponse, FieldDescription};
 
 pub struct RRDBPortal;
 
@@ -12,6 +10,7 @@ pub struct RRDBPortal;
 impl Portal for RRDBPortal {
     async fn fetch(&mut self, batch: &mut DataRowBatch) -> Result<(), ErrorResponse> {
         let mut row = batch.create_row();
+        // 실제 데이터 리스트를 보냄
         row.write_int4(1);
         Ok(())
     }
@@ -25,33 +24,9 @@ impl Engine for RRDBEngine {
 
     async fn prepare(
         &mut self,
-        statement: &Statement,
+        _statement: &SQLStatement,
     ) -> Result<Vec<FieldDescription>, ErrorResponse> {
-        if let Statement::Query(query) = &statement {
-            if let SetExpr::Select(select) = *query.body.clone() {
-                if select.projection.len() == 1 {
-                    if let SelectItem::UnnamedExpr(Expr::Identifier(column_name)) =
-                        &select.projection[0]
-                    {
-                        match column_name.value.as_str() {
-                            "test_error" => {
-                                return Err(ErrorResponse::error(
-                                    SqlState::DATA_EXCEPTION,
-                                    "test error",
-                                ))
-                            }
-                            "test_fatal" => {
-                                return Err(ErrorResponse::fatal(
-                                    SqlState::DATA_EXCEPTION,
-                                    "fatal error",
-                                ))
-                            }
-                            _ => (),
-                        }
-                    }
-                }
-            }
-        }
+        // TODO: 필드와 데이터타입 등을 보냄
 
         Ok(vec![FieldDescription {
             name: "test".to_owned(),
@@ -59,7 +34,7 @@ impl Engine for RRDBEngine {
         }])
     }
 
-    async fn create_portal(&mut self, _: &Statement) -> Result<Self::PortalType, ErrorResponse> {
+    async fn create_portal(&mut self, _: &SQLStatement) -> Result<Self::PortalType, ErrorResponse> {
         Ok(RRDBPortal)
     }
 }

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use sqlparser::ast::Statement;
 
+use crate::lib::ast::predule::SQLStatement;
 use crate::lib::pgwire::protocol::{ErrorResponse, FieldDescription};
 
 use super::Portal;
@@ -14,8 +14,14 @@ pub trait Engine: Send + Sync + 'static {
     type PortalType: Portal;
 
     /// Prepares a statement, returning a vector of field descriptions for the final statement result.
-    async fn prepare(&mut self, stmt: &Statement) -> Result<Vec<FieldDescription>, ErrorResponse>;
+    async fn prepare(
+        &mut self,
+        statement: &SQLStatement,
+    ) -> Result<Vec<FieldDescription>, ErrorResponse>;
 
     /// Creates a new portal for the given statement.
-    async fn create_portal(&mut self, stmt: &Statement) -> Result<Self::PortalType, ErrorResponse>;
+    async fn create_portal(
+        &mut self,
+        stmt: &SQLStatement,
+    ) -> Result<Self::PortalType, ErrorResponse>;
 }

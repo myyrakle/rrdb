@@ -1,21 +1,22 @@
 //! Contains the [Connection] struct, which represents an individual Postgres session, and related types.
 
 use futures::{SinkExt, StreamExt};
-use sqlparser::ast::Statement;
-use sqlparser::dialect::PostgreSqlDialect;
-use sqlparser::parser::Parser;
 use std::collections::HashMap;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
-use crate::lib::pgwire::{
-    connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
-    engine::{Engine, Portal},
-    protocol::{
-        AuthenticationOk, BindComplete, BindFormat, ClientMessage, CommandComplete,
-        ConnectionCodec, DataRowBatch, Describe, EmptyQueryResponse, ErrorResponse, FormatCode,
-        NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
-        RowDescription, Severity, SqlState,
+use crate::lib::{
+    ast::predule::SQLStatement,
+    parser::predule::Parser,
+    pgwire::{
+        connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
+        engine::{Engine, Portal},
+        protocol::{
+            AuthenticationOk, BindComplete, BindFormat, ClientMessage, CommandComplete,
+            ConnectionCodec, DataRowBatch, Describe, EmptyQueryResponse, ErrorResponse, FormatCode,
+            NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
+            RowDescription, Severity, SqlState,
+        },
     },
 };
 
@@ -59,9 +60,10 @@ impl<E: Engine> Connection<E> {
             .ok_or_else(|| ErrorResponse::error(SqlState::INVALID_CURSOR_NAME, "missing portal"))?)
     }
 
-    fn parse_statement(&mut self, text: &str) -> Result<Option<Statement>, ErrorResponse> {
-        let statements = Parser::parse_sql(&PostgreSqlDialect {}, text)
-            .map_err(|err| ErrorResponse::error(SqlState::SYNTAX_ERROR, err.to_string()))?;
+    fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
+        let mut parser = Parser::new(text.into())?;
+
+        let mut statements = parser.parse()?;
 
         match statements.len() {
             0 => Ok(None),
@@ -156,6 +158,7 @@ impl<E: Engine> Connection<E> {
                         let prepared = self
                             .prepared_statement(&bind.prepared_statement_name)?
                             .clone();
+
                         let portal = match prepared.statement {
                             Some(statement) => {
                                 let portal = self.engine.create_portal(&statement).await?;
