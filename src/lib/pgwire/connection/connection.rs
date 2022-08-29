@@ -63,7 +63,7 @@ impl<E: Engine> Connection<E> {
     fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
         let mut parser = Parser::new(text.into())?;
 
-        let mut statements = parser.parse()?;
+        let statements = parser.parse()?;
 
         match statements.len() {
             0 => Ok(None),
