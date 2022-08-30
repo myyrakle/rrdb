@@ -7,37 +7,13 @@ use crate::lib::executor::predule::Executor;
 use crate::lib::optimizer::predule::Optimizer;
 use crate::lib::parser::predule::Parser;
 use crate::lib::pgwire::predule::{Connection, RRDBEngine};
-use crate::lib::server::predule::ServerOption;
+use crate::lib::server::predule::{ChannelRequest, ChannelResponse, ServerOption};
 
 use tokio::net::TcpListener;
+use tokio::sync::mpsc;
 
 pub struct Server {
     pub option: ServerOption,
-}
-
-async fn _process_query(query: String) -> Result<(), Box<dyn std::error::Error>> {
-    let mut parser = Parser::new(query)?;
-    let executor = Executor::new();
-
-    let mut ast_list = parser.parse()?;
-
-    // 최적화 작업
-    let optimizer = Optimizer::new();
-    ast_list.iter_mut().for_each(|e| optimizer.optimize(e));
-
-    // 쿼리 실행
-    for ast in ast_list {
-        match ast {
-            SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
-                return executor.create_database(query).await;
-            }
-            _ => {
-                println!("?: {:?}", ast);
-            }
-        }
-    }
-
-    Ok(())
 }
 
 impl Server {
@@ -52,13 +28,35 @@ impl Server {
     ///
     /// Useful for creating test harnesses binding to port 0 to select a random port.
     pub async fn run(&self) -> Result<(), Box<dyn Error>> {
+        // TODO: 인덱스 로딩 등 기본 로직 실행.
+
+        let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
+        let (response_sender, mut response_receiver) = mpsc::channel::<ChannelResponse>(1000);
+
+        // background task
+        tokio::spawn(async move {
+            while let Some(request) = request_receiver.recv().await {
+                //
+
+                response_sender.send(ChannelResponse {}).await;
+            }
+        });
+
+        // connection task
         let listener =
             TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
 
         let result = tokio::spawn(async move {
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
-                let engine_func = Arc::new(|| Box::pin(async { RRDBEngine }));
+                let engine_func = Arc::new(|| {
+                    Box::pin(async {
+                        RRDBEngine {
+                            request_sender,
+                            response_receiver,
+                        }
+                    })
+                });
                 tokio::spawn(async move {
                     let mut conn = Connection::new(engine_func().await);
                     conn.run(stream).await.unwrap();
