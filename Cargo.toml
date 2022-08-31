@@ -28,9 +28,9 @@ thiserror = "1.0.32"
 async-trait = "0.1.57"
 bytes = "1.2.1"
 tokio-util = { version = "0.7", features = [ "codec" ] }
-sqlparser = "0.21.0"
 futures = "0.3.23"
 chrono = "0.4.22"
+bson = "2.4.0"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
