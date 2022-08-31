@@ -37,7 +37,6 @@ impl Server {
 
                     let execute_result = request.execute_result;
                     *execute_result.lock().unwrap() = Some(result);
-                    ()
                 })
                 .await
                 .unwrap();

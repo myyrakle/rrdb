@@ -6,7 +6,7 @@ pub struct ExecuteResult {
     pub columns: Option<Vec<ExecuteColumn>>, // 데이터 열에 대한 메타데이터
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecuteColumn {
     pub data_type: ExecuteColumnType,
     pub name: String,
@@ -22,7 +22,7 @@ pub struct ExecuteField {
     pub value: ExecuteFieldValue,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExecuteColumnType {
     Bool,
     Integer,
