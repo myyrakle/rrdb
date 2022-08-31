@@ -1,4 +1,7 @@
-use crate::lib::executor::predule::GlobalConfig;
+use crate::lib::ast::ddl::{DDLStatement, SQLStatement};
+use crate::lib::errors::execute_error::ExecuteError;
+use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
+use crate::lib::optimizer::predule::Optimizer;
 use crate::lib::utils::predule::set_system_env;
 use path_absolutize::*;
 use std::path::PathBuf;
@@ -47,5 +50,22 @@ impl Executor {
         tokio::fs::write(global_path, global_config.as_bytes()).await?;
 
         Ok(())
+    }
+
+    pub async fn process_query(
+        &self,
+        mut statement: SQLStatement,
+    ) -> Result<ExecuteResult, Box<dyn std::error::Error>> {
+        // 최적화 작업
+        let optimizer = Optimizer::new();
+        optimizer.optimize(&mut statement);
+
+        // 쿼리 실행
+        match statement {
+            SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
+                self.create_database(query).await
+            }
+            _ => Err(ExecuteError::boxed("test")),
+        }
     }
 }

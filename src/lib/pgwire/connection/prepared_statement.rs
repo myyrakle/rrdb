@@ -1,9 +1,8 @@
-use sqlparser::ast::Statement;
-
+use crate::lib::ast::predule::SQLStatement;
 use crate::lib::pgwire::protocol::FieldDescription;
 
 #[derive(Debug, Clone)]
 pub struct PreparedStatement {
-    pub statement: Option<Statement>,
+    pub statement: Option<SQLStatement>,
     pub fields: Vec<FieldDescription>,
 }

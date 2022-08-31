@@ -1,41 +1,49 @@
 //! Contains the [Connection] struct, which represents an individual Postgres session, and related types.
 
 use futures::{SinkExt, StreamExt};
-use sqlparser::ast::Statement;
-use sqlparser::dialect::PostgreSqlDialect;
-use sqlparser::parser::Parser;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
-use crate::lib::pgwire::{
-    connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
-    engine::{Engine, Portal},
-    protocol::{
-        AuthenticationOk, BindComplete, BindFormat, ClientMessage, CommandComplete,
-        ConnectionCodec, DataRowBatch, Describe, EmptyQueryResponse, ErrorResponse, FormatCode,
-        NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
-        RowDescription, Severity, SqlState,
+use crate::lib::{
+    ast::predule::SQLStatement,
+    parser::predule::Parser,
+    pgwire::{
+        connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
+        engine::{Engine, Portal, RRDBEngine},
+        protocol::{
+            AuthenticationOk, BindComplete, BindFormat, ClientMessage, CommandComplete,
+            ConnectionCodec, DataRowBatch, Describe, EmptyQueryResponse, ErrorResponse, FormatCode,
+            NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
+            RowDescription, Severity, SqlState,
+        },
     },
+    server::predule::SharedState,
 };
 
 /// Describes a connection using a specific engine.
 /// Contains connection state including prepared statements and portals.
-pub struct Connection<E: Engine> {
-    engine: E,
+pub struct Connection {
+    engine: RRDBEngine,
     state: ConnectionState,
     statements: HashMap<String, PreparedStatement>,
-    portals: HashMap<String, Option<BoundPortal<E>>>,
+    portals: HashMap<String, Option<BoundPortal<RRDBEngine>>>,
 }
 
-impl<E: Engine> Connection<E> {
+impl Connection {
     /// Create a new connection from an engine instance.
-    pub fn new(engine: E) -> Self {
+    pub fn new(shared_state: SharedState) -> Self {
         Self {
             state: ConnectionState::Startup,
             statements: HashMap::new(),
             portals: HashMap::new(),
-            engine,
+            engine: RRDBEngine {
+                shared_state,
+                execute_result: Arc::new(Mutex::new(None)),
+            },
         }
     }
 
@@ -45,23 +53,27 @@ impl<E: Engine> Connection<E> {
         })?)
     }
 
-    fn portal(&self, name: &str) -> Result<&Option<BoundPortal<E>>, ConnectionError> {
+    fn portal(&self, name: &str) -> Result<&Option<BoundPortal<RRDBEngine>>, ConnectionError> {
         Ok(self
             .portals
             .get(name)
             .ok_or_else(|| ErrorResponse::error(SqlState::INVALID_CURSOR_NAME, "missing portal"))?)
     }
 
-    fn portal_mut(&mut self, name: &str) -> Result<&mut Option<BoundPortal<E>>, ConnectionError> {
+    fn portal_mut(
+        &mut self,
+        name: &str,
+    ) -> Result<&mut Option<BoundPortal<RRDBEngine>>, ConnectionError> {
         Ok(self
             .portals
             .get_mut(name)
             .ok_or_else(|| ErrorResponse::error(SqlState::INVALID_CURSOR_NAME, "missing portal"))?)
     }
 
-    fn parse_statement(&mut self, text: &str) -> Result<Option<Statement>, ErrorResponse> {
-        let statements = Parser::parse_sql(&PostgreSqlDialect {}, text)
-            .map_err(|err| ErrorResponse::error(SqlState::SYNTAX_ERROR, err.to_string()))?;
+    fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
+        let mut parser = Parser::new(text.into())?;
+
+        let statements = parser.parse()?;
 
         match statements.len() {
             0 => Ok(None),
@@ -156,6 +168,7 @@ impl<E: Engine> Connection<E> {
                         let prepared = self
                             .prepared_statement(&bind.prepared_statement_name)?
                             .clone();
+
                         let portal = match prepared.statement {
                             Some(statement) => {
                                 let portal = self.engine.create_portal(&statement).await?;

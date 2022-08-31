@@ -1,23 +1,61 @@
+use std::sync::{Arc, Mutex};
+
 use async_trait::async_trait;
-use sqlparser::ast::{Expr, SelectItem, SetExpr, Statement};
 
+use crate::lib::ast::predule::SQLStatement;
+use crate::lib::executor::predule::{ExecuteFieldValue, ExecuteResult};
 use crate::lib::pgwire::engine::{Engine, Portal};
-use crate::lib::pgwire::protocol::{
-    DataRowBatch, DataTypeOid, ErrorResponse, FieldDescription, SqlState,
-};
+use crate::lib::pgwire::protocol::{DataRowBatch, ErrorResponse, FieldDescription};
+use crate::lib::server::predule::{ChannelRequest, SharedState};
 
-pub struct RRDBPortal;
+pub struct RRDBPortal {
+    pub execute_result: Arc<Mutex<Option<ExecuteResult>>>,
+}
 
 #[async_trait]
 impl Portal for RRDBPortal {
     async fn fetch(&mut self, batch: &mut DataRowBatch) -> Result<(), ErrorResponse> {
-        let mut row = batch.create_row();
-        row.write_int4(1);
-        Ok(())
+        while let Ok(locked) = self.execute_result.lock() {
+            match &*locked {
+                Some(data) => match data.rows.to_owned() {
+                    Some(rows) => {
+                        for row in rows {
+                            let mut writer = batch.create_row();
+
+                            for field in row.fields {
+                                match field.value {
+                                    ExecuteFieldValue::Bool(data) => {
+                                        writer.write_bool(data);
+                                    }
+                                    ExecuteFieldValue::Integer(data) => {
+                                        writer.write_int8(data as i64);
+                                    }
+                                    ExecuteFieldValue::Float(data) => {
+                                        writer.write_float8(data);
+                                    }
+                                    ExecuteFieldValue::String(data) => {
+                                        writer.write_string(&data);
+                                    }
+                                }
+                            }
+                        }
+
+                        return Ok(());
+                    }
+                    None => continue,
+                },
+                None => continue,
+            }
+        }
+
+        unreachable!()
     }
 }
 
-pub struct RRDBEngine;
+pub struct RRDBEngine {
+    pub shared_state: SharedState,
+    pub execute_result: Arc<Mutex<Option<ExecuteResult>>>,
+}
 
 #[async_trait]
 impl Engine for RRDBEngine {
@@ -25,41 +63,41 @@ impl Engine for RRDBEngine {
 
     async fn prepare(
         &mut self,
-        statement: &Statement,
+        statement: &SQLStatement,
     ) -> Result<Vec<FieldDescription>, ErrorResponse> {
-        if let Statement::Query(query) = &statement {
-            if let SetExpr::Select(select) = *query.body.clone() {
-                if select.projection.len() == 1 {
-                    if let SelectItem::UnnamedExpr(Expr::Identifier(column_name)) =
-                        &select.projection[0]
-                    {
-                        match column_name.value.as_str() {
-                            "test_error" => {
-                                return Err(ErrorResponse::error(
-                                    SqlState::DATA_EXCEPTION,
-                                    "test error",
-                                ))
-                            }
-                            "test_fatal" => {
-                                return Err(ErrorResponse::fatal(
-                                    SqlState::DATA_EXCEPTION,
-                                    "fatal error",
-                                ))
-                            }
-                            _ => (),
-                        }
+        let _send_result = self
+            .shared_state
+            .sender
+            .send(ChannelRequest {
+                statement: statement.to_owned(),
+                execute_result: Arc::clone(&self.execute_result),
+            })
+            .await;
+
+        while let Ok(locked) = self.execute_result.lock() {
+            match &*locked {
+                Some(data) => match data.columns.to_owned() {
+                    Some(columns) => {
+                        return Ok(columns
+                            .iter()
+                            .map(|e| FieldDescription {
+                                name: e.name.to_owned(),
+                                data_type: e.data_type.to_owned().into(),
+                            })
+                            .collect());
                     }
-                }
+                    None => continue,
+                },
+                None => continue,
             }
         }
 
-        Ok(vec![FieldDescription {
-            name: "test".to_owned(),
-            data_type: DataTypeOid::Int4,
-        }])
+        unreachable!()
     }
 
-    async fn create_portal(&mut self, _: &Statement) -> Result<Self::PortalType, ErrorResponse> {
-        Ok(RRDBPortal)
+    async fn create_portal(&mut self, _: &SQLStatement) -> Result<Self::PortalType, ErrorResponse> {
+        Ok(RRDBPortal {
+            execute_result: Arc::clone(&self.execute_result),
+        })
     }
 }

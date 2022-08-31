@@ -35,6 +35,16 @@ impl Display for ErrorResponse {
     }
 }
 
+impl From<Box<dyn std::error::Error>> for ErrorResponse {
+    fn from(value: Box<dyn std::error::Error>) -> ErrorResponse {
+        ErrorResponse {
+            sql_state: SqlState::SYNTAX_ERROR,
+            severity: Severity::ERROR,
+            message: value.to_string(),
+        }
+    }
+}
+
 impl BackendMessage for ErrorResponse {
     const TAG: u8 = b'E';
 
