@@ -4,6 +4,7 @@ use crate::lib::ast::ddl::CreateDatabaseQuery;
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::encoder::StorageEncoder;
 use crate::lib::executor::predule::{DatabaseConfig, ExecuteResult, Executor};
+use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
 impl Executor {
     pub async fn create_database(
@@ -25,12 +26,21 @@ impl Executor {
 
         // 각 데이터베이스 단위 설정파일 생성
         database_path.push("database.config");
-        let database_info = DatabaseConfig { database_name };
+        let database_info = DatabaseConfig {
+            database_name: database_name.clone(),
+        };
         tokio::fs::write(database_path, encoder.encode(database_info)).await?;
 
         Ok(ExecuteResult {
-            rows: Some(vec![]),
-            columns: Some(vec![]),
+            columns: Some(vec![ExecuteColumn {
+                name: "desc".into(),
+                data_type: ExecuteColumnType::String,
+            }]),
+            rows: Some(vec![ExecuteRow {
+                fields: vec![ExecuteField::String(
+                    format!("database created: {}", database_name).into(),
+                )],
+            }]),
         })
     }
 }

@@ -3,7 +3,8 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 
 use crate::lib::ast::predule::SQLStatement;
-use crate::lib::executor::predule::{ExecuteFieldValue, ExecuteResult};
+use crate::lib::executor::predule::ExecuteResult;
+use crate::lib::executor::result::ExecuteField;
 use crate::lib::pgwire::engine::{Engine, Portal};
 use crate::lib::pgwire::protocol::{DataRowBatch, ErrorResponse, FieldDescription};
 use crate::lib::server::predule::{ChannelRequest, SharedState};
@@ -23,17 +24,17 @@ impl Portal for RRDBPortal {
                             let mut writer = batch.create_row();
 
                             for field in row.fields {
-                                match field.value {
-                                    ExecuteFieldValue::Bool(data) => {
+                                match field {
+                                    ExecuteField::Bool(data) => {
                                         writer.write_bool(data);
                                     }
-                                    ExecuteFieldValue::Integer(data) => {
+                                    ExecuteField::Integer(data) => {
                                         writer.write_int8(data as i64);
                                     }
-                                    ExecuteFieldValue::Float(data) => {
+                                    ExecuteField::Float(data) => {
                                         writer.write_float8(data);
                                     }
-                                    ExecuteFieldValue::String(data) => {
+                                    ExecuteField::String(data) => {
                                         writer.write_string(&data);
                                     }
                                 }

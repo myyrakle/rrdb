@@ -17,11 +17,6 @@ pub struct ExecuteRow {
     pub fields: Vec<ExecuteField>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct ExecuteField {
-    pub value: ExecuteFieldValue,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExecuteColumnType {
     Bool,
@@ -31,7 +26,7 @@ pub enum ExecuteColumnType {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ExecuteFieldValue {
+pub enum ExecuteField {
     Bool(bool),
     Integer(i64),
     Float(f64),
