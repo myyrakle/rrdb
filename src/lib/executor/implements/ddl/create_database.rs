@@ -28,6 +28,9 @@ impl Executor {
         let database_config = toml::to_string(&database_info).unwrap();
         tokio::fs::write(database_path, database_config.as_bytes()).await?;
 
-        Ok(ExecuteResult { rows: vec![] })
+        Ok(ExecuteResult {
+            rows: Some(vec![]),
+            columns: Some(vec![]),
+        })
     }
 }

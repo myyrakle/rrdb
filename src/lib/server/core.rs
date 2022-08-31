@@ -35,6 +35,8 @@ impl Server {
                     let executor = Executor::new();
                     let result = executor.process_query(request.statement).await.unwrap();
 
+                    let execute_result = request.execute_result;
+                    *execute_result.lock().unwrap() = Some(result);
                     ()
                 })
                 .await

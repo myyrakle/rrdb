@@ -1,7 +1,10 @@
 //! Contains the [Connection] struct, which represents an individual Postgres session, and related types.
 
 use futures::{SinkExt, StreamExt};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
@@ -37,7 +40,10 @@ impl Connection {
             state: ConnectionState::Startup,
             statements: HashMap::new(),
             portals: HashMap::new(),
-            engine: RRDBEngine { shared_state },
+            engine: RRDBEngine {
+                shared_state,
+                execute_result: Arc::new(Mutex::new(None)),
+            },
         }
     }
 
