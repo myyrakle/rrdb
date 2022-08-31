@@ -1,3 +1,5 @@
-pub struct ChannelRequest {}
+use crate::lib::ast::predule::SQLStatement;
 
-pub struct ChannelResponse {}
+pub struct ChannelRequest {
+    pub statement: SQLStatement,
+}

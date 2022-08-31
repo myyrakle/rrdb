@@ -52,7 +52,7 @@ impl Executor {
         Ok(())
     }
 
-    async fn process_query(
+    pub async fn process_query(
         &self,
         mut statement: SQLStatement,
     ) -> Result<ExecuteResult, Box<dyn std::error::Error>> {

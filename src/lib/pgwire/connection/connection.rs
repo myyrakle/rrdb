@@ -10,7 +10,7 @@ use crate::lib::{
     parser::predule::Parser,
     pgwire::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
-        engine::{Engine, Portal},
+        engine::{Engine, Portal, RRDBEngine},
         protocol::{
             AuthenticationOk, BindComplete, BindFormat, ClientMessage, CommandComplete,
             ConnectionCodec, DataRowBatch, Describe, EmptyQueryResponse, ErrorResponse, FormatCode,
@@ -18,25 +18,26 @@ use crate::lib::{
             RowDescription, Severity, SqlState,
         },
     },
+    server::predule::SharedState,
 };
 
 /// Describes a connection using a specific engine.
 /// Contains connection state including prepared statements and portals.
-pub struct Connection<E: Engine> {
-    engine: E,
+pub struct Connection {
+    engine: RRDBEngine,
     state: ConnectionState,
     statements: HashMap<String, PreparedStatement>,
-    portals: HashMap<String, Option<BoundPortal<E>>>,
+    portals: HashMap<String, Option<BoundPortal<RRDBEngine>>>,
 }
 
-impl<E: Engine> Connection<E> {
+impl Connection {
     /// Create a new connection from an engine instance.
-    pub fn new(engine: E) -> Self {
+    pub fn new(shared_state: SharedState) -> Self {
         Self {
             state: ConnectionState::Startup,
             statements: HashMap::new(),
             portals: HashMap::new(),
-            engine,
+            engine: RRDBEngine { shared_state },
         }
     }
 
@@ -46,14 +47,17 @@ impl<E: Engine> Connection<E> {
         })?)
     }
 
-    fn portal(&self, name: &str) -> Result<&Option<BoundPortal<E>>, ConnectionError> {
+    fn portal(&self, name: &str) -> Result<&Option<BoundPortal<RRDBEngine>>, ConnectionError> {
         Ok(self
             .portals
             .get(name)
             .ok_or_else(|| ErrorResponse::error(SqlState::INVALID_CURSOR_NAME, "missing portal"))?)
     }
 
-    fn portal_mut(&mut self, name: &str) -> Result<&mut Option<BoundPortal<E>>, ConnectionError> {
+    fn portal_mut(
+        &mut self,
+        name: &str,
+    ) -> Result<&mut Option<BoundPortal<RRDBEngine>>, ConnectionError> {
         Ok(self
             .portals
             .get_mut(name)

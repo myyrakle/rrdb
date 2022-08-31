@@ -1,14 +1,10 @@
 use std::error::Error;
-use std::sync::Arc;
 
-use crate::lib::ast::predule::{DDLStatement, SQLStatement};
-use crate::lib::errors::server_error::ServerError;
-use crate::lib::executor::predule::Executor;
-use crate::lib::optimizer::predule::Optimizer;
-use crate::lib::parser::predule::Parser;
-use crate::lib::pgwire::predule::{Connection, RRDBEngine};
-use crate::lib::server::predule::{ChannelRequest, ChannelResponse, ServerOption};
+use crate::lib::executor::core::Executor;
+use crate::lib::pgwire::predule::Connection;
+use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
 
+use tokio::join;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
@@ -31,14 +27,18 @@ impl Server {
         // TODO: 인덱스 로딩 등 기본 로직 실행.
 
         let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
-        let (response_sender, mut response_receiver) = mpsc::channel::<ChannelResponse>(1000);
 
         // background task
-        tokio::spawn(async move {
+        let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
-                //
+                tokio::spawn(async move {
+                    let executor = Executor::new();
+                    let result = executor.process_query(request.statement).await.unwrap();
 
-                response_sender.send(ChannelResponse {}).await;
+                    ()
+                })
+                .await
+                .unwrap();
             }
         });
 
@@ -46,28 +46,26 @@ impl Server {
         let listener =
             TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
 
-        let result = tokio::spawn(async move {
+        let connection_task = tokio::spawn(async move {
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
-                let engine_func = Arc::new(|| {
-                    Box::pin(async {
-                        RRDBEngine {
-                            request_sender,
-                            response_receiver,
-                        }
-                    })
-                });
-                tokio::spawn(async move {
-                    let mut conn = Connection::new(engine_func().await);
-                    conn.run(stream).await.unwrap();
-                });
-            }
-        })
-        .await;
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(error) => Err(ServerError::boxed(error.to_string())),
-        }
+                let shared_state = SharedState {
+                    sender: request_sender.clone(),
+                };
+
+                tokio::spawn(async move {
+                    let mut conn = Connection::new(shared_state);
+                    conn.run(stream).await.unwrap();
+                })
+                .await
+                .unwrap();
+            }
+        });
+
+        let result = join!(background_task, connection_task);
+        println!("{:?}", result);
+
+        Ok(())
     }
 }
