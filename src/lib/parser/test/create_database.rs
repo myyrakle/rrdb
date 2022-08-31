@@ -31,7 +31,7 @@ pub fn create_database_2() {
 
     let expected = CreateDatabaseQuery::builder()
         .set_name("test_db".to_owned())
-        .set_if_not_exists(true)
+        .set_if_not_exists(false)
         .build();
 
     assert_eq!(parser.parse().unwrap(), vec![expected],);
