@@ -86,7 +86,6 @@ impl Engine for RRDBEngine {
 
                     match data.columns.to_owned() {
                         Some(columns) => {
-                            println!("8");
                             return Ok(columns
                                 .iter()
                                 .map(|e| FieldDescription {
@@ -101,7 +100,6 @@ impl Engine for RRDBEngine {
                     }
                 }
                 None => {
-                    //println!("9");
                     continue;
                 }
             }

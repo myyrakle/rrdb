@@ -31,9 +31,7 @@ impl Server {
 
         // background task
         let background_task = tokio::spawn(async move {
-            println!("2");
             while let Some(request) = request_receiver.recv().await {
-                println!("3");
                 tokio::spawn(async move {
                     let executor = Executor::new();
                     let result = executor.process_query(request.statement).await;
