@@ -4,6 +4,7 @@ use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
 use crate::lib::optimizer::predule::Optimizer;
 use crate::lib::utils::predule::set_system_env;
 use path_absolutize::*;
+use std::error::Error;
 use std::path::PathBuf;
 
 pub struct Executor {}
@@ -20,7 +21,7 @@ impl Executor {
     }
 
     // 기본 설정파일 세팅
-    pub async fn init(&self, path: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn init(&self, path: String) -> Result<(), Box<dyn Error>> {
         let mut path_buf = PathBuf::new();
         path_buf.push(path);
         path_buf.push(".rrdb.config");
@@ -55,7 +56,7 @@ impl Executor {
     pub async fn process_query(
         &self,
         mut statement: SQLStatement,
-    ) -> Result<ExecuteResult, Box<dyn std::error::Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error>> {
         // 최적화 작업
         let optimizer = Optimizer::new();
         optimizer.optimize(&mut statement);

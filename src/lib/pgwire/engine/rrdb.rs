@@ -6,7 +6,9 @@ use crate::lib::ast::predule::SQLStatement;
 use crate::lib::executor::predule::ExecuteResult;
 use crate::lib::executor::result::ExecuteField;
 use crate::lib::pgwire::engine::{Engine, Portal};
-use crate::lib::pgwire::protocol::{DataRowBatch, ErrorResponse, FieldDescription};
+use crate::lib::pgwire::protocol::{
+    DataRowBatch, DataTypeOid, ErrorResponse, FieldDescription, SqlState,
+};
 use crate::lib::server::predule::{ChannelRequest, SharedState};
 
 pub struct RRDBPortal {
@@ -77,19 +79,31 @@ impl Engine for RRDBEngine {
 
         while let Ok(locked) = self.execute_result.lock() {
             match &*locked {
-                Some(data) => match data.columns.to_owned() {
-                    Some(columns) => {
-                        return Ok(columns
-                            .iter()
-                            .map(|e| FieldDescription {
-                                name: e.name.to_owned(),
-                                data_type: e.data_type.to_owned().into(),
-                            })
-                            .collect());
+                Some(data) => {
+                    if let Some(error) = data.error.to_owned() {
+                        return Err(ErrorResponse::error(SqlState::SYNTAX_ERROR, error));
                     }
-                    None => continue,
-                },
-                None => continue,
+
+                    match data.columns.to_owned() {
+                        Some(columns) => {
+                            println!("8");
+                            return Ok(columns
+                                .iter()
+                                .map(|e| FieldDescription {
+                                    name: e.name.to_owned(),
+                                    data_type: e.data_type.to_owned().into(),
+                                })
+                                .collect());
+                        }
+                        None => {
+                            continue;
+                        }
+                    }
+                }
+                None => {
+                    //println!("9");
+                    continue;
+                }
             }
         }
 

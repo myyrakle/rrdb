@@ -1,9 +1,10 @@
 use crate::lib::pgwire::protocol::DataTypeOid;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub struct ExecuteResult {
     pub rows: Option<Vec<ExecuteRow>>,       // 데이터 행 -> 실 데이터
     pub columns: Option<Vec<ExecuteColumn>>, // 데이터 열에 대한 메타데이터
+    pub error: Option<String>,               // 에러 메세지
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

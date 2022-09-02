@@ -1,6 +1,7 @@
 use std::error::Error;
 
 use crate::lib::executor::core::Executor;
+use crate::lib::executor::result::ExecuteResult;
 use crate::lib::pgwire::predule::Connection;
 use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
 
@@ -30,15 +31,27 @@ impl Server {
 
         // background task
         let background_task = tokio::spawn(async move {
+            println!("2");
             while let Some(request) = request_receiver.recv().await {
+                println!("3");
                 tokio::spawn(async move {
                     let executor = Executor::new();
-                    let result = executor.process_query(request.statement).await.unwrap();
+                    let result = executor.process_query(request.statement).await;
 
-                    let execute_result = request.execute_result;
-                    *execute_result.lock().unwrap() = Some(result);
-                
-                
+                    match result {
+                        Ok(result) => {
+                            let execute_result = request.execute_result;
+                            *execute_result.lock().unwrap() = Some(result);
+                        }
+                        Err(error) => {
+                            let execute_result = request.execute_result;
+                            *execute_result.lock().unwrap() = Some(ExecuteResult {
+                                columns: None,
+                                rows: None,
+                                error: Some(error.to_string()),
+                            });
+                        }
+                    }
                 })
                 .await
                 .unwrap();

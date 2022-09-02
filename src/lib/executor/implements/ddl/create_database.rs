@@ -41,6 +41,7 @@ impl Executor {
                     format!("database created: {}", database_name).into(),
                 )],
             }]),
+            error: None,
         })
     }
 }
