@@ -68,6 +68,7 @@ impl Engine for RRDBEngine {
         &mut self,
         statement: &SQLStatement,
     ) -> Result<Vec<FieldDescription>, ErrorResponse> {
+        println!("보내기 전");
         let _send_result = self
             .shared_state
             .sender
@@ -76,6 +77,8 @@ impl Engine for RRDBEngine {
                 execute_result: Arc::clone(&self.execute_result),
             })
             .await;
+
+        println!("보냄, {:?}", _send_result);
 
         while let Ok(locked) = self.execute_result.lock() {
             match &*locked {
