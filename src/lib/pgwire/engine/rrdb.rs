@@ -1,15 +1,11 @@
-use std::sync::{Arc, Mutex};
-
 use async_trait::async_trait;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::oneshot;
 
 use crate::lib::ast::predule::SQLStatement;
 use crate::lib::executor::predule::ExecuteResult;
 use crate::lib::executor::result::ExecuteField;
 use crate::lib::pgwire::engine::{Engine, Portal};
-use crate::lib::pgwire::protocol::{
-    DataRowBatch, DataTypeOid, ErrorResponse, FieldDescription, SqlState,
-};
+use crate::lib::pgwire::protocol::{DataRowBatch, ErrorResponse, FieldDescription, SqlState};
 use crate::lib::server::predule::{ChannelRequest, ChannelResponse, SharedState};
 
 #[derive(Debug, Clone)]

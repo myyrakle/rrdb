@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::lib::errors::execute_error::ExecuteError;
-use crate::lib::executor::predule::{ExecuteResult, Executor};
+use crate::lib::executor::predule::Executor;
 use crate::lib::pgwire::predule::Connection;
 use crate::lib::server::channel::ChannelResponse;
 use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};

@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::sync::{Arc, Mutex};
 
 use tokio::sync::oneshot::Sender;
 
