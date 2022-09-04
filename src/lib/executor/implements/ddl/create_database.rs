@@ -24,7 +24,11 @@ impl Executor {
 
         database_path.push(&database_name);
 
+        #[allow(clippy::single_match)]
         match tokio::fs::create_dir(database_path.clone()).await {
+            Ok(()) => {
+                // 성공
+            }
             Err(error) => match error.kind() {
                 ErrorKind::AlreadyExists => {
                     return Err(ExecuteError::boxed("already exists database"))
@@ -33,7 +37,6 @@ impl Executor {
                     return Err(ExecuteError::boxed("database create failed"));
                 }
             },
-            Ok(()) => {}
         }
 
         // 각 데이터베이스 단위 설정파일 생성
@@ -50,9 +53,10 @@ impl Executor {
                 data_type: ExecuteColumnType::String,
             }]),
             rows: (vec![ExecuteRow {
-                fields: vec![ExecuteField::String(
-                    format!("database created: {}", database_name).into(),
-                )],
+                fields: vec![ExecuteField::String(format!(
+                    "database created: {}",
+                    database_name
+                ))],
             }]),
         })
     }

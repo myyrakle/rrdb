@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub struct StorageEncoder {}
 
+#[allow(clippy::new_without_default)]
 impl StorageEncoder {
     pub fn new() -> Self {
         StorageEncoder {}

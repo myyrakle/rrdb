@@ -17,7 +17,7 @@ pub struct RRDBPortal {
 #[async_trait]
 impl Portal for RRDBPortal {
     async fn fetch(&mut self, batch: &mut DataRowBatch) -> Result<(), ErrorResponse> {
-        for row in self.execute_result.rows.to_owned() {
+        for row in self.execute_result.rows.iter().cloned() {
             let mut writer = batch.create_row();
 
             for field in row.fields {
