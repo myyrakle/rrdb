@@ -80,7 +80,6 @@ impl Engine for RRDBEngine {
         match response_receiver.await {
             Ok(response) => match response.result {
                 Ok(result) => {
-                    println!("3");
                     let return_value = Ok(result
                         .columns
                         .iter()
@@ -108,7 +107,6 @@ impl Engine for RRDBEngine {
                 }
             },
             Err(error) => {
-                println!("5");
                 return Err(ErrorResponse::fatal(
                     SqlState::CONNECTION_EXCEPTION,
                     error.to_string(),

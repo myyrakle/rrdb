@@ -25,17 +25,14 @@ impl Executor {
         database_path.push(&database_name);
 
         match tokio::fs::create_dir(database_path.clone()).await {
-            Err(error) => {
-                println!("{:?}", error);
-                match error.kind() {
-                    ErrorKind::AlreadyExists => {
-                        return Err(ExecuteError::boxed("already exists database"))
-                    }
-                    _ => {
-                        return Err(ExecuteError::boxed("database create failed"));
-                    }
+            Err(error) => match error.kind() {
+                ErrorKind::AlreadyExists => {
+                    return Err(ExecuteError::boxed("already exists database"))
                 }
-            }
+                _ => {
+                    return Err(ExecuteError::boxed("database create failed"));
+                }
+            },
             Ok(()) => {}
         }
 

@@ -224,7 +224,6 @@ impl Connection {
                         }
                     },
                     ClientMessage::Query(query) => {
-                        println!("5678");
                         if let Some(parsed) = self.parse_statement(&query)? {
                             let fields = self.engine.prepare(&parsed).await?;
                             let row_desc = RowDescription {
