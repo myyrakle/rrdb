@@ -1,8 +1,10 @@
 use std::error::Error;
 
+use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::executor::Executor;
 use crate::lib::executor::result::ExecuteResult;
 use crate::lib::pgwire::predule::Connection;
+use crate::lib::server::channel::ChannelResponse;
 use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
 
 use tokio::join;
@@ -39,16 +41,18 @@ impl Server {
 
                     match result {
                         Ok(result) => {
-                            let execute_result = request.execute_result;
-                            *execute_result.lock().unwrap() = Some(result);
+                            request
+                                .response_sender
+                                .send(ChannelResponse { result: Ok(result) })
+                                .unwrap();
                         }
                         Err(error) => {
-                            let execute_result = request.execute_result;
-                            *execute_result.lock().unwrap() = Some(ExecuteResult {
-                                columns: None,
-                                rows: None,
-                                error: Some(error.to_string()),
-                            });
+                            request
+                                .response_sender
+                                .send(ChannelResponse {
+                                    result: Err(ExecuteError::boxed(error.to_string())),
+                                })
+                                .unwrap();
                         }
                     }
                 })

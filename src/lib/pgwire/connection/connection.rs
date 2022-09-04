@@ -42,7 +42,7 @@ impl Connection {
             portals: HashMap::new(),
             engine: RRDBEngine {
                 shared_state,
-                execute_result: Arc::new(Mutex::new(None)),
+                portal_sender: None,
             },
         }
     }

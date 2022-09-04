@@ -32,16 +32,15 @@ impl Executor {
         tokio::fs::write(database_path, encoder.encode(database_info)).await?;
 
         Ok(ExecuteResult {
-            columns: Some(vec![ExecuteColumn {
+            columns: (vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
             }]),
-            rows: Some(vec![ExecuteRow {
+            rows: (vec![ExecuteRow {
                 fields: vec![ExecuteField::String(
                     format!("database created: {}", database_name).into(),
                 )],
             }]),
-            error: None,
         })
     }
 }
