@@ -12,8 +12,7 @@ use crate::lib::parser::predule::Parser;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = r#"
-    INSERT INTO foo.bar(a, b, c)
-        Values(1, 2, 3)
+    create database asdf;
     "#
     .to_owned();
 

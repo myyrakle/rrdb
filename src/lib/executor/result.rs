@@ -1,9 +1,9 @@
 use crate::lib::pgwire::protocol::DataTypeOid;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ExecuteResult {
-    pub rows: Option<Vec<ExecuteRow>>,       // 데이터 행 -> 실 데이터
-    pub columns: Option<Vec<ExecuteColumn>>, // 데이터 열에 대한 메타데이터
+    pub rows: Vec<ExecuteRow>,       // 데이터 행 -> 실 데이터
+    pub columns: Vec<ExecuteColumn>, // 데이터 열에 대한 메타데이터
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -17,11 +17,6 @@ pub struct ExecuteRow {
     pub fields: Vec<ExecuteField>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct ExecuteField {
-    pub value: ExecuteFieldValue,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExecuteColumnType {
     Bool,
@@ -31,7 +26,7 @@ pub enum ExecuteColumnType {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ExecuteFieldValue {
+pub enum ExecuteField {
     Bool(bool),
     Integer(i64),
     Float(f64),

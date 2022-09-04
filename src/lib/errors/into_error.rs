@@ -21,6 +21,6 @@ impl std::error::Error for IntoError {}
 
 impl std::fmt::Display for IntoError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "parsing error: {}", self.message)
+        write!(formatter, "parsing error(into error): {}", self.message)
     }
 }

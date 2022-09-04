@@ -35,9 +35,8 @@ impl Parser {
             }
         }
 
-        // 세미콜론 체크
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0103 need more tokens"));
+            return Ok(query_builder.build());
         }
 
         let current_token = self.get_next_token();

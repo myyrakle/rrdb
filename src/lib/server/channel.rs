@@ -1,9 +1,16 @@
-use std::sync::{Arc, Mutex};
+use std::error::Error;
+
+use tokio::sync::oneshot::Sender;
 
 use crate::lib::{ast::predule::SQLStatement, executor::result::ExecuteResult};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ChannelRequest {
     pub statement: SQLStatement,
-    pub execute_result: Arc<Mutex<Option<ExecuteResult>>>,
+    pub response_sender: Sender<ChannelResponse>,
+}
+
+#[derive(Debug)]
+pub struct ChannelResponse {
+    pub result: Result<ExecuteResult, Box<dyn Error + Send>>,
 }
