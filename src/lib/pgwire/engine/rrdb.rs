@@ -12,60 +12,43 @@ use crate::lib::pgwire::protocol::{
 };
 use crate::lib::server::predule::{ChannelRequest, ChannelResponse, SharedState};
 
+#[derive(Debug, Clone)]
 pub struct RRDBPortal {
     pub shared_state: SharedState,
-    pub portal_receiver: mpsc::Receiver<ChannelResponse>,
+    pub execute_result: ExecuteResult,
 }
 
 #[async_trait]
 impl Portal for RRDBPortal {
     async fn fetch(&mut self, batch: &mut DataRowBatch) -> Result<(), ErrorResponse> {
-        match self.portal_receiver.recv().await {
-            Some(response) => match response.result {
-                Ok(result) => {
-                    for row in result.rows.to_owned() {
-                        let mut writer = batch.create_row();
+        for row in self.execute_result.rows.to_owned() {
+            let mut writer = batch.create_row();
 
-                        for field in row.fields {
-                            match field {
-                                ExecuteField::Bool(data) => {
-                                    writer.write_bool(data);
-                                }
-                                ExecuteField::Integer(data) => {
-                                    writer.write_int8(data as i64);
-                                }
-                                ExecuteField::Float(data) => {
-                                    writer.write_float8(data);
-                                }
-                                ExecuteField::String(data) => {
-                                    writer.write_string(&data);
-                                }
-                            }
-                        }
+            for field in row.fields {
+                match field {
+                    ExecuteField::Bool(data) => {
+                        writer.write_bool(data);
                     }
-
-                    return Ok(());
+                    ExecuteField::Integer(data) => {
+                        writer.write_int8(data as i64);
+                    }
+                    ExecuteField::Float(data) => {
+                        writer.write_float8(data);
+                    }
+                    ExecuteField::String(data) => {
+                        writer.write_string(&data);
+                    }
                 }
-                Err(error) => {
-                    return Err(ErrorResponse::fatal(
-                        SqlState::CONNECTION_EXCEPTION,
-                        error.to_string(),
-                    ))
-                }
-            },
-            None => {
-                return Err(ErrorResponse::fatal(
-                    SqlState::CONNECTION_EXCEPTION,
-                    "error".to_string(),
-                ))
             }
         }
+
+        return Ok(());
     }
 }
 
 pub struct RRDBEngine {
     pub shared_state: SharedState,
-    pub portal_sender: Option<mpsc::Sender<ChannelResponse>>,
+    pub portal: Option<RRDBPortal>,
 }
 
 #[async_trait]
@@ -96,7 +79,8 @@ impl Engine for RRDBEngine {
 
         match response_receiver.await {
             Ok(response) => match response.result {
-                Ok(ref result) => {
+                Ok(result) => {
+                    println!("3");
                     let return_value = Ok(result
                         .columns
                         .iter()
@@ -106,13 +90,13 @@ impl Engine for RRDBEngine {
                         })
                         .collect());
 
-                    self.portal_sender = match &self.portal_sender {
-                        Some(sender) => {
-                            sender.send(response).await.unwrap();
-                            None
-                        }
-                        None => None,
-                    };
+                    // portal이 없을 경우 생성
+                    if self.portal.is_none() {
+                        self.portal = Some(RRDBPortal {
+                            execute_result: result,
+                            shared_state: self.shared_state.clone(),
+                        });
+                    }
 
                     return return_value;
                 }
@@ -124,6 +108,7 @@ impl Engine for RRDBEngine {
                 }
             },
             Err(error) => {
+                println!("5");
                 return Err(ErrorResponse::fatal(
                     SqlState::CONNECTION_EXCEPTION,
                     error.to_string(),
@@ -133,13 +118,14 @@ impl Engine for RRDBEngine {
     }
 
     async fn create_portal(&mut self, _: &SQLStatement) -> Result<Self::PortalType, ErrorResponse> {
-        let (sender, receiver) = mpsc::channel::<ChannelResponse>(1);
-
-        self.portal_sender = Some(sender);
-
-        Ok(RRDBPortal {
-            shared_state: self.shared_state.clone(),
-            portal_receiver: receiver,
-        })
+        match &self.portal {
+            Some(portal) => Ok(portal.to_owned()),
+            None => {
+                return Err(ErrorResponse::fatal(
+                    SqlState::CONNECTION_EXCEPTION,
+                    "not prepared yet".to_string(),
+                ));
+            }
+        }
     }
 }

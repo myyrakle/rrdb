@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::io::ErrorKind;
 
 use crate::lib::ast::ddl::CreateDatabaseQuery;
 use crate::lib::errors::predule::ExecuteError;
@@ -22,13 +23,28 @@ impl Executor {
             .ok_or_else(|| ExecuteError::boxed("no database name"))?;
 
         database_path.push(&database_name);
-        tokio::fs::create_dir(database_path.clone()).await?;
+
+        match tokio::fs::create_dir(database_path.clone()).await {
+            Err(error) => {
+                println!("{:?}", error);
+                match error.kind() {
+                    ErrorKind::AlreadyExists => {
+                        return Err(ExecuteError::boxed("already exists database"))
+                    }
+                    _ => {
+                        return Err(ExecuteError::boxed("database create failed"));
+                    }
+                }
+            }
+            Ok(()) => {}
+        }
 
         // 각 데이터베이스 단위 설정파일 생성
         database_path.push("database.config");
         let database_info = DatabaseConfig {
             database_name: database_name.clone(),
         };
+
         tokio::fs::write(database_path, encoder.encode(database_info)).await?;
 
         Ok(ExecuteResult {

@@ -1,6 +1,6 @@
 use crate::lib::pgwire::protocol::DataTypeOid;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecuteResult {
     pub rows: Vec<ExecuteRow>,       // 데이터 행 -> 실 데이터
     pub columns: Vec<ExecuteColumn>, // 데이터 열에 대한 메타데이터

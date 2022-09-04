@@ -21,6 +21,6 @@ impl std::error::Error for ExecuteError {}
 
 impl std::fmt::Display for ExecuteError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "parsing error: {}", self.message)
+        write!(formatter, "executing error: {}", self.message)
     }
 }
