@@ -16,6 +16,7 @@ impl Executor {
 
         let base_path = self.get_base_path();
 
+        #[allow(clippy::single_match)]
         match query.action {
             Some(action) => match action {
                 AlterDatabaseAction::RenameTo(rename) => {
