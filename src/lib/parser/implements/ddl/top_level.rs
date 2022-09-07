@@ -34,6 +34,7 @@ impl Parser {
 
         match current_token {
             Token::Table => self.handle_alter_table_query(),
+            Token::Database => self.handle_alter_database_query(),
             _ => Err(ParsingError::boxed(
                 "not supported command. possible commands: (alter table)",
             )),

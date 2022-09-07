@@ -145,6 +145,8 @@ impl Parser {
                     ));
                 }
 
+                let current_token = self.get_next_token();
+
                 match current_token {
                     Token::Identifier(identifier) => {
                         query_builder = query_builder.set_action(AlterDatabaseAction::RenameTo(
@@ -153,7 +155,7 @@ impl Parser {
                     }
                     _ => {
                         return Err(ParsingError::boxed(
-                            "E109: not supported command. possible commands: (create database)",
+                            "E109: not supported command. possible commands: (alter database)",
                         ));
                     }
                 }
