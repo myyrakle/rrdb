@@ -16,8 +16,6 @@ impl Executor {
 
         let base_path = self.get_base_path();
 
-        println!("{:?}", base_path);
-
         match query.action {
             Some(action) => match action {
                 AlterDatabaseAction::RenameTo(rename) => {
