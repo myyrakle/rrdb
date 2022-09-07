@@ -3,7 +3,6 @@ use std::io::ErrorKind;
 
 use crate::lib::ast::ddl::DropDatabaseQuery;
 use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::encoder::StorageEncoder;
 use crate::lib::executor::predule::{ExecuteResult, Executor};
 use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
