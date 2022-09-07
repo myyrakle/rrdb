@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::lib::ast::ddl::AlterDatabaseQuery;
+use crate::lib::ast::ddl::{AlterDatabaseAction, AlterDatabaseQuery};
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::encoder::StorageEncoder;
 use crate::lib::executor::predule::{DatabaseConfig, ExecuteResult, Executor};
@@ -15,37 +15,73 @@ impl Executor {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
-        let mut database_path = base_path.clone();
 
-        let database_name = query
-            .database_name
-            .clone()
-            .ok_or_else(|| ExecuteError::boxed("no database name"))?;
+        match query.action {
+            Some(action) => match action {
+                AlterDatabaseAction::RenameTo(rename) => {
+                    // 기존 데이터베이스명
+                    let from_database_name = query
+                        .database_name
+                        .clone()
+                        .ok_or_else(|| ExecuteError::boxed("no database name"))?;
 
-        database_path.push(&database_name);
+                    // 변경할 데이터베이스명
+                    let to_database_name = rename.name;
 
-        #[allow(clippy::single_match)]
-        match tokio::fs::create_dir(database_path.clone()).await {
-            Ok(()) => {
-                // 성공
-            }
-            Err(error) => match error.kind() {
-                ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::boxed("already exists database"))
-                }
-                _ => {
-                    return Err(ExecuteError::boxed("database create failed"));
+                    // 실제 데이터베이스 디렉터리 경로
+                    let mut from_path = base_path.clone();
+                    let mut to_path = base_path.clone();
+
+                    from_path.push(from_database_name);
+                    to_path.push(to_database_name.clone());
+
+                    // 디렉터리명 변경
+                    let result = tokio::fs::rename(&from_path, &to_path).await;
+
+                    if let Err(error) = result {
+                        match error.kind() {
+                            ErrorKind::NotFound => {
+                                return Err(ExecuteError::boxed("database not found"))
+                            }
+                            _ => {
+                                return Err(ExecuteError::boxed("database alter failed"));
+                            }
+                        }
+                    }
+
+                    // config data 파일 내용 변경
+                    let mut config_path = to_path.clone();
+                    config_path.push("database.config");
+
+                    match tokio::fs::read(&config_path).await {
+                        Ok(data) => {
+                            let database_config: Option<DatabaseConfig> =
+                                encoder.decode(data.as_slice());
+
+                            match database_config {
+                                Some(mut database_config) => {
+                                    database_config.database_name = to_database_name;
+                                    tokio::fs::write(config_path, encoder.encode(database_config))
+                                        .await?;
+                                }
+                                None => {
+                                    return Err(ExecuteError::boxed("invalid config data"));
+                                }
+                            }
+                        }
+                        Err(error) => match error.kind() {
+                            ErrorKind::NotFound => {
+                                return Err(ExecuteError::boxed("database not found"));
+                            }
+                            _ => {
+                                return Err(ExecuteError::boxed(format!("{:?}", error)));
+                            }
+                        },
+                    }
                 }
             },
+            None => {}
         }
-
-        // 각 데이터베이스 단위 설정파일 생성
-        database_path.push("database.config");
-        let database_info = DatabaseConfig {
-            database_name: database_name.clone(),
-        };
-
-        tokio::fs::write(database_path, encoder.encode(database_info)).await?;
 
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
@@ -53,10 +89,7 @@ impl Executor {
                 data_type: ExecuteColumnType::String,
             }]),
             rows: (vec![ExecuteRow {
-                fields: vec![ExecuteField::String(format!(
-                    "database created: {}",
-                    database_name
-                ))],
+                fields: vec![ExecuteField::String("alter database".into())],
             }]),
         })
     }
