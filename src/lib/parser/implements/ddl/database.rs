@@ -1,4 +1,4 @@
-use crate::lib::ast::ddl::AlterDatabaseQuery;
+use crate::lib::ast::ddl::{AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo};
 use crate::lib::parser::predule::Parser;
 
 use crate::lib::ast::predule::{CreateDatabaseQuery, DropDatabaseQuery, SQLStatement};
@@ -147,7 +147,9 @@ impl Parser {
 
                 match current_token {
                     Token::Identifier(identifier) => {
-                        query_builder = query_builder.set_name(identifier);
+                        query_builder = query_builder.set_action(AlterDatabaseAction::RenameTo(
+                            AlterDatabaseRenameTo { name: identifier },
+                        ));
                     }
                     _ => {
                         return Err(ParsingError::boxed(
