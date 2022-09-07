@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::lib::ast::ddl::CreateDatabaseQuery;
+use crate::lib::ast::ddl::DropDatabaseQuery;
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::encoder::StorageEncoder;
 use crate::lib::executor::predule::{ExecuteResult, Executor};
@@ -10,10 +10,8 @@ use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteFiel
 impl Executor {
     pub async fn drop_database(
         &self,
-        query: CreateDatabaseQuery,
+        query: DropDatabaseQuery,
     ) -> Result<ExecuteResult, Box<dyn Error>> {
-        let encoder = StorageEncoder::new();
-
         let base_path = self.get_base_path();
         let mut database_path = base_path.clone();
 
