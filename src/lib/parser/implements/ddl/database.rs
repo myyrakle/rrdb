@@ -125,19 +125,35 @@ impl Parser {
         match current_token {
             Token::Rename => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed(format!(
-                        "E106: expected 'TO'. but your input word is '{:?}'",
-                        current_token
-                    )));
+                    return Err(ParsingError::boxed(
+                        "E106: expected 'TO'. but no more token",
+                    ));
                 }
 
                 let current_token = self.get_next_token();
 
                 if current_token != Token::To {
                     return Err(ParsingError::boxed(format!(
-                        "E106: expected 'TO'. but your input word is '{:?}'",
+                        "E107: expected 'TO'. but your input word is '{:?}'",
                         current_token
                     )));
+                }
+
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed(
+                        "E108: expected identifier. but no more token",
+                    ));
+                }
+
+                match current_token {
+                    Token::Identifier(identifier) => {
+                        query_builder = query_builder.set_name(identifier);
+                    }
+                    _ => {
+                        return Err(ParsingError::boxed(
+                            "E109: not supported command. possible commands: (create database)",
+                        ));
+                    }
                 }
             }
             _ => {
