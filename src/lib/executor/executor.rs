@@ -66,6 +66,9 @@ impl Executor {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
                 self.create_database(query).await
             }
+            SQLStatement::DDL(DDLStatement::AlterDatabase(query)) => {
+                self.alter_database(query).await
+            }
             SQLStatement::DDL(DDLStatement::DropDatabaseQuery(query)) => {
                 self.drop_database(query).await
             }
