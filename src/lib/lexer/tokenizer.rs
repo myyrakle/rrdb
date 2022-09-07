@@ -142,6 +142,7 @@ impl Tokenizer {
                 "FOREIGN" => Token::Foreign,
                 "KEY" => Token::Key,
                 "ADD" => Token::Add,
+                "RENAME" => Token::Rename,
                 "AND" => Token::And,
                 "OR" => Token::Or,
                 "NOT" => Token::Not,
