@@ -123,10 +123,26 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Rename => {}
+            Token::Rename => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed(format!(
+                        "E106: expected 'TO'. but your input word is '{:?}'",
+                        current_token
+                    )));
+                }
+
+                let current_token = self.get_next_token();
+
+                if current_token != Token::To {
+                    return Err(ParsingError::boxed(format!(
+                        "E106: expected 'TO'. but your input word is '{:?}'",
+                        current_token
+                    )));
+                }
+            }
             _ => {
                 return Err(ParsingError::boxed(format!(
-                    "E106: not supported syntax'{:?}'",
+                    "E107: not supported syntax'{:?}'",
                     current_token
                 )));
             }
