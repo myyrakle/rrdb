@@ -160,6 +160,7 @@ impl Parser {
                     }
                 }
             }
+            Token::SemiColon => {}
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "E107: not supported syntax'{:?}'",
