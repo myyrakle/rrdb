@@ -51,6 +51,7 @@ pub enum Token {
     Key,
     Add,
     If,
+    Rename,
 
     Default,
 

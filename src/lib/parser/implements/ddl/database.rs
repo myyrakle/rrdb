@@ -122,11 +122,14 @@ impl Parser {
 
         let current_token = self.get_next_token();
 
-        if Token::SemiColon != current_token {
-            return Err(ParsingError::boxed(format!(
-                "expected ';'. but your input word is '{:?}'",
-                current_token
-            )));
+        match current_token {
+            Token::Rename => {}
+            _ => {
+                return Err(ParsingError::boxed(format!(
+                    "E106: not supported syntax'{:?}'",
+                    current_token
+                )));
+            }
         }
 
         Ok(query_builder.build())
