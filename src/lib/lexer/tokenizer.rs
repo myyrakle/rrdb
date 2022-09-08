@@ -38,8 +38,12 @@ impl Tokenizer {
         self.last_char == '_'
     }
 
+    pub fn is_backslash(&self) -> bool {
+        self.last_char == '\\'
+    }
+
     pub fn is_special_character(&self) -> bool {
-        ['+', '-', '*', '/', ',', '>', '<', '=', '!'].contains(&self.last_char)
+        ['+', '-', '*', '/', ',', '>', '<', '=', '!', '\\'].contains(&self.last_char)
     }
 
     pub fn is_quote(&self) -> bool {
@@ -217,6 +221,7 @@ impl Tokenizer {
         else if self.is_special_character() {
             match self.last_char {
                 ',' => Token::Comma,
+                '\\' => Token::Backslash,
                 '-' => {
                     // 다음 문자가 또 -일 경우 행 단위 주석으로 처리
                     self.read_char();
