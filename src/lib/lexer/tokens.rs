@@ -53,6 +53,8 @@ pub enum Token {
     If,
     Rename,
     To,
+    Show,
+    Databases,
 
     Default,
 

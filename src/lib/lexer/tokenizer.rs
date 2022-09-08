@@ -144,6 +144,8 @@ impl Tokenizer {
                 "ADD" => Token::Add,
                 "RENAME" => Token::Rename,
                 "TO" => Token::To,
+                "SHOW" => Token::Show,
+                "DATABASES" => Token::Databases,
                 "AND" => Token::And,
                 "OR" => Token::Or,
                 "NOT" => Token::Not,
