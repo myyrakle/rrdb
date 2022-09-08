@@ -1,6 +1,9 @@
 pub mod create_database;
 pub use create_database::*;
 
+pub mod alter_database;
+pub use alter_database::*;
+
 pub mod drop_database;
 pub use drop_database::*;
 
