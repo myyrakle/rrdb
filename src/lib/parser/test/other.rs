@@ -16,3 +16,17 @@ pub fn show_databases_1() {
 
     assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
 }
+
+#[test]
+pub fn show_databases_2() {
+    let text = r#"
+        \l
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = ShowDatabasesQuery {};
+
+    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+}
