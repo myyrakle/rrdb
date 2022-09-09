@@ -68,7 +68,8 @@ impl Parser {
                         statements.push(query.into());
                     }
                     Token::Backslash => {
-                        continue;
+                        let query = self.parse_backslash_query(ParserContext::default())?;
+                        statements.push(query);
                     }
                     Token::Show => {
                         let query = self.parse_show_query(ParserContext::default())?;
