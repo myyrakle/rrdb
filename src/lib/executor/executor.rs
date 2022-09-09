@@ -1,4 +1,5 @@
 use crate::lib::ast::ddl::{DDLStatement, SQLStatement};
+use crate::lib::ast::predule::OtherStatement;
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
 use crate::lib::optimizer::predule::Optimizer;
@@ -71,6 +72,9 @@ impl Executor {
             }
             SQLStatement::DDL(DDLStatement::DropDatabaseQuery(query)) => {
                 self.drop_database(query).await
+            }
+            SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
+                self.show_databses(query).await
             }
             _ => Err(ExecuteError::boxed("test")),
         }
