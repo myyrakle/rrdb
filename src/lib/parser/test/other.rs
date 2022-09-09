@@ -1,9 +1,6 @@
 #![cfg(test)]
 
-use crate::lib::ast::other::ShowDatabasesQuery;
-use crate::lib::ast::predule::{
-    InsertQuery, InsertValue, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
-};
+use crate::lib::ast::predule::ShowDatabasesQuery;
 use crate::lib::parser::predule::Parser;
 
 #[test]
