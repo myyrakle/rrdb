@@ -3,6 +3,7 @@ use crate::lib::ast::ddl::{
     DropTableQuery,
 };
 use crate::lib::ast::dml::{DeleteQuery, InsertQuery, SelectQuery, UpdateQuery};
+use crate::lib::ast::other::ShowDatabasesQuery;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SQLStatement {
@@ -35,5 +36,5 @@ pub enum DCLStatement {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OtherStatement {
-    ShowDatabases,
+    ShowDatabases(ShowDatabasesQuery),
 }
