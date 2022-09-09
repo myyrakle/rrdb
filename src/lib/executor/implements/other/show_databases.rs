@@ -12,7 +12,7 @@ use crate::lib::executor::predule::{
 };
 
 impl Executor {
-    pub async fn show_databses(
+    pub async fn show_databases(
         &self,
         query: ShowDatabasesQuery,
     ) -> Result<ExecuteResult, Box<dyn Error>> {

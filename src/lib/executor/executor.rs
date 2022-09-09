@@ -74,7 +74,7 @@ impl Executor {
                 self.drop_database(query).await
             }
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
-                self.show_databses(query).await
+                self.show_databases(query).await
             }
             _ => Err(ExecuteError::boxed("test")),
         }
