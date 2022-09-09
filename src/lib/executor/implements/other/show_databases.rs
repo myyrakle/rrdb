@@ -48,11 +48,7 @@ impl Executor {
                     }
                 });
 
-                let database_list: Vec<_> = join_all(futures)
-                    .await
-                    .into_iter()
-                    .filter_map(|e| e)
-                    .collect();
+                let database_list = join_all(futures).await.into_iter().flatten();
 
                 Ok(ExecuteResult {
                     columns: (vec![ExecuteColumn {
@@ -60,7 +56,6 @@ impl Executor {
                         data_type: ExecuteColumnType::String,
                     }]),
                     rows: database_list
-                        .into_iter()
                         .map(|e| ExecuteRow {
                             fields: vec![ExecuteField::String(e)],
                         })
@@ -68,10 +63,8 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => return Err(ExecuteError::boxed("base path not exists")),
-                _ => {
-                    return Err(ExecuteError::boxed("database listup failed"));
-                }
+                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
+                _ => Err(ExecuteError::boxed("database listup failed")),
             },
         }
     }
