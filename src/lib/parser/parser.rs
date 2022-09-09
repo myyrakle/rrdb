@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::lib::ast::predule::SQLStatement;
-use crate::lib::lexer::predule::{OperatorToken, Token, Tokenizer};
+use crate::lib::lexer::predule::{Token, Tokenizer};
 use crate::lib::parser::predule::ParserContext;
 
 #[derive(Debug)]
@@ -67,9 +67,13 @@ impl Parser {
                         let query = self.handle_delete_query(ParserContext::default())?;
                         statements.push(query.into());
                     }
-                    Token::Operator(operator) if operator == OperatorToken::Slash => {
-                        // TODO: 추후 구현 필요. \c, \d 등...
-                        continue;
+                    Token::Backslash => {
+                        let query = self.parse_backslash_query(ParserContext::default())?;
+                        statements.push(query);
+                    }
+                    Token::Show => {
+                        let query = self.parse_show_query(ParserContext::default())?;
+                        statements.push(query);
                     }
                     _ => {
                         break;
