@@ -70,6 +70,10 @@ impl Parser {
                     Token::Backslash => {
                         continue;
                     }
+                    Token::Show => {
+                        let query = self.parse_show_query(ParserContext::default())?;
+                        statements.push(query);
+                    }
                     _ => {
                         break;
                     }
