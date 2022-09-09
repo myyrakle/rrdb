@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::lib::ast::predule::SQLStatement;
-use crate::lib::lexer::predule::{OperatorToken, Token, Tokenizer};
+use crate::lib::lexer::predule::{Token, Tokenizer};
 use crate::lib::parser::predule::ParserContext;
 
 #[derive(Debug)]
@@ -68,7 +68,6 @@ impl Parser {
                         statements.push(query.into());
                     }
                     Token::Backslash => {
-                        // TODO: 추후 구현 필요. \c, \d 등...
                         continue;
                     }
                     _ => {
