@@ -62,6 +62,8 @@ impl Executor {
         let optimizer = Optimizer::new();
         optimizer.optimize(&mut statement);
 
+        println!("{:?}", statement);
+
         // 쿼리 실행
         match statement {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {

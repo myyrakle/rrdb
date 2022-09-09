@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::fs::FileType;
 use std::io::ErrorKind;
 
 use futures::future::join_all;
@@ -14,7 +13,7 @@ use crate::lib::executor::predule::{
 impl Executor {
     pub async fn show_databases(
         &self,
-        query: ShowDatabasesQuery,
+        _query: ShowDatabasesQuery,
     ) -> Result<ExecuteResult, Box<dyn Error>> {
         let encoder = StorageEncoder::new();
 
@@ -32,10 +31,10 @@ impl Executor {
 
                                     match tokio::fs::read(path).await {
                                         Ok(result) => {
-                                            let databaseConfig: DatabaseConfig =
+                                            let database_config: DatabaseConfig =
                                                 encoder.decode(result.as_slice()).unwrap();
 
-                                            Some(databaseConfig.database_name)
+                                            Some(database_config.database_name)
                                         }
                                         Err(_) => None,
                                     }
