@@ -9,6 +9,7 @@ pub enum SQLStatement {
     DDL(DDLStatement),
     DML(DMLStatement),
     DCL(DCLStatement),
+    Other(OtherStatement),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,3 +32,8 @@ pub enum DMLStatement {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DCLStatement {}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OtherStatement {
+    ShowDatabases,
+}
