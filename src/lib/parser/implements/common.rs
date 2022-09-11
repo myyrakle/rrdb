@@ -209,7 +209,10 @@ impl Parser {
         };
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0011 need more tokens"));
+            return Ok(TableName::new(
+                database_name.or(context.default_database),
+                table_name,
+            ));
         }
 
         let current_token = self.get_next_token();
