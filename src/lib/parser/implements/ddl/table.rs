@@ -22,7 +22,7 @@ impl Parser {
         query_builder = query_builder.set_if_not_exists(if_not_exists);
 
         // 테이블명 설정
-        let table = self.parse_table_name(context.clone())?;
+        let table = self.parse_table_name(context)?;
         query_builder = query_builder.set_table(table);
 
         // 여는 괄호 체크
@@ -134,7 +134,7 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        let table = self.parse_table_name(context.clone())?;
+        let table = self.parse_table_name(context)?;
 
         // 테이블명 설정
         query_builder = query_builder.set_table(table);

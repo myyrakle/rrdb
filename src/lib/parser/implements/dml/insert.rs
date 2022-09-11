@@ -63,12 +63,12 @@ impl Parser {
         match current_token {
             Token::Values => {
                 self.unget_next_token(current_token);
-                let values = self.parse_insert_values(context.clone())?;
+                let values = self.parse_insert_values(context)?;
                 query_builder = query_builder.set_values(values);
             }
             Token::Select => {
                 self.unget_next_token(current_token);
-                let select = self.handle_select_query(context.clone())?;
+                let select = self.handle_select_query(context)?;
                 query_builder = query_builder.set_select(select);
             }
             _ => {

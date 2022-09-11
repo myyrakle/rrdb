@@ -119,13 +119,13 @@ impl Parser {
                     Token::Select => {
                         self.unget_next_token(second_token);
                         self.unget_next_token(current_token);
-                        let expression = self.parse_subquery(context.clone())?.into();
+                        let expression = self.parse_subquery(context)?.into();
                         Ok(expression)
                     }
                     _ => {
                         self.unget_next_token(second_token);
                         self.unget_next_token(current_token);
-                        let expression = self.parse_parentheses_expression(context.clone())?;
+                        let expression = self.parse_parentheses_expression(context)?;
                         Ok(expression)
                     }
                 }
@@ -175,7 +175,7 @@ impl Parser {
             return Err(ParsingError::boxed("E0201 need more tokens"));
         }
 
-        let expression = self.parse_expression(context.clone())?;
+        let expression = self.parse_expression(context)?;
 
         // expression이 2항 표현식일 경우 단항 표현식이 최우선으로 처리되게 구성
         match expression {
@@ -310,7 +310,7 @@ impl Parser {
 
         match operator {
             Ok(operator) => {
-                let rhs = self.parse_expression(context.clone())?;
+                let rhs = self.parse_expression(context)?;
 
                 let current_precedence = operator.get_precedence();
 
@@ -462,7 +462,7 @@ impl Parser {
                 // AND 삼킴
                 self.get_next_token();
 
-                let y = self.parse_expression(context.clone())?;
+                let y = self.parse_expression(context)?;
 
                 let expression = BetweenExpression { a, x, y };
 
@@ -482,7 +482,7 @@ impl Parser {
                         // AND 삼킴
                         self.get_next_token();
 
-                        let y = self.parse_expression(context.clone())?;
+                        let y = self.parse_expression(context)?;
 
                         let expression = NotBetweenExpression { a, x, y };
 

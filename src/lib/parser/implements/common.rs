@@ -892,7 +892,7 @@ impl Parser {
         }
 
         // 서브쿼리 파싱
-        let select = self.handle_select_query(context.clone())?;
+        let select = self.handle_select_query(context)?;
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0022 need more tokens"));

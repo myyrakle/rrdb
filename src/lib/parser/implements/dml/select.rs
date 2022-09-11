@@ -197,7 +197,7 @@ impl Parser {
             query_builder = query_builder.set_offset(offset);
 
             if self.next_token_is_limit() {
-                let limit = self.parse_limit(context.clone())?;
+                let limit = self.parse_limit(context)?;
                 query_builder = query_builder.set_limit(limit);
             }
         } else if self.next_token_is_limit() {
@@ -205,7 +205,7 @@ impl Parser {
             query_builder = query_builder.set_limit(limit);
 
             if self.next_token_is_offset() {
-                let offset = self.parse_offset(context.clone())?;
+                let offset = self.parse_offset(context)?;
                 query_builder = query_builder.set_offset(offset);
             }
         }
@@ -224,7 +224,7 @@ impl Parser {
         let select_item = SelectItem::builder();
 
         // 표현식 파싱
-        let select_item = select_item.set_item(self.parse_expression(context.clone())?);
+        let select_item = select_item.set_item(self.parse_expression(context)?);
 
         // 더 없을 경우 바로 반환
         if !self.has_next_token() {
@@ -279,7 +279,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let item = self.parse_expression(context.clone())?;
+        let item = self.parse_expression(context)?;
 
         let mut order_by_item = OrderByItem {
             item,
@@ -318,7 +318,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let item = self.parse_expression(context.clone())?;
+        let item = self.parse_expression(context)?;
 
         let order_by_item = GroupByItem { item };
 
@@ -348,7 +348,7 @@ impl Parser {
             let current_token = self.get_next_token();
 
             if current_token == Token::On {
-                let expression = self.parse_expression(context.clone())?;
+                let expression = self.parse_expression(context)?;
                 Some(expression)
             } else {
                 self.unget_next_token(current_token);
@@ -383,7 +383,7 @@ impl Parser {
             )));
         }
 
-        let expression = self.parse_expression(context.clone())?;
+        let expression = self.parse_expression(context)?;
 
         Ok(expression.into())
     }
@@ -405,7 +405,7 @@ impl Parser {
             )));
         }
 
-        let expression = self.parse_expression(context.clone())?;
+        let expression = self.parse_expression(context)?;
 
         Ok(HavingClause {
             expression: expression.into(),

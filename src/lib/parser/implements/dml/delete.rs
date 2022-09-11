@@ -57,7 +57,7 @@ impl Parser {
 
         // WHERE 절 파싱
         if self.next_token_is_where() {
-            let where_clause = self.parse_where(context.clone())?;
+            let where_clause = self.parse_where(context)?;
             query_builder = query_builder.set_where(where_clause);
         }
 

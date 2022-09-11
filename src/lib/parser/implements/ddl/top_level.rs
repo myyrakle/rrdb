@@ -19,7 +19,7 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Table => self.handle_create_table_query(context.clone()),
+            Token::Table => self.handle_create_table_query(context),
             Token::Database => self.handle_create_database_query(),
             _ => Err(ParsingError::boxed(format!(
                 "not supported command. possible commands: (create table). but your input is {:?}",
@@ -56,7 +56,7 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Table => self.handle_drop_table_query(context.clone()),
+            Token::Table => self.handle_drop_table_query(context),
             Token::Database => self.handle_drop_database_query(),
             _ => Err(ParsingError::boxed(
                 "not supported command. possible commands: (create table)",
