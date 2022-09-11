@@ -5,6 +5,7 @@ use crate::lib::ast::predule::{
     OrderByItem, OrderByType, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
     WhereClause,
 };
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]

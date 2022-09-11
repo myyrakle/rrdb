@@ -2,6 +2,7 @@
 use crate::lib::ast::ddl::DropTableQuery;
 #[cfg(test)]
 use crate::lib::ast::types::TableName;
+use crate::lib::parser::context::ParserContext;
 #[cfg(test)]
 use crate::lib::parser::predule::Parser;
 

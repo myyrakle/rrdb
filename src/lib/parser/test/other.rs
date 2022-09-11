@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use crate::lib::ast::predule::ShowDatabasesQuery;
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]

@@ -4,6 +4,7 @@ use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectColumn, TableName, UpdateItem,
     UpdateQuery, WhereClause,
 };
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]

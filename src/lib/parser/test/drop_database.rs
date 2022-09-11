@@ -1,5 +1,6 @@
 #[cfg(test)]
 use crate::lib::ast::ddl::DropDatabaseQuery;
+use crate::lib::parser::context::ParserContext;
 #[cfg(test)]
 use crate::lib::parser::predule::Parser;
 
