@@ -73,7 +73,7 @@ impl Parser {
                     let subquery = self.parse_subquery(context.clone())?;
                     query_builder = query_builder.set_from_subquery(subquery);
                 } else {
-                    let table_name = self.parse_table_name()?;
+                    let table_name = self.parse_table_name(context.clone())?;
                     query_builder = query_builder.set_from_table(table_name);
                 }
 
@@ -334,7 +334,7 @@ impl Parser {
             return Err(ParsingError::boxed("E0310 need more tokens"));
         }
 
-        let right = self.parse_table_name()?;
+        let right = self.parse_table_name(context.clone())?;
 
         let right_alias = if self.next_token_is_table_alias() {
             self.parse_table_alias().ok()

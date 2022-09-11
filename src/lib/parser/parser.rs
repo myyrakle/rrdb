@@ -44,9 +44,9 @@ impl Parser {
                         // top-level 세미콜론 무시
                         continue;
                     }
-                    Token::Create => statements.push(self.handle_create_query()?),
+                    Token::Create => statements.push(self.handle_create_query(context.clone())?),
                     Token::Alter => statements.push(self.handle_alter_query()?),
-                    Token::Drop => statements.push(self.handle_drop_query()?),
+                    Token::Drop => statements.push(self.handle_drop_query(context.clone())?),
                     Token::Select => {
                         self.unget_next_token(current_token);
                         let query = self.handle_select_query(context.clone())?;

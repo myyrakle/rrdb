@@ -29,7 +29,7 @@ impl Parser {
         }
 
         // 테이블명 파싱
-        let table_name = self.parse_table_name()?;
+        let table_name = self.parse_table_name(context.clone())?;
         query_builder = query_builder.set_into_table(table_name);
 
         // 컬럼명 지정 파싱

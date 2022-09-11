@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 #[cfg(test)]
 use crate::lib::ast::ddl::CreateTableQuery;
 #[cfg(test)]
