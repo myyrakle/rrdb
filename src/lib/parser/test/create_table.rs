@@ -1,8 +1,8 @@
-#[cfg(test)]
+#![cfg(test)]
+
 use crate::lib::ast::ddl::CreateTableQuery;
-#[cfg(test)]
 use crate::lib::ast::types::{Column, DataType, TableName};
-#[cfg(test)]
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -45,5 +45,8 @@ pub fn create_table() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }

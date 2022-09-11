@@ -11,6 +11,7 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn new(text: String) -> Self {
+        println!("@@ sql echo: ${:?}", text);
         Self {
             last_char: ' ',
             buffer: text.chars().collect(),

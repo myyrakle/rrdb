@@ -4,6 +4,7 @@ use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, DeleteQuery, SQLExpression, SelectColumn, TableName,
     WhereClause,
 };
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -22,7 +23,10 @@ pub fn delete_from_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -49,5 +53,8 @@ pub fn delete_from_where_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }

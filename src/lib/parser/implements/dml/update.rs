@@ -30,7 +30,7 @@ impl Parser {
         }
 
         // 테이블명 파싱
-        let table_name = self.parse_table_name()?;
+        let table_name = self.parse_table_name(context.clone())?;
         query_builder = query_builder.set_target_table(table_name);
 
         if self.next_token_is_table_alias() {
@@ -85,7 +85,7 @@ impl Parser {
                         return Err(ParsingError::boxed("E0608: need more tokens"));
                     }
 
-                    let expression = self.parse_expression(context)?;
+                    let expression = self.parse_expression(context.clone())?;
 
                     let update_item = UpdateItem {
                         column: identifier,

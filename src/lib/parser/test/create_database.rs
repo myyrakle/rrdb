@@ -1,6 +1,6 @@
-#[cfg(test)]
+#![cfg(test)]
 use crate::lib::ast::ddl::CreateDatabaseQuery;
-#[cfg(test)]
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -17,7 +17,10 @@ pub fn create_database_1() {
         .set_if_not_exists(true)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }
 
 #[test]
@@ -34,5 +37,8 @@ pub fn create_database_2() {
         .set_if_not_exists(false)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }

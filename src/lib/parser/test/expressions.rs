@@ -5,6 +5,7 @@ use crate::lib::ast::predule::{
     ListExpression, NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
     UnaryOperatorExpression,
 };
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -31,7 +32,10 @@ pub fn unary_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -58,7 +62,10 @@ pub fn unary_expression_2() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -86,7 +93,10 @@ pub fn arithmetic_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -119,7 +129,10 @@ pub fn arithmetic_expression_2() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -152,7 +165,10 @@ pub fn arithmetic_expression_3() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -190,7 +206,10 @@ pub fn arithmetic_expression_4() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -225,7 +244,10 @@ pub fn arithmetic_expression_5() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -257,7 +279,10 @@ pub fn arithmetic_expression_6() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -287,7 +312,10 @@ pub fn function_call_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -315,7 +343,10 @@ pub fn between_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -348,7 +379,10 @@ pub fn between_expression_2() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -381,7 +415,10 @@ pub fn between_expression_3() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -409,7 +446,10 @@ pub fn not_between_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -439,7 +479,10 @@ pub fn list_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -474,7 +517,10 @@ pub fn in_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -509,5 +555,8 @@ pub fn not_in_expression_1() {
         )
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }

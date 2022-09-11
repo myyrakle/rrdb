@@ -29,7 +29,7 @@ impl Parser {
         }
 
         // 테이블명 파싱
-        let table_name = self.parse_table_name()?;
+        let table_name = self.parse_table_name(context.clone())?;
         query_builder = query_builder.set_into_table(table_name);
 
         // 컬럼명 지정 파싱
@@ -51,7 +51,7 @@ impl Parser {
         }
 
         // 컬럼명 지정 파싱
-        let columns = self.parse_insert_columns(context)?;
+        let columns = self.parse_insert_columns(context.clone())?;
         query_builder = query_builder.set_columns(columns);
 
         if !self.has_next_token() {
@@ -193,7 +193,7 @@ impl Parser {
                     _ => {
                         if current_token.is_expression() {
                             self.unget_next_token(current_token);
-                            let expression = self.parse_expression(context)?;
+                            let expression = self.parse_expression(context.clone())?;
                             list.push(expression);
                             continue;
                         }

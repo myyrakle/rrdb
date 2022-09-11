@@ -54,10 +54,13 @@ impl Executor {
         Ok(())
     }
 
+    // 쿼리 최적화 및 실행, 결과 반환
     pub async fn process_query(
         &self,
         mut statement: SQLStatement,
     ) -> Result<ExecuteResult, Box<dyn Error>> {
+        println!("@@ AST echo: {:?}", statement);
+
         // 최적화 작업
         let optimizer = Optimizer::new();
         optimizer.optimize(&mut statement);

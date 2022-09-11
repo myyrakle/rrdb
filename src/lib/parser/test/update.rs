@@ -4,6 +4,7 @@ use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectColumn, TableName, UpdateItem,
     UpdateQuery, WhereClause,
 };
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -28,7 +29,10 @@ pub fn update_set_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -58,7 +62,10 @@ pub fn update_set_2() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -92,5 +99,8 @@ pub fn update_set_where_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }

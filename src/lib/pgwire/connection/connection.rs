@@ -7,7 +7,7 @@ use tokio_util::codec::Framed;
 
 use crate::lib::{
     ast::predule::SQLStatement,
-    parser::predule::Parser,
+    parser::{context::ParserContext, predule::Parser},
     pgwire::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
         engine::{Engine, Portal, RRDBEngine},
@@ -70,7 +70,10 @@ impl Connection {
     fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
         let mut parser = Parser::new(text.into())?;
 
-        let statements = parser.parse()?;
+        let statements = parser.parse(
+            ParserContext::default()
+                .set_default_database(self.engine.shared_state.database.clone()),
+        )?;
 
         match statements.len() {
             0 => Ok(None),
@@ -93,8 +96,12 @@ impl Connection {
                     .await
                     .ok_or(ConnectionError::ConnectionClosed)??
                 {
-                    ClientMessage::Startup(_startup) => {
-                        // do startup stuff
+                    ClientMessage::Startup(startup) => {
+                        println!("@@ startup: {:?}", startup.parameters);
+
+                        if let Some(database) = startup.parameters.get("database") {
+                            self.engine.shared_state.database = database.to_owned();
+                        }
                     }
                     ClientMessage::SSLRequest => {
                         // we don't support SSL for now

@@ -1,12 +1,16 @@
 use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 use std::error::Error;
 
 impl Parser {
     // CREATE TABLE 쿼리 분석
-    pub(crate) fn handle_create_table_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_create_table_query(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("need more tokens"));
         }
@@ -18,7 +22,7 @@ impl Parser {
         query_builder = query_builder.set_if_not_exists(if_not_exists);
 
         // 테이블명 설정
-        let table = self.parse_table_name()?;
+        let table = self.parse_table_name(context)?;
         query_builder = query_builder.set_table(table);
 
         // 여는 괄호 체크
@@ -115,7 +119,10 @@ impl Parser {
     }
 
     // DROP TABLE 쿼리 분석
-    pub(crate) fn handle_drop_table_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_drop_table_query(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
         let mut query_builder = DropTableQuery::builder();
 
         // IF EXISTS 파싱
@@ -127,7 +134,7 @@ impl Parser {
             return Err(ParsingError::boxed("need more tokens"));
         }
 
-        let table = self.parse_table_name()?;
+        let table = self.parse_table_name(context)?;
 
         // 테이블명 설정
         query_builder = query_builder.set_table(table);

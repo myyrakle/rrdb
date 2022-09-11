@@ -27,7 +27,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<SQLStatement>, Box<dyn Error>> {
+    pub fn parse(&mut self, context: ParserContext) -> Result<Vec<SQLStatement>, Box<dyn Error>> {
         let mut statements: Vec<SQLStatement> = vec![];
 
         // Top-Level Parser Loop
@@ -44,35 +44,35 @@ impl Parser {
                         // top-level 세미콜론 무시
                         continue;
                     }
-                    Token::Create => statements.push(self.handle_create_query()?),
+                    Token::Create => statements.push(self.handle_create_query(context.clone())?),
                     Token::Alter => statements.push(self.handle_alter_query()?),
-                    Token::Drop => statements.push(self.handle_drop_query()?),
+                    Token::Drop => statements.push(self.handle_drop_query(context.clone())?),
                     Token::Select => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_select_query(ParserContext::default())?;
+                        let query = self.handle_select_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Update => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_update_query(ParserContext::default())?;
+                        let query = self.handle_update_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Insert => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_insert_query(ParserContext::default())?;
+                        let query = self.handle_insert_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Delete => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_delete_query(ParserContext::default())?;
+                        let query = self.handle_delete_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Backslash => {
-                        let query = self.parse_backslash_query(ParserContext::default())?;
+                        let query = self.parse_backslash_query(context.clone())?;
                         statements.push(query);
                     }
                     Token::Show => {
-                        let query = self.parse_show_query(ParserContext::default())?;
+                        let query = self.parse_show_query(context.clone())?;
                         statements.push(query);
                     }
                     _ => {

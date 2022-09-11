@@ -1,6 +1,6 @@
-#[cfg(test)]
+#![cfg(test)]
 use crate::lib::ast::ddl::DropDatabaseQuery;
-#[cfg(test)]
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -17,5 +17,8 @@ pub fn drop_database() {
         .set_if_exists(true)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }

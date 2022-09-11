@@ -5,4 +5,5 @@ use super::channel::ChannelRequest;
 #[derive(Clone, Debug)]
 pub struct SharedState {
     pub sender: Sender<ChannelRequest>,
+    pub database: String, // current database name
 }

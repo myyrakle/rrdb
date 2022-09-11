@@ -1,8 +1,8 @@
-#[cfg(test)]
+#![cfg(test)]
+
 use crate::lib::ast::ddl::DropTableQuery;
-#[cfg(test)]
 use crate::lib::ast::types::TableName;
-#[cfg(test)]
+use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
 #[test]
@@ -19,5 +19,8 @@ pub fn drop_table() {
         .set_if_exists(true)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }

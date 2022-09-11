@@ -19,18 +19,15 @@ impl Server {
         Self { option }
     }
 
-    /// Starts a server using a function responsible for producing engine instances and set of bind options.
-    ///
-    /// Returns once the server is listening for connections, with the accept loop
-    /// running as a background task, and returns the listener's local port.
-    ///
-    /// Useful for creating test harnesses binding to port 0 to select a random port.
+    /// 메인 서버 루프.
+    /// 여러개의 태스크 제어
     pub async fn run(&self) -> Result<(), Box<dyn Error>> {
         // TODO: 인덱스 로딩 등 기본 로직 실행.
 
         let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
 
         // background task
+        // 쿼리 실행 요청을 전달받음
         let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
                 tokio::spawn(async move {
@@ -60,6 +57,7 @@ impl Server {
         });
 
         // connection task
+        // client와의 커넥션 처리 루프
         let listener =
             TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
 
@@ -69,6 +67,7 @@ impl Server {
 
                 let shared_state = SharedState {
                     sender: request_sender.clone(),
+                    database: "None".into(),
                 };
 
                 tokio::spawn(async move {
@@ -80,8 +79,7 @@ impl Server {
             }
         });
 
-        let result = join!(background_task, connection_task);
-        println!("{:?}", result);
+        let _result = join!(background_task, connection_task);
 
         Ok(())
     }
