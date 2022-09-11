@@ -14,7 +14,10 @@ pub fn show_databases_1() {
 
     let expected = ShowDatabasesQuery {};
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -28,5 +31,8 @@ pub fn show_databases_2() {
 
     let expected = ShowDatabasesQuery {};
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }

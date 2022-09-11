@@ -54,7 +54,7 @@ impl Parser {
                 Token::Comma => continue,
                 _ => {
                     self.unget_next_token(current_token);
-                    let select_item = self.parse_select_item(context)?;
+                    let select_item = self.parse_select_item(context.clone())?;
                     query_builder = query_builder.add_select_item(select_item);
                 }
             }
@@ -70,7 +70,7 @@ impl Parser {
         match current_token {
             Token::From => {
                 if self.next_token_is_left_parentheses() {
-                    let subquery = self.parse_subquery(context)?;
+                    let subquery = self.parse_subquery(context.clone())?;
                     query_builder = query_builder.set_from_subquery(subquery);
                 } else {
                     let table_name = self.parse_table_name()?;
@@ -92,13 +92,13 @@ impl Parser {
 
         // JOIN 절 파싱
         while let Some(join_type) = self.get_next_join_type() {
-            let join = self.parse_join(join_type, context)?;
+            let join = self.parse_join(join_type, context.clone())?;
             query_builder = query_builder.add_join(join);
         }
 
         // WHERE 절 파싱
         if self.next_token_is_where() {
-            let where_clause = self.parse_where(context)?;
+            let where_clause = self.parse_where(context.clone())?;
             query_builder = query_builder.set_where(where_clause);
         }
 
@@ -127,7 +127,7 @@ impl Parser {
                     _ => {
                         if current_token.is_expression() {
                             self.unget_next_token(current_token);
-                            let order_by_item = self.parse_order_by_item(context)?;
+                            let order_by_item = self.parse_order_by_item(context.clone())?;
                             query_builder = query_builder.add_order_by(order_by_item);
                         } else {
                             return Err(ParsingError::boxed(format!(
@@ -165,7 +165,7 @@ impl Parser {
                     _ => {
                         if current_token.is_expression() {
                             self.unget_next_token(current_token);
-                            let group_by_item = self.parse_group_by_item(context)?;
+                            let group_by_item = self.parse_group_by_item(context.clone())?;
                             query_builder = query_builder.add_group_by(group_by_item);
                         } else {
                             return Err(ParsingError::boxed(format!(
@@ -181,7 +181,7 @@ impl Parser {
         // Having 절 파싱
         if self.next_token_is_having() {
             if query_builder.has_group_by() {
-                let having_clause = self.parse_having(context)?;
+                let having_clause = self.parse_having(context.clone())?;
                 query_builder = query_builder.set_having(having_clause);
             } else {
                 return Err(ParsingError::boxed(
@@ -193,19 +193,19 @@ impl Parser {
         // Limit & Offset 절 파싱
         // Offset이 먼저인 경우와, Limit이 먼저인 경우 둘다 대응
         if self.next_token_is_offset() {
-            let offset = self.parse_offset(context)?;
+            let offset = self.parse_offset(context.clone())?;
             query_builder = query_builder.set_offset(offset);
 
             if self.next_token_is_limit() {
-                let limit = self.parse_limit(context)?;
+                let limit = self.parse_limit(context.clone())?;
                 query_builder = query_builder.set_limit(limit);
             }
         } else if self.next_token_is_limit() {
-            let limit = self.parse_limit(context)?;
+            let limit = self.parse_limit(context.clone())?;
             query_builder = query_builder.set_limit(limit);
 
             if self.next_token_is_offset() {
-                let offset = self.parse_offset(context)?;
+                let offset = self.parse_offset(context.clone())?;
                 query_builder = query_builder.set_offset(offset);
             }
         }
@@ -224,7 +224,7 @@ impl Parser {
         let select_item = SelectItem::builder();
 
         // 표현식 파싱
-        let select_item = select_item.set_item(self.parse_expression(context)?);
+        let select_item = select_item.set_item(self.parse_expression(context.clone())?);
 
         // 더 없을 경우 바로 반환
         if !self.has_next_token() {
@@ -279,7 +279,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let item = self.parse_expression(context)?;
+        let item = self.parse_expression(context.clone())?;
 
         let mut order_by_item = OrderByItem {
             item,
@@ -318,7 +318,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let item = self.parse_expression(context)?;
+        let item = self.parse_expression(context.clone())?;
 
         let order_by_item = GroupByItem { item };
 
@@ -348,7 +348,7 @@ impl Parser {
             let current_token = self.get_next_token();
 
             if current_token == Token::On {
-                let expression = self.parse_expression(context)?;
+                let expression = self.parse_expression(context.clone())?;
                 Some(expression)
             } else {
                 self.unget_next_token(current_token);
@@ -383,7 +383,7 @@ impl Parser {
             )));
         }
 
-        let expression = self.parse_expression(context)?;
+        let expression = self.parse_expression(context.clone())?;
 
         Ok(expression.into())
     }
@@ -405,7 +405,7 @@ impl Parser {
             )));
         }
 
-        let expression = self.parse_expression(context)?;
+        let expression = self.parse_expression(context.clone())?;
 
         Ok(HavingClause {
             expression: expression.into(),

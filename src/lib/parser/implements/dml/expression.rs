@@ -46,7 +46,7 @@ impl Parser {
             Token::Integer(integer) => {
                 let lhs = SQLExpression::Integer(integer);
 
-                if self.next_token_is_binary_operator(context) {
+                if self.next_token_is_binary_operator(context.clone()) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     Ok(expression)
                 } else if self.next_token_is_between() {
@@ -59,7 +59,7 @@ impl Parser {
             Token::Float(float) => {
                 let lhs = SQLExpression::Float(float);
 
-                if self.next_token_is_binary_operator(context) {
+                if self.next_token_is_binary_operator(context.clone()) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     Ok(expression)
                 } else if self.next_token_is_between() {
@@ -72,7 +72,7 @@ impl Parser {
             Token::String(string) => {
                 let lhs = SQLExpression::String(string);
 
-                if self.next_token_is_binary_operator(context) {
+                if self.next_token_is_binary_operator(context.clone()) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     Ok(expression)
                 } else if self.next_token_is_between() {
@@ -85,7 +85,7 @@ impl Parser {
             Token::Boolean(boolean) => {
                 let lhs = SQLExpression::Boolean(boolean);
 
-                if self.next_token_is_binary_operator(context) {
+                if self.next_token_is_binary_operator(context.clone()) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     Ok(expression)
                 } else if self.next_token_is_between() {
@@ -98,7 +98,7 @@ impl Parser {
             Token::Null => {
                 let lhs = SQLExpression::Null;
 
-                if self.next_token_is_binary_operator(context) {
+                if self.next_token_is_binary_operator(context.clone()) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     Ok(expression)
                 } else if self.next_token_is_between() {
@@ -119,13 +119,13 @@ impl Parser {
                     Token::Select => {
                         self.unget_next_token(second_token);
                         self.unget_next_token(current_token);
-                        let expression = self.parse_subquery(context)?.into();
+                        let expression = self.parse_subquery(context.clone())?.into();
                         Ok(expression)
                     }
                     _ => {
                         self.unget_next_token(second_token);
                         self.unget_next_token(current_token);
-                        let expression = self.parse_parentheses_expression(context)?;
+                        let expression = self.parse_parentheses_expression(context.clone())?;
                         Ok(expression)
                     }
                 }
@@ -140,7 +140,7 @@ impl Parser {
 
                 let lhs = SQLExpression::SelectColumn(select_column.clone());
 
-                if self.next_token_is_binary_operator(context) {
+                if self.next_token_is_binary_operator(context.clone()) {
                     let expression = self.parse_binary_expression(lhs, context)?;
                     Ok(expression)
                 } else if self.next_token_is_between() {
@@ -175,7 +175,7 @@ impl Parser {
             return Err(ParsingError::boxed("E0201 need more tokens"));
         }
 
-        let expression = self.parse_expression(context)?;
+        let expression = self.parse_expression(context.clone())?;
 
         // expression이 2항 표현식일 경우 단항 표현식이 최우선으로 처리되게 구성
         match expression {
@@ -235,7 +235,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let expression = self.parse_expression(context)?;
+        let expression = self.parse_expression(context.clone())?;
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0205 need more tokens"));
@@ -269,7 +269,7 @@ impl Parser {
                         Token::Comma => continue,
                         _ => {
                             self.unget_next_token(current_token);
-                            let expression = self.parse_expression(context)?;
+                            let expression = self.parse_expression(context.clone())?;
                             list.value.push(expression);
                             continue;
                         }
@@ -310,7 +310,7 @@ impl Parser {
 
         match operator {
             Ok(operator) => {
-                let rhs = self.parse_expression(context)?;
+                let rhs = self.parse_expression(context.clone())?;
 
                 let current_precedence = operator.get_precedence();
 
@@ -412,7 +412,7 @@ impl Parser {
             }
 
             // 표현식 파싱
-            let expression = self.parse_expression(context)?;
+            let expression = self.parse_expression(context.clone())?;
 
             call_expression.arguments.push(expression);
 
@@ -457,12 +457,12 @@ impl Parser {
 
         match current_token {
             Token::Between => {
-                let x = self.parse_expression(context)?;
+                let x = self.parse_expression(context.clone())?;
 
                 // AND 삼킴
                 self.get_next_token();
 
-                let y = self.parse_expression(context)?;
+                let y = self.parse_expression(context.clone())?;
 
                 let expression = BetweenExpression { a, x, y };
 
@@ -477,12 +477,12 @@ impl Parser {
 
                 match current_token {
                     Token::Between => {
-                        let x = self.parse_expression(context)?;
+                        let x = self.parse_expression(context.clone())?;
 
                         // AND 삼킴
                         self.get_next_token();
 
-                        let y = self.parse_expression(context)?;
+                        let y = self.parse_expression(context.clone())?;
 
                         let expression = NotBetweenExpression { a, x, y };
 

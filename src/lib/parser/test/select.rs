@@ -30,7 +30,10 @@ pub fn select_from_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -57,7 +60,10 @@ pub fn select_from_2() {
         .set_from_alias("boom".into())
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -99,7 +105,10 @@ pub fn select_from_3() {
         .set_from_alias("boom".into())
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -147,7 +156,10 @@ pub fn select_inner_join_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -195,7 +207,10 @@ pub fn select_inner_join_2() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -243,7 +258,10 @@ pub fn select_left_join_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -291,7 +309,10 @@ pub fn select_left_join_2() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -339,7 +360,10 @@ pub fn select_right_join_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -387,7 +411,10 @@ pub fn select_right_join_2() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -435,7 +462,10 @@ pub fn select_full_join_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -483,7 +513,10 @@ pub fn select_full_join_2() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -520,7 +553,10 @@ pub fn select_where_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -553,7 +589,10 @@ pub fn select_order_by_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -590,7 +629,10 @@ pub fn select_order_by_2() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -622,7 +664,10 @@ pub fn select_group_by_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -657,7 +702,10 @@ pub fn select_group_by_2() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -698,7 +746,10 @@ pub fn select_group_by_having_1() {
         })
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -728,7 +779,10 @@ pub fn select_offset_1() {
         .set_offset(5)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -758,7 +812,10 @@ pub fn select_limit_1() {
         .set_limit(5)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -790,7 +847,10 @@ pub fn select_offset_limit_1() {
         .set_limit(10)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -822,7 +882,10 @@ pub fn select_limit_offset_1() {
         .set_limit(10)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }
 
 #[test]
@@ -877,5 +940,8 @@ pub fn select_subquery_1() {
         .set_from_alias("ff".into())
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected.into()],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
 }

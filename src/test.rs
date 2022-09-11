@@ -4,6 +4,8 @@
 pub mod command;
 pub mod lib;
 
+use lib::parser::context::ParserContext;
+
 use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectItem, SelectQuery,
 };
@@ -18,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut parser = Parser::new(text).unwrap();
 
-    parser.parse().unwrap();
+    parser.parse(ParserContext::default()).unwrap();
 
     Ok(())
 }

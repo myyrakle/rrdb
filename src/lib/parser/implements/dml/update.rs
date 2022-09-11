@@ -85,7 +85,7 @@ impl Parser {
                         return Err(ParsingError::boxed("E0608: need more tokens"));
                     }
 
-                    let expression = self.parse_expression(context)?;
+                    let expression = self.parse_expression(context.clone())?;
 
                     let update_item = UpdateItem {
                         column: identifier,
@@ -107,7 +107,7 @@ impl Parser {
         if self.next_token_is_where() {
             self.get_next_token(); // where 토큰 삼키기
 
-            let expression = self.parse_expression(context)?;
+            let expression = self.parse_expression(context.clone())?;
             query_builder = query_builder.set_where(WhereClause {
                 expression: expression.into(),
             });

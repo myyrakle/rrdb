@@ -49,30 +49,30 @@ impl Parser {
                     Token::Drop => statements.push(self.handle_drop_query()?),
                     Token::Select => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_select_query(context)?;
+                        let query = self.handle_select_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Update => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_update_query(context)?;
+                        let query = self.handle_update_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Insert => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_insert_query(context)?;
+                        let query = self.handle_insert_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Delete => {
                         self.unget_next_token(current_token);
-                        let query = self.handle_delete_query(context)?;
+                        let query = self.handle_delete_query(context.clone())?;
                         statements.push(query.into());
                     }
                     Token::Backslash => {
-                        let query = self.parse_backslash_query(context)?;
+                        let query = self.parse_backslash_query(context.clone())?;
                         statements.push(query);
                     }
                     Token::Show => {
-                        let query = self.parse_show_query(context)?;
+                        let query = self.parse_show_query(context.clone())?;
                         statements.push(query);
                     }
                     _ => {

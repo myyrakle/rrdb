@@ -51,7 +51,7 @@ impl Parser {
         }
 
         // 컬럼명 지정 파싱
-        let columns = self.parse_insert_columns(context)?;
+        let columns = self.parse_insert_columns(context.clone())?;
         query_builder = query_builder.set_columns(columns);
 
         if !self.has_next_token() {
@@ -63,12 +63,12 @@ impl Parser {
         match current_token {
             Token::Values => {
                 self.unget_next_token(current_token);
-                let values = self.parse_insert_values(context)?;
+                let values = self.parse_insert_values(context.clone())?;
                 query_builder = query_builder.set_values(values);
             }
             Token::Select => {
                 self.unget_next_token(current_token);
-                let select = self.handle_select_query(context)?;
+                let select = self.handle_select_query(context.clone())?;
                 query_builder = query_builder.set_select(select);
             }
             _ => {
@@ -193,7 +193,7 @@ impl Parser {
                     _ => {
                         if current_token.is_expression() {
                             self.unget_next_token(current_token);
-                            let expression = self.parse_expression(context)?;
+                            let expression = self.parse_expression(context.clone())?;
                             list.push(expression);
                             continue;
                         }

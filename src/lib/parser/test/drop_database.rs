@@ -17,5 +17,8 @@ pub fn drop_database() {
         .set_if_exists(true)
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }

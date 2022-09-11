@@ -19,7 +19,10 @@ pub fn alter_database_1() {
         }))
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }
 
 #[test]
@@ -35,5 +38,8 @@ pub fn alter_database_2() {
         .set_name("foo".to_owned())
         .build();
 
-    assert_eq!(parser.parse().unwrap(), vec![expected],);
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
 }

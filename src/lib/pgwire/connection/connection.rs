@@ -71,7 +71,8 @@ impl Connection {
         let mut parser = Parser::new(text.into())?;
 
         let statements = parser.parse(
-            ParserContext::default().set_default_database(self.engine.shared_state.database),
+            ParserContext::default()
+                .set_default_database(self.engine.shared_state.database.clone()),
         )?;
 
         match statements.len() {
