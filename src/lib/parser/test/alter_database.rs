@@ -1,7 +1,6 @@
-#[cfg(test)]
+#![cfg(test)]
 use crate::lib::ast::ddl::{AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo};
 use crate::lib::parser::context::ParserContext;
-#[cfg(test)]
 use crate::lib::parser::predule::Parser;
 
 #[test]

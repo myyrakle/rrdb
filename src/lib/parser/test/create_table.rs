@@ -1,11 +1,8 @@
-#![allow(unused_imports)]
+#![cfg(test)]
 
-#[cfg(test)]
 use crate::lib::ast::ddl::CreateTableQuery;
-#[cfg(test)]
 use crate::lib::ast::types::{Column, DataType, TableName};
 use crate::lib::parser::context::ParserContext;
-#[cfg(test)]
 use crate::lib::parser::predule::Parser;
 
 #[test]
