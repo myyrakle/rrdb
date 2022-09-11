@@ -2,7 +2,7 @@
 pub struct ParserContext {
     pub in_between_clause: bool,
     pub in_parentheses: bool,
-    pub default_database: String,
+    pub default_database: Option<String>,
 }
 
 impl ParserContext {
@@ -17,7 +17,7 @@ impl ParserContext {
     }
 
     pub fn set_default_database(mut self, default_database: String) -> Self {
-        self.default_database = default_database;
+        self.default_database = Some(default_database);
         self
     }
 }

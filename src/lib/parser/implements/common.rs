@@ -186,7 +186,10 @@ impl Parser {
     }
 
     // 테이블명 분석
-    pub(crate) fn parse_table_name(&mut self) -> Result<TableName, Box<dyn Error>> {
+    pub(crate) fn parse_table_name(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<TableName, Box<dyn Error>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0010 need more tokens"));
@@ -232,7 +235,10 @@ impl Parser {
             self.unget_next_token(current_token);
         }
 
-        Ok(TableName::new(database_name, table_name))
+        Ok(TableName::new(
+            database_name.or(context.default_database),
+            table_name,
+        ))
     }
 
     // IF NOT EXISTS 체크 로직
