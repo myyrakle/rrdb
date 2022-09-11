@@ -59,6 +59,8 @@ impl Executor {
         &self,
         mut statement: SQLStatement,
     ) -> Result<ExecuteResult, Box<dyn Error>> {
+        println!("@@ AST echo: {:?}", statement);
+
         // 최적화 작업
         let optimizer = Optimizer::new();
         optimizer.optimize(&mut statement);

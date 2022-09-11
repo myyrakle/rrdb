@@ -70,7 +70,9 @@ impl Connection {
     fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
         let mut parser = Parser::new(text.into())?;
 
-        let statements = parser.parse(ParserContext::default())?;
+        let statements = parser.parse(
+            ParserContext::default().set_default_database(self.engine.shared_state.database),
+        )?;
 
         match statements.len() {
             0 => Ok(None),
@@ -95,8 +97,10 @@ impl Connection {
                 {
                     ClientMessage::Startup(startup) => {
                         println!("@@ startup: {:?}", startup.parameters);
-                        self.engine.shared_state.database =
-                            startup.parameters.get("database").map(|e| e.to_owned());
+
+                        if let Some(database) = startup.parameters.get("database") {
+                            self.engine.shared_state.database = database.to_owned();
+                        }
                     }
                     ClientMessage::SSLRequest => {
                         // we don't support SSL for now
