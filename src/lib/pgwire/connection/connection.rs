@@ -7,7 +7,7 @@ use tokio_util::codec::Framed;
 
 use crate::lib::{
     ast::predule::SQLStatement,
-    parser::predule::Parser,
+    parser::{context::ParserContext, predule::Parser},
     pgwire::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
         engine::{Engine, Portal, RRDBEngine},
@@ -70,7 +70,7 @@ impl Connection {
     fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
         let mut parser = Parser::new(text.into())?;
 
-        let statements = parser.parse()?;
+        let statements = parser.parse(ParserContext::default())?;
 
         match statements.len() {
             0 => Ok(None),

@@ -16,6 +16,7 @@ pub struct RRDBPortal {
 
 #[async_trait]
 impl Portal for RRDBPortal {
+    // 실제 결과 데이터 리스트 전송
     async fn fetch(&mut self, batch: &mut DataRowBatch) -> Result<(), ErrorResponse> {
         for row in self.execute_result.rows.iter().cloned() {
             let mut writer = batch.create_row();
@@ -51,6 +52,7 @@ pub struct RRDBEngine {
 impl Engine for RRDBEngine {
     type PortalType = RRDBPortal;
 
+    // 결과 데이터 리스트의 컬럼 정보 전송
     async fn prepare(
         &mut self,
         statement: &SQLStatement,
