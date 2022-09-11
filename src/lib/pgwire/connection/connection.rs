@@ -93,8 +93,10 @@ impl Connection {
                     .await
                     .ok_or(ConnectionError::ConnectionClosed)??
                 {
-                    ClientMessage::Startup(_startup) => {
-                        // do startup stuff
+                    ClientMessage::Startup(startup) => {
+                        println!("@@ startup: {:?}", startup.parameters);
+                        self.engine.shared_state.database =
+                            startup.parameters.get("database").map(|e| e.to_owned());
                     }
                     ClientMessage::SSLRequest => {
                         // we don't support SSL for now

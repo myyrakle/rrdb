@@ -69,6 +69,7 @@ impl Server {
 
                 let shared_state = SharedState {
                     sender: request_sender.clone(),
+                    database: None,
                 };
 
                 tokio::spawn(async move {
