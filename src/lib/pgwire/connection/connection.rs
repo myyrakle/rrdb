@@ -89,6 +89,7 @@ impl Connection {
         &mut self,
         framed: &mut Framed<impl AsyncRead + AsyncWrite + Unpin, ConnectionCodec>,
     ) -> Result<Option<ConnectionState>, ConnectionError> {
+        println!("step");
         match self.state {
             ConnectionState::Startup => {
                 match framed
@@ -106,15 +107,17 @@ impl Connection {
                     ClientMessage::SSLRequest => {
                         // we don't support SSL for now
                         // client will retry with startup packet
+                        println!("ssl");
                         framed.send('N').await?;
                         return Ok(Some(ConnectionState::Startup));
                     }
                     _ => {
+                        println!("123444");
                         return Err(ErrorResponse::fatal(
                             SqlState::PROTOCOL_VIOLATION,
                             "expected startup message",
                         )
-                        .into())
+                        .into());
                     }
                 }
 
@@ -143,6 +146,7 @@ impl Connection {
                     .ok_or(ConnectionError::ConnectionClosed)??
                 {
                     ClientMessage::Parse(parse) => {
+                        println!("@123");
                         let parsed_statement = self.parse_statement(&parse.query)?;
 
                         self.statements.insert(
@@ -158,6 +162,7 @@ impl Connection {
                         framed.send(ParseComplete).await?;
                     }
                     ClientMessage::Bind(bind) => {
+                        println!("@4");
                         let format_code = match bind.result_format {
                             BindFormat::All(format) => format,
                             BindFormat::PerColumn(_) => {
@@ -191,6 +196,7 @@ impl Connection {
                         framed.send(BindComplete).await?;
                     }
                     ClientMessage::Describe(Describe::PreparedStatement(ref statement_name)) => {
+                        println!("@1");
                         let fields = self.prepared_statement(statement_name)?.fields.clone();
                         framed.send(ParameterDescription {}).await?;
                         framed
@@ -201,16 +207,19 @@ impl Connection {
                             .await?;
                     }
                     ClientMessage::Describe(Describe::Portal(ref portal_name)) => {
+                        println!("@2");
                         match self.portal(portal_name)? {
                             Some(portal) => framed.send(portal.row_desc.clone()).await?,
                             None => framed.send(NoData).await?,
                         }
                     }
                     ClientMessage::Sync => {
+                        println!("@@@");
                         framed.send(ReadyForQuery).await?;
                     }
                     ClientMessage::Execute(exec) => match self.portal_mut(&exec.portal)? {
                         Some(bound) => {
+                            println!("@");
                             let mut batch_writer = DataRowBatch::from_row_desc(&bound.row_desc);
                             bound.portal.fetch(&mut batch_writer).await?;
                             let num_rows = batch_writer.num_rows();
@@ -224,10 +233,12 @@ impl Connection {
                                 .await?;
                         }
                         None => {
+                            println!("?");
                             framed.send(EmptyQueryResponse).await?;
                         }
                     },
                     ClientMessage::Query(query) => {
+                        println!("test {:?}", query);
                         if let Some(parsed) = self.parse_statement(&query)? {
                             let fields = self.engine.prepare(&parsed).await?;
                             let row_desc = RowDescription {
@@ -276,6 +287,7 @@ impl Connection {
     ) -> Result<(), ConnectionError> {
         let mut framed = Framed::new(stream, ConnectionCodec::new());
         loop {
+            println!("lloop");
             let new_state = match self.step(&mut framed).await {
                 Ok(Some(state)) => state,
                 Ok(None) => return Ok(()),
@@ -290,6 +302,7 @@ impl Connection {
                     ConnectionState::Idle
                 }
                 Err(err) => {
+                    println!("error: ${:?}", err);
                     framed
                         .send(ErrorResponse::fatal(
                             SqlState::CONNECTION_EXCEPTION,
