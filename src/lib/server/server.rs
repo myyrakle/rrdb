@@ -70,12 +70,15 @@ impl Server {
                     database: "None".into(),
                 };
 
-                tokio::spawn(async move {
+                if let Err(error) = tokio::spawn(async move {
                     let mut conn = Connection::new(shared_state);
                     conn.run(stream).await.unwrap();
                 })
                 .await
-                .unwrap();
+                {
+                    println!("!join error: {:?}", error)
+                    continue;
+                }
             }
         });
 
