@@ -36,18 +36,21 @@ impl Server {
 
                     match result {
                         Ok(result) => {
-                            request
+                            if let Err(_channel_response) = request
                                 .response_sender
                                 .send(ChannelResponse { result: Ok(result) })
-                                .unwrap();
+                            {
+                                println!("channel send failed");
+                            }
                         }
                         Err(error) => {
-                            request
-                                .response_sender
-                                .send(ChannelResponse {
+                            if let Err(_channel_response) =
+                                request.response_sender.send(ChannelResponse {
                                     result: Err(ExecuteError::boxed(error.to_string())),
                                 })
-                                .unwrap();
+                            {
+                                println!("channel send failed: {:?}", error);
+                            }
                         }
                     }
                 })
@@ -76,7 +79,7 @@ impl Server {
                 })
                 .await
                 {
-                    println!("!join error: {:?}", error)
+                    println!("!join error: {:?}", error);
                     continue;
                 }
             }
