@@ -30,7 +30,7 @@ impl Server {
         // 쿼리 실행 요청을 전달받음
         let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
-                tokio::spawn(async move {
+                let join_result = tokio::spawn(async move {
                     let executor = Executor::new();
                     let result = executor.process_query(request.statement).await;
 
@@ -54,8 +54,11 @@ impl Server {
                         }
                     }
                 })
-                .await
-                .unwrap();
+                .await;
+
+                if let Err(error) = join_result {
+                    println!("!join error: {:?}", error);
+                }
             }
         });
 
@@ -75,7 +78,9 @@ impl Server {
 
                 if let Err(error) = tokio::spawn(async move {
                     let mut conn = Connection::new(shared_state);
-                    conn.run(stream).await.unwrap();
+                    if let Err(error) = conn.run(stream).await {
+                        println!("connection error: {:?}", error);
+                    }
                 })
                 .await
                 {

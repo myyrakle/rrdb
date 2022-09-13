@@ -286,10 +286,14 @@ impl Connection {
         stream: impl AsyncRead + AsyncWrite + Unpin,
     ) -> Result<(), ConnectionError> {
         let mut framed = Framed::new(stream, ConnectionCodec::new());
+
         loop {
             println!("lloop");
             let new_state = match self.step(&mut framed).await {
-                Ok(Some(state)) => state,
+                Ok(Some(state)) => {
+                    println!("foo");
+                    state
+                }
                 Ok(None) => return Ok(()),
                 Err(ConnectionError::ErrorResponse(err_info)) => {
                     framed.send(err_info.clone()).await?;
