@@ -31,6 +31,7 @@ impl Decoder for ConnectionCodec {
     type Error = ProtocolError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        println!("decode start");
         if !self.startup_received {
             if src.len() < STARTUP_HEADER_SIZE {
                 return Ok(None);

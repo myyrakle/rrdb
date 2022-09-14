@@ -89,7 +89,7 @@ impl Connection {
         &mut self,
         framed: &mut Framed<impl AsyncRead + AsyncWrite + Unpin, ConnectionCodec>,
     ) -> Result<Option<ConnectionState>, ConnectionError> {
-        println!("step");
+        println!("step: {:?}", self.state);
         match self.state {
             ConnectionState::Startup => {
                 match framed
@@ -140,11 +140,13 @@ impl Connection {
                 Ok(Some(ConnectionState::Idle))
             }
             ConnectionState::Idle => {
-                match framed
-                    .next()
-                    .await
-                    .ok_or(ConnectionError::ConnectionClosed)??
-                {
+                println!("@foo");
+                let foo = framed.next();
+                println!("@foo2");
+                let foo = foo.await;
+                println!("@foo3");
+
+                match foo.ok_or(ConnectionError::ConnectionClosed)?? {
                     ClientMessage::Parse(parse) => {
                         println!("@123");
                         let parsed_statement = self.parse_statement(&parse.query)?;
@@ -264,7 +266,10 @@ impl Connection {
                         }
                         framed.send(ReadyForQuery).await?;
                     }
-                    ClientMessage::Terminate => return Ok(None),
+                    ClientMessage::Terminate => {
+                        println!("foo");
+                        return Ok(None);
+                    }
                     _ => {
                         return Err(ErrorResponse::error(
                             SqlState::PROTOCOL_VIOLATION,
@@ -287,17 +292,20 @@ impl Connection {
     ) -> Result<(), ConnectionError> {
         let mut framed = Framed::new(stream, ConnectionCodec::new());
 
+        let mut count = 0;
         loop {
-            println!("lloop");
+            count += 1;
+            println!("loop: {:?}", count);
             let new_state = match self.step(&mut framed).await {
-                Ok(Some(state)) => {
-                    println!("foo");
-                    state
+                Ok(Some(state)) => state,
+                Ok(None) => {
+                    println!("ok");
+                    return Ok(());
                 }
-                Ok(None) => return Ok(()),
                 Err(ConnectionError::ErrorResponse(err_info)) => {
                     framed.send(err_info.clone()).await?;
 
+                    println!("err");
                     if err_info.severity == Severity::FATAL {
                         return Err(err_info.into());
                     }
