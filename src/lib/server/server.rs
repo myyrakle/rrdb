@@ -2,6 +2,7 @@ use std::error::Error;
 
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::predule::Executor;
+use crate::lib::logger::predule::Logger;
 use crate::lib::pgwire::predule::Connection;
 use crate::lib::server::channel::ChannelResponse;
 use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
@@ -40,7 +41,7 @@ impl Server {
                                 .response_sender
                                 .send(ChannelResponse { result: Ok(result) })
                             {
-                                println!("channel send failed");
+                                Logger::error("channel send failed");
                             }
                         }
                         Err(error) => {
@@ -49,7 +50,7 @@ impl Server {
                                     result: Err(ExecuteError::boxed(error.to_string())),
                                 })
                             {
-                                println!("channel send failed: {:?}", error);
+                                Logger::error("channel send failed");
                             }
                         }
                     }
@@ -57,7 +58,7 @@ impl Server {
                 .await;
 
                 if let Err(error) = join_result {
-                    println!("!join error: {:?}", error);
+                    Logger::error(format!("join error {:?}", error));
                 }
             }
         });
@@ -69,13 +70,12 @@ impl Server {
 
         let connection_task = tokio::spawn(async move {
             loop {
-                println!("!@#@#!@");
                 let accepted = listener.accept().await;
 
-                let (stream, _) = match accepted {
-                    Ok(ok) => ok,
+                let stream = match accepted {
+                    Ok((stream, _)) => stream,
                     Err(error) => {
-                        println!("!!socket error {:?}", error);
+                        Logger::error(format!("socket error {:?}", error));
                         continue;
                     }
                 };
@@ -85,17 +85,12 @@ impl Server {
                     database: "None".into(),
                 };
 
-                if let Err(error) = tokio::spawn(async move {
+                tokio::spawn(async move {
                     let mut conn = Connection::new(shared_state);
                     if let Err(error) = conn.run(stream).await {
-                        println!("!!connection error: {:?}", error);
+                        Logger::error(format!("connection error {:?}", error));
                     }
-                })
-                .await
-                {
-                    println!("!join error: {:?}", error);
-                    continue;
-                }
+                });
             }
         });
 
