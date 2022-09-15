@@ -5,3 +5,18 @@
 Rust-based RDB
 
 not complete
+
+### Server
+
+```
+# 스토리지 초기화
+cargo run --bin rrdb init
+# 서버 실행
+cargo run --bin rrdb run
+```
+
+### Client
+
+```
+psql -U rrdb -p 55555
+```
