@@ -69,7 +69,16 @@ impl Server {
 
         let connection_task = tokio::spawn(async move {
             loop {
-                let (stream, _) = listener.accept().await.unwrap();
+                println!("!@#@#!@");
+                let accepted = listener.accept().await;
+
+                let (stream, _) = match accepted {
+                    Ok(ok) => ok,
+                    Err(error) => {
+                        println!("!!socket error {:?}", error);
+                        continue;
+                    }
+                };
 
                 let shared_state = SharedState {
                     sender: request_sender.clone(),
@@ -79,7 +88,7 @@ impl Server {
                 if let Err(error) = tokio::spawn(async move {
                     let mut conn = Connection::new(shared_state);
                     if let Err(error) = conn.run(stream).await {
-                        println!("connection error: {:?}", error);
+                        println!("!!connection error: {:?}", error);
                     }
                 })
                 .await

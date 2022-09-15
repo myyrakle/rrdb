@@ -3,6 +3,7 @@ pub mod constants;
 pub mod errors;
 pub mod executor;
 pub mod lexer;
+pub mod logger;
 pub mod optimizer;
 pub mod parser;
 pub mod pgwire;

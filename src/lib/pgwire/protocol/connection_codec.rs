@@ -58,9 +58,20 @@ impl Decoder for ConnectionCodec {
 
             let mut param_str_start_pos = 0;
             let mut current_key = None;
+
+            println!("before");
             for (i, &blah) in src.iter().enumerate() {
                 if blah == 0 {
-                    let string_value = String::from_utf8(src[param_str_start_pos..i].to_owned())?;
+                    let string_value = String::from_utf8(src[param_str_start_pos..i].to_owned());
+
+                    let string_value = match string_value {
+                        Ok(string_value) => string_value,
+                        Err(error) => {
+                            println!("!!!error: {:?}", error);
+                            "foo".into()
+                        }
+                    };
+
                     param_str_start_pos = i + 1;
 
                     current_key = match current_key {
@@ -72,6 +83,7 @@ impl Decoder for ConnectionCodec {
                     }
                 }
             }
+            println!("after");
 
             src.advance(message_len - STARTUP_HEADER_SIZE);
 
@@ -180,7 +192,10 @@ impl Decoder for ConnectionCodec {
                 ClientMessage::Query(query)
             }
             b'X' => ClientMessage::Terminate,
-            other => return Err(ProtocolError::InvalidMessageType(other)),
+            other => {
+                println!("아니");
+                return Err(ProtocolError::InvalidMessageType(other));
+            }
         };
 
         Ok(Some(message))
@@ -191,6 +206,7 @@ impl<T: BackendMessage> Encoder<T> for ConnectionCodec {
     type Error = ProtocolError;
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        println!("encode");
         let mut body = BytesMut::new();
         item.encode(&mut body);
 
@@ -205,6 +221,7 @@ impl Encoder<char> for ConnectionCodec {
     type Error = ProtocolError;
 
     fn encode(&mut self, item: char, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        println!("encode??");
         dst.put_u8(item as u8);
         Ok(())
     }

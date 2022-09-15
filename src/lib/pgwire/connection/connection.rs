@@ -140,13 +140,11 @@ impl Connection {
                 Ok(Some(ConnectionState::Idle))
             }
             ConnectionState::Idle => {
-                println!("@foo");
-                let foo = framed.next();
-                println!("@foo2");
-                let foo = foo.await;
-                println!("@foo3");
+                println!("@before await");
+                let result = framed.next().await;
+                println!("@after await");
 
-                match foo.ok_or(ConnectionError::ConnectionClosed)?? {
+                match result.ok_or(ConnectionError::ConnectionClosed)?? {
                     ClientMessage::Parse(parse) => {
                         println!("@123");
                         let parsed_statement = self.parse_statement(&parse.query)?;
