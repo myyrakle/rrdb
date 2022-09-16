@@ -31,7 +31,6 @@ impl Decoder for ConnectionCodec {
     type Error = ProtocolError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        println!("decode start");
         if !self.startup_received {
             if src.len() < STARTUP_HEADER_SIZE {
                 return Ok(None);
@@ -59,18 +58,9 @@ impl Decoder for ConnectionCodec {
             let mut param_str_start_pos = 0;
             let mut current_key = None;
 
-            println!("before");
             for (i, &blah) in src.iter().enumerate() {
                 if blah == 0 {
-                    let string_value = String::from_utf8(src[param_str_start_pos..i].to_owned());
-
-                    let string_value = match string_value {
-                        Ok(string_value) => string_value,
-                        Err(error) => {
-                            println!("!!!error: {:?}", error);
-                            "foo".into()
-                        }
-                    };
+                    let string_value = String::from_utf8(src[param_str_start_pos..i].to_owned())?;
 
                     param_str_start_pos = i + 1;
 
@@ -83,7 +73,6 @@ impl Decoder for ConnectionCodec {
                     }
                 }
             }
-            println!("after");
 
             src.advance(message_len - STARTUP_HEADER_SIZE);
 
@@ -193,7 +182,6 @@ impl Decoder for ConnectionCodec {
             }
             b'X' => ClientMessage::Terminate,
             other => {
-                println!("아니");
                 return Err(ProtocolError::InvalidMessageType(other));
             }
         };
@@ -206,7 +194,6 @@ impl<T: BackendMessage> Encoder<T> for ConnectionCodec {
     type Error = ProtocolError;
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        println!("encode");
         let mut body = BytesMut::new();
         item.encode(&mut body);
 
@@ -221,7 +208,6 @@ impl Encoder<char> for ConnectionCodec {
     type Error = ProtocolError;
 
     fn encode(&mut self, item: char, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        println!("encode??");
         dst.put_u8(item as u8);
         Ok(())
     }

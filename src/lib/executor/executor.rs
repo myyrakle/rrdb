@@ -2,6 +2,7 @@ use crate::lib::ast::ddl::{DDLStatement, SQLStatement};
 use crate::lib::ast::predule::OtherStatement;
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
+use crate::lib::logger::predule::Logger;
 use crate::lib::optimizer::predule::Optimizer;
 use crate::lib::utils::predule::set_system_env;
 use path_absolutize::*;
@@ -59,7 +60,7 @@ impl Executor {
         &self,
         mut statement: SQLStatement,
     ) -> Result<ExecuteResult, Box<dyn Error>> {
-        println!("@@ AST echo: {:?}", statement);
+        Logger::info(format!("AST echo: {:?}", statement));
 
         // 최적화 작업
         let optimizer = Optimizer::new();
