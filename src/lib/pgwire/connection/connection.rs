@@ -6,7 +6,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
 use crate::lib::{
-    ast::predule::SQLStatement,
+    ast::{other::ShowDatabasesQuery, predule::SQLStatement},
+    executor::{executor::Executor, result::ExecuteField},
     parser::{context::ParserContext, predule::Parser},
     pgwire::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
@@ -97,10 +98,40 @@ impl Connection {
                     .ok_or(ConnectionError::ConnectionClosed)??
                 {
                     ClientMessage::Startup(startup) => {
-                        // TODO: database 존재여부 체크
+                        if let Some(database_name) = startup.parameters.get("database") {
+                            // 해당 데이터베이스가 존재하는지 검사
+                            let executor = Executor::new();
+                            let result = executor.show_databases(ShowDatabasesQuery {}).await;
 
-                        if let Some(database) = startup.parameters.get("database") {
-                            self.engine.shared_state.database = database.to_owned();
+                            match result {
+                                Ok(result) => {
+                                    let has_match = result.rows.iter().any(|e| {
+                                        if let ExecuteField::String(name) = &e.fields[0] {
+                                            name == database_name
+                                        } else {
+                                            false
+                                        }
+                                    });
+
+                                    if has_match {
+                                        self.engine.shared_state.database =
+                                            database_name.to_owned();
+                                    } else {
+                                        return Err(ErrorResponse::fatal(
+                                            SqlState::CONNECTION_EXCEPTION,
+                                            format!("No database named '{}'", database_name),
+                                        )
+                                        .into());
+                                    }
+                                }
+                                Err(error) => {
+                                    return Err(ErrorResponse::fatal(
+                                        SqlState::CONNECTION_EXCEPTION,
+                                        format!("{:?}", error),
+                                    )
+                                    .into());
+                                }
+                            }
                         }
                     }
                     ClientMessage::SSLRequest => {
