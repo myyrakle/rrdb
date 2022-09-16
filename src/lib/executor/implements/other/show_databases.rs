@@ -68,4 +68,16 @@ impl Executor {
             },
         }
     }
+
+    pub async fn find_database(&self, database_name: String) -> Result<bool, Box<dyn Error>> {
+        let result = self.show_databases(ShowDatabasesQuery {}).await?;
+
+        Ok(result.rows.iter().any(|e| {
+            if let ExecuteField::String(name) = &e.fields[0] {
+                name == &database_name
+            } else {
+                false
+            }
+        }))
+    }
 }

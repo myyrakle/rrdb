@@ -75,6 +75,11 @@ impl Parser {
                         let query = self.parse_show_query(context.clone())?;
                         statements.push(query);
                     }
+                    Token::Use => {
+                        let query = self.parse_use_query(context.clone())?;
+                        statements.push(query);
+                    }
+
                     _ => {
                         break;
                     }

@@ -2,6 +2,7 @@ use std::error::Error;
 
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::predule::Executor;
+use crate::lib::logger::predule::Logger;
 use crate::lib::pgwire::predule::Connection;
 use crate::lib::server::channel::ChannelResponse;
 use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
@@ -36,23 +37,24 @@ impl Server {
 
                     match result {
                         Ok(result) => {
-                            request
+                            if let Err(_channel_response) = request
                                 .response_sender
                                 .send(ChannelResponse { result: Ok(result) })
-                                .unwrap();
+                            {
+                                Logger::error("channel send failed");
+                            }
                         }
                         Err(error) => {
-                            request
-                                .response_sender
-                                .send(ChannelResponse {
+                            if let Err(_channel_response) =
+                                request.response_sender.send(ChannelResponse {
                                     result: Err(ExecuteError::boxed(error.to_string())),
                                 })
-                                .unwrap();
+                            {
+                                Logger::error("channel send failed");
+                            }
                         }
                     }
-                })
-                .await
-                .unwrap();
+                });
             }
         });
 
@@ -63,7 +65,15 @@ impl Server {
 
         let connection_task = tokio::spawn(async move {
             loop {
-                let (stream, _) = listener.accept().await.unwrap();
+                let accepted = listener.accept().await;
+
+                let stream = match accepted {
+                    Ok((stream, _)) => stream,
+                    Err(error) => {
+                        Logger::error(format!("socket error {:?}", error));
+                        continue;
+                    }
+                };
 
                 let shared_state = SharedState {
                     sender: request_sender.clone(),
@@ -72,10 +82,10 @@ impl Server {
 
                 tokio::spawn(async move {
                     let mut conn = Connection::new(shared_state);
-                    conn.run(stream).await.unwrap();
-                })
-                .await
-                .unwrap();
+                    if let Err(error) = conn.run(stream).await {
+                        Logger::error(format!("connection error {:?}", error));
+                    }
+                });
             }
         });
 

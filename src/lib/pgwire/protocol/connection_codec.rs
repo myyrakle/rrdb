@@ -57,9 +57,11 @@ impl Decoder for ConnectionCodec {
 
             let mut param_str_start_pos = 0;
             let mut current_key = None;
+
             for (i, &blah) in src.iter().enumerate() {
                 if blah == 0 {
                     let string_value = String::from_utf8(src[param_str_start_pos..i].to_owned())?;
+
                     param_str_start_pos = i + 1;
 
                     current_key = match current_key {
@@ -179,7 +181,9 @@ impl Decoder for ConnectionCodec {
                 ClientMessage::Query(query)
             }
             b'X' => ClientMessage::Terminate,
-            other => return Err(ProtocolError::InvalidMessageType(other)),
+            other => {
+                return Err(ProtocolError::InvalidMessageType(other));
+            }
         };
 
         Ok(Some(message))

@@ -6,7 +6,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
 use crate::lib::{
-    ast::predule::SQLStatement,
+    ast::predule::{OtherStatement, SQLStatement},
+    executor::executor::Executor,
     parser::{context::ParserContext, predule::Parser},
     pgwire::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
@@ -97,10 +98,32 @@ impl Connection {
                     .ok_or(ConnectionError::ConnectionClosed)??
                 {
                     ClientMessage::Startup(startup) => {
-                        println!("@@ startup: {:?}", startup.parameters);
+                        if let Some(database_name) = startup.parameters.get("database") {
+                            // 해당 데이터베이스가 존재하는지 검사
+                            let executor = Executor::new();
+                            let result = executor.find_database(database_name.clone()).await;
 
-                        if let Some(database) = startup.parameters.get("database") {
-                            self.engine.shared_state.database = database.to_owned();
+                            match result {
+                                Ok(has_match) => {
+                                    if has_match {
+                                        self.engine.shared_state.database =
+                                            database_name.to_owned();
+                                    } else {
+                                        return Err(ErrorResponse::fatal(
+                                            SqlState::CONNECTION_EXCEPTION,
+                                            format!("No database named '{}'", database_name),
+                                        )
+                                        .into());
+                                    }
+                                }
+                                Err(error) => {
+                                    return Err(ErrorResponse::fatal(
+                                        SqlState::CONNECTION_EXCEPTION,
+                                        format!("{:?}", error),
+                                    )
+                                    .into());
+                                }
+                            }
                         }
                     }
                     ClientMessage::SSLRequest => {
@@ -114,7 +137,7 @@ impl Connection {
                             SqlState::PROTOCOL_VIOLATION,
                             "expected startup message",
                         )
-                        .into())
+                        .into());
                     }
                 }
 
@@ -240,6 +263,11 @@ impl Connection {
                             portal.fetch(&mut batch_writer).await?;
                             let num_rows = batch_writer.num_rows();
 
+                            if let SQLStatement::Other(OtherStatement::UseDatabase(query)) = parsed
+                            {
+                                self.engine.shared_state.database = query.database_name;
+                            }
+
                             framed.send(row_desc).await?;
                             framed.send(batch_writer).await?;
 
@@ -253,7 +281,9 @@ impl Connection {
                         }
                         framed.send(ReadyForQuery).await?;
                     }
-                    ClientMessage::Terminate => return Ok(None),
+                    ClientMessage::Terminate => {
+                        return Ok(None);
+                    }
                     _ => {
                         return Err(ErrorResponse::error(
                             SqlState::PROTOCOL_VIOLATION,
@@ -275,10 +305,13 @@ impl Connection {
         stream: impl AsyncRead + AsyncWrite + Unpin,
     ) -> Result<(), ConnectionError> {
         let mut framed = Framed::new(stream, ConnectionCodec::new());
+
         loop {
             let new_state = match self.step(&mut framed).await {
                 Ok(Some(state)) => state,
-                Ok(None) => return Ok(()),
+                Ok(None) => {
+                    return Ok(());
+                }
                 Err(ConnectionError::ErrorResponse(err_info)) => {
                     framed.send(err_info.clone()).await?;
 

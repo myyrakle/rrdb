@@ -36,6 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         SubCommand::Client => {
             println!("Client");
+            unimplemented!();
         }
     }
 
