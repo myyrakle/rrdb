@@ -2,7 +2,7 @@ use crate::lib::ast::predule::{OtherStatement, SQLStatement};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UseDatabaseQuery {
-    database_name: String,
+    pub database_name: String,
 }
 
 impl From<UseDatabaseQuery> for SQLStatement {
