@@ -31,7 +31,7 @@ impl Server {
         // 쿼리 실행 요청을 전달받음
         let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
-                let join_result = tokio::spawn(async move {
+                tokio::spawn(async move {
                     let executor = Executor::new();
                     let result = executor.process_query(request.statement).await;
 
@@ -54,12 +54,7 @@ impl Server {
                             }
                         }
                     }
-                })
-                .await;
-
-                if let Err(error) = join_result {
-                    Logger::error(format!("join error {:?}", error));
-                }
+                });
             }
         });
 

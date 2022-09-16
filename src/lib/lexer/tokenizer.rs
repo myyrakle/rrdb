@@ -1,5 +1,6 @@
 use crate::lib::errors::predule::LexingError;
 use crate::lib::lexer::predule::{OperatorToken, Token};
+use crate::lib::logger::predule::Logger;
 use std::error::Error;
 
 #[derive(Debug)]
@@ -11,7 +12,7 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn new(text: String) -> Self {
-        println!("@@ sql echo: ${:?}", text);
+        Logger::info(format!("SQL echo: {:?}", text));
         Self {
             last_char: ' ',
             buffer: text.chars().collect(),
