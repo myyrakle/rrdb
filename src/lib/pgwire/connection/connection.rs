@@ -6,11 +6,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
 use crate::lib::{
-    ast::{
-        other::ShowDatabasesQuery,
-        predule::{OtherStatement, SQLStatement},
-    },
-    executor::{executor::Executor, result::ExecuteField},
+    ast::predule::{OtherStatement, SQLStatement},
+    executor::executor::Executor,
     parser::{context::ParserContext, predule::Parser},
     pgwire::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
