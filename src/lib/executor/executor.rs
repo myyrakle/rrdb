@@ -80,6 +80,9 @@ impl Executor {
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }
+            SQLStatement::Other(OtherStatement::UseDatabase(query)) => {
+                self.use_databases(query).await
+            }
             _ => Err(ExecuteError::boxed("test")),
         }
     }

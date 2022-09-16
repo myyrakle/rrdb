@@ -6,7 +6,10 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
 use crate::lib::{
-    ast::{other::ShowDatabasesQuery, predule::SQLStatement},
+    ast::{
+        other::ShowDatabasesQuery,
+        predule::{OtherStatement, SQLStatement},
+    },
     executor::{executor::Executor, result::ExecuteField},
     parser::{context::ParserContext, predule::Parser},
     pgwire::{
@@ -101,18 +104,10 @@ impl Connection {
                         if let Some(database_name) = startup.parameters.get("database") {
                             // 해당 데이터베이스가 존재하는지 검사
                             let executor = Executor::new();
-                            let result = executor.show_databases(ShowDatabasesQuery {}).await;
+                            let result = executor.find_database(database_name.clone()).await;
 
                             match result {
-                                Ok(result) => {
-                                    let has_match = result.rows.iter().any(|e| {
-                                        if let ExecuteField::String(name) = &e.fields[0] {
-                                            name == database_name
-                                        } else {
-                                            false
-                                        }
-                                    });
-
+                                Ok(has_match) => {
                                     if has_match {
                                         self.engine.shared_state.database =
                                             database_name.to_owned();
@@ -270,6 +265,11 @@ impl Connection {
                             let mut batch_writer = DataRowBatch::from_row_desc(&row_desc);
                             portal.fetch(&mut batch_writer).await?;
                             let num_rows = batch_writer.num_rows();
+
+                            if let SQLStatement::Other(OtherStatement::UseDatabase(query)) = parsed
+                            {
+                                self.engine.shared_state.database = query.database_name;
+                            }
 
                             framed.send(row_desc).await?;
                             framed.send(batch_writer).await?;
