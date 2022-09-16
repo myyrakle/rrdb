@@ -1,4 +1,4 @@
-use crate::lib::ast::ddl::{DDLStatement, SQLStatement};
+use crate::lib::ast::ddl::{CreateDatabaseQuery, DDLStatement, SQLStatement};
 use crate::lib::ast::predule::OtherStatement;
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
@@ -51,6 +51,9 @@ impl Executor {
         let global_info = GlobalConfig::default();
         let global_config = toml::to_string(&global_info).unwrap();
         tokio::fs::write(global_path, global_config.as_bytes()).await?;
+
+        self.create_database(CreateDatabaseQuery::builder().set_name("rrdb".into()))
+            .await?;
 
         Ok(())
     }
