@@ -39,7 +39,7 @@ impl Server {
 
                     match result {
                         Ok(result) => {
-                            if let Err(_channel_response) = request
+                            if let Err(_response) = request
                                 .response_sender
                                 .send(ChannelResponse { result: Ok(result) })
                             {
@@ -47,11 +47,10 @@ impl Server {
                             }
                         }
                         Err(error) => {
-                            if let Err(_channel_response) =
-                                request.response_sender.send(ChannelResponse {
-                                    result: Err(ExecuteError::boxed(error.to_string())),
-                                })
-                            {
+                            let error = error.to_string();
+                            if let Err(_response) = request.response_sender.send(ChannelResponse {
+                                result: Err(ExecuteError::boxed(ExecuteError::boxed(error))),
+                            }) {
                                 Logger::error("channel send failed");
                             }
                         }
