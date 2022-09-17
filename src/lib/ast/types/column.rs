@@ -1,6 +1,7 @@
 use crate::lib::ast::predule::DataType;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct Column {
     pub name: String,
     pub data_type: DataType,

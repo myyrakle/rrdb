@@ -80,13 +80,17 @@ impl Executor {
             SQLStatement::DDL(DDLStatement::DropDatabaseQuery(query)) => {
                 self.drop_database(query).await
             }
+            SQLStatement::DDL(DDLStatement::CreateTableQuery(query)) => {
+                self.create_table(query).await
+            }
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }
             SQLStatement::Other(OtherStatement::UseDatabase(query)) => {
                 self.use_databases(query).await
             }
-            _ => Err(ExecuteError::boxed("test")),
+            SQLStatement::Other(OtherStatement::DescTable(query)) => self.desc_table(query).await,
+            _ => Err(ExecuteError::boxed("no execute implementation")),
         }
     }
 }
