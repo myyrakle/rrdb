@@ -7,6 +7,7 @@ use crate::lib::pgwire::predule::Connection;
 use crate::lib::server::channel::ChannelResponse;
 use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
 
+use futures::future::join_all;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
@@ -30,7 +31,7 @@ impl Server {
 
         // background task
         // 쿼리 실행 요청을 전달받음
-        tokio::spawn(async move {
+        let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
                 tokio::spawn(async move {
                     let executor = Executor::new();
@@ -64,7 +65,7 @@ impl Server {
         let listener =
             TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
 
-        tokio::spawn(async move {
+        let connection_task = tokio::spawn(async move {
             loop {
                 let accepted = listener.accept().await;
 
@@ -100,6 +101,8 @@ impl Server {
             "Server is running on {}:{}",
             self.option.host, self.option.port
         ));
+
+        join_all(vec![connection_task, background_task]).await;
 
         Ok(())
     }

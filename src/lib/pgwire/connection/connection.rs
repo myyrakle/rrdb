@@ -8,6 +8,7 @@ use tokio_util::codec::Framed;
 use crate::lib::{
     ast::predule::{OtherStatement, SQLStatement},
     executor::executor::Executor,
+    logger::predule::Logger,
     parser::{context::ParserContext, predule::Parser},
     pgwire::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
@@ -108,6 +109,13 @@ impl Connection {
                                     if has_match {
                                         self.engine.shared_state.client_info.database =
                                             database_name.to_owned();
+
+                                        Logger::info(format!(
+                                            "New Connection=> UUID:{} IP:{} DATABASE:{}",
+                                            self.engine.shared_state.client_info.connection_id,
+                                            self.engine.shared_state.client_info.ip,
+                                            self.engine.shared_state.client_info.database
+                                        ));
                                     } else {
                                         return Err(ErrorResponse::fatal(
                                             SqlState::CONNECTION_EXCEPTION,
