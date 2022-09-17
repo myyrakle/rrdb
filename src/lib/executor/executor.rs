@@ -62,7 +62,7 @@ impl Executor {
     pub async fn process_query(
         &self,
         mut statement: SQLStatement,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         Logger::info(format!("AST echo: {:?}", statement));
 
         // 최적화 작업
@@ -70,7 +70,7 @@ impl Executor {
         optimizer.optimize(&mut statement);
 
         // 쿼리 실행
-        match statement {
+        let result = match statement {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
                 self.create_database(query).await
             }
@@ -92,7 +92,12 @@ impl Executor {
             }
             SQLStatement::Other(OtherStatement::ShowTables(query)) => self.show_tables(query).await,
             SQLStatement::Other(OtherStatement::DescTable(query)) => self.desc_table(query).await,
-            _ => Err(ExecuteError::boxed("no execute implementation")),
+            _ => unimplemented!("no execute implementation"),
+        };
+
+        match result {
+            Ok(result) => Ok(result),
+            Err(error) => Err(ExecuteError::boxed(error.to_string())),
         }
     }
 }
