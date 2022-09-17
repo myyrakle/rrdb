@@ -7,7 +7,6 @@ use crate::lib::pgwire::predule::Connection;
 use crate::lib::server::channel::ChannelResponse;
 use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
 
-use tokio::join;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
