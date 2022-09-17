@@ -3,7 +3,9 @@ use crate::lib::ast::ddl::{
     DropTableQuery,
 };
 use crate::lib::ast::dml::{DeleteQuery, InsertQuery, SelectQuery, UpdateQuery};
-use crate::lib::ast::other::{DescTableQuery, ShowDatabasesQuery, UseDatabaseQuery};
+use crate::lib::ast::other::{
+    DescTableQuery, ShowDatabasesQuery, ShowTablesQuery, UseDatabaseQuery,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SQLStatement {
@@ -38,5 +40,6 @@ pub enum DCLStatement {}
 pub enum OtherStatement {
     ShowDatabases(ShowDatabasesQuery),
     UseDatabase(UseDatabaseQuery),
+    ShowTables(ShowTablesQuery),
     DescTable(DescTableQuery),
 }

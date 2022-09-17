@@ -6,3 +6,6 @@ pub use use_database::*;
 
 pub mod desc_table;
 pub use desc_table::*;
+
+pub mod show_tables;
+pub use show_tables::*;
