@@ -29,7 +29,7 @@ impl Server {
 
         // background task
         // 쿼리 실행 요청을 전달받음
-        let background_task = tokio::spawn(async move {
+        tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
                 tokio::spawn(async move {
                     let executor = Executor::new();
@@ -63,7 +63,7 @@ impl Server {
         let listener =
             TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
 
-        let connection_task = tokio::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 let accepted = listener.accept().await;
 
@@ -88,6 +88,11 @@ impl Server {
                 });
             }
         });
+
+        Logger::info(format!(
+            "Server is running on {}:{}",
+            self.option.host, self.option.port
+        ));
 
         Ok(())
     }
