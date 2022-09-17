@@ -89,6 +89,9 @@ impl Executor {
             SQLStatement::Other(OtherStatement::UseDatabase(query)) => {
                 self.use_databases(query).await
             }
+            SQLStatement::Other(OtherStatement::ShowTablesw(query)) => {
+                self.show_tables(query).await
+            }
             SQLStatement::Other(OtherStatement::DescTable(query)) => self.desc_table(query).await,
             _ => Err(ExecuteError::boxed("no execute implementation")),
         }
