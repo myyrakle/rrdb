@@ -13,7 +13,7 @@ impl Executor {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
-        let mut table_path = base_path.clone();
+        let mut table_path = base_path;
         table_path.push(query.table_name.database_name.unwrap());
         table_path.push(query.table_name.table_name);
         table_path.push("table.config");
@@ -22,7 +22,7 @@ impl Executor {
             Ok(read_result) => {
                 let table_info: TableConfig = encoder
                     .decode(read_result.as_slice())
-                    .ok_or(ExecuteError::boxed("config decode error"))?;
+                    .ok_or_else(|| ExecuteError::boxed("config decode error"))?;
 
                 Ok(ExecuteResult {
                     columns: (vec![
