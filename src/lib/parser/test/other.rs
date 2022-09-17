@@ -89,10 +89,14 @@ pub fn show_tables_1() {
 
     let mut parser = Parser::new(text).unwrap();
 
-    let expected = ShowTablesQuery {};
+    let expected = ShowTablesQuery {
+        database: "rrdb".into(),
+    };
 
     assert_eq!(
-        parser.parse(ParserContext::default()).unwrap(),
+        parser
+            .parse(ParserContext::default().set_default_database("rrdb".into()))
+            .unwrap(),
         vec![expected.into()],
     );
 }

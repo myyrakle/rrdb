@@ -9,7 +9,7 @@ use crate::lib::parser::predule::{Parser, ParserContext};
 impl Parser {
     pub(crate) fn parse_show_query(
         &mut self,
-        _context: ParserContext,
+        context: ParserContext,
     ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0701 need more tokens"));
@@ -19,7 +19,10 @@ impl Parser {
 
         match current_token {
             Token::Databases => Ok(ShowDatabasesQuery {}.into()),
-            Token::Tables => Ok(ShowTablesQuery {}.into()),
+            Token::Tables => Ok(ShowTablesQuery {
+                database: context.default_database.unwrap_or("None".into()),
+            }
+            .into()),
             _ => Err(ParsingError::boxed(format!(
                 "E0702: unexpected token '{:?}'",
                 current_token
