@@ -79,7 +79,10 @@ impl Parser {
                         let query = self.parse_use_query(context.clone())?;
                         statements.push(query);
                     }
-
+                    Token::Desc => {
+                        let query = self.parse_desc_query(context.clone())?;
+                        statements.push(query);
+                    }
                     _ => {
                         break;
                     }
