@@ -90,7 +90,7 @@ impl Executor {
                 self.use_databases(query).await
             }
             SQLStatement::Other(OtherStatement::DescTable(query)) => self.desc_table(query).await,
-            _ => Err(ExecuteError::boxed("test")),
+            _ => Err(ExecuteError::boxed("no execute implementation")),
         }
     }
 }

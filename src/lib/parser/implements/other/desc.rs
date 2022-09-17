@@ -1,9 +1,8 @@
 use std::error::Error;
 
-use crate::lib::ast::other::{DescTableQuery, UseDatabaseQuery};
+use crate::lib::ast::other::DescTableQuery;
 use crate::lib::ast::predule::SQLStatement;
 use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
