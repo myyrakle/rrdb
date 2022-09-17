@@ -10,6 +10,8 @@ use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
+use super::client::ClientInfo;
+
 pub struct Server {
     pub option: ServerOption,
 }
@@ -66,17 +68,23 @@ impl Server {
             loop {
                 let accepted = listener.accept().await;
 
-                let stream = match accepted {
-                    Ok((stream, _)) => stream,
+                let (stream, address) = match accepted {
+                    Ok((stream, address)) => (stream, address),
                     Err(error) => {
                         Logger::error(format!("socket error {:?}", error));
                         continue;
                     }
                 };
 
+                let client_info = ClientInfo {
+                    ip: address.ip(),
+                    connection_id: uuid::Uuid::new_v4().to_string(),
+                    database: "None".into(),
+                };
+
                 let shared_state = SharedState {
                     sender: request_sender.clone(),
-                    database: "None".into(),
+                    client_info,
                 };
 
                 tokio::spawn(async move {

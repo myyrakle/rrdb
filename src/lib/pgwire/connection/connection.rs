@@ -73,7 +73,7 @@ impl Connection {
 
         let statements = parser.parse(
             ParserContext::default()
-                .set_default_database(self.engine.shared_state.database.clone()),
+                .set_default_database(self.engine.shared_state.client_info.database.clone()),
         )?;
 
         match statements.len() {
@@ -106,7 +106,7 @@ impl Connection {
                             match result {
                                 Ok(has_match) => {
                                     if has_match {
-                                        self.engine.shared_state.database =
+                                        self.engine.shared_state.client_info.database =
                                             database_name.to_owned();
                                     } else {
                                         return Err(ErrorResponse::fatal(
@@ -265,7 +265,7 @@ impl Connection {
 
                             if let SQLStatement::Other(OtherStatement::UseDatabase(query)) = parsed
                             {
-                                self.engine.shared_state.database = query.database_name;
+                                self.engine.shared_state.client_info.database = query.database_name;
                             }
 
                             framed.send(row_desc).await?;
