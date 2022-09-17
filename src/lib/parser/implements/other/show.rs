@@ -20,7 +20,7 @@ impl Parser {
         match current_token {
             Token::Databases => Ok(ShowDatabasesQuery {}.into()),
             Token::Tables => Ok(ShowTablesQuery {
-                database: context.default_database.unwrap_or("None".into()),
+                database: context.default_database.unwrap_or_else(|| "None".into()),
             }
             .into()),
             _ => Err(ParsingError::boxed(format!(
