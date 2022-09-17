@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use crate::lib::ast::other::ShowTablesQuery;
 use crate::lib::ast::predule::{SQLStatement, ShowDatabasesQuery};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -18,6 +19,7 @@ impl Parser {
 
         match current_token {
             Token::Databases => Ok(ShowDatabasesQuery {}.into()),
+            Token::Tables => Ok(ShowTablesQuery {}.into()),
             _ => Err(ParsingError::boxed(format!(
                 "E0702: unexpected token '{:?}'",
                 current_token
