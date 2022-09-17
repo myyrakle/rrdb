@@ -89,8 +89,6 @@ impl Server {
             }
         });
 
-        let _result = join!(background_task, connection_task);
-
         Ok(())
     }
 }

@@ -1,8 +1,9 @@
 use crate::lib::ast::predule::{FromClause, FromTarget};
+use serde::{Deserialize, Serialize};
 
 // [database_name.]table_name
 // 테이블명을 가리키는 값입니다.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct TableName {
     pub database_name: Option<String>,
     pub table_name: String,

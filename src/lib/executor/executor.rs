@@ -80,6 +80,9 @@ impl Executor {
             SQLStatement::DDL(DDLStatement::DropDatabaseQuery(query)) => {
                 self.drop_database(query).await
             }
+            SQLStatement::DDL(DDLStatement::CreateTableQuery(query)) => {
+                self.create_table(query).await
+            }
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }
