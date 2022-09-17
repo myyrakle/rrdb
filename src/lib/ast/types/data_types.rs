@@ -8,3 +8,14 @@ pub enum DataType {
     Boolean,
     Varchar(i64),
 }
+
+impl From<DataType> for String {
+    fn from(value: DataType) -> Self {
+        match value {
+            DataType::Int => "integer".into(),
+            DataType::Float => "float".into(),
+            DataType::Boolean => "boolean".into(),
+            DataType::Varchar(number) => format!("varchar({})", number),
+        }
+    }
+}
