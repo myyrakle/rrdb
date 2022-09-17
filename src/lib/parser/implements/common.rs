@@ -124,9 +124,9 @@ impl Parser {
 
         if let Token::Identifier(type_name) = current_token {
             match type_name.to_uppercase().as_str() {
-                "INTEGER" => Ok(DataType::Int),
+                "INTEGER" | "INT" => Ok(DataType::Int),
                 "FLOAT" => Ok(DataType::Float),
-                "BOOLEAN" => Ok(DataType::Boolean),
+                "BOOLEAN" | "BOOL" => Ok(DataType::Boolean),
                 "VARCHAR" => {
                     // 여는 괄호 체크
                     if !self.has_next_token() {

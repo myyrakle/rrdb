@@ -58,7 +58,7 @@ impl Executor {
             rows: (vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "table created: {}",
-                    database_name
+                    table_name
                 ))],
             }]),
         })
