@@ -55,6 +55,7 @@ pub enum Token {
     To,
     Show,
     Databases,
+    Tables,
     Use,
 
     Default,
