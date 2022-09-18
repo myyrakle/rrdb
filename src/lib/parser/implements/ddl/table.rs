@@ -365,10 +365,6 @@ impl Parser {
                             } else if self.next_token_is_default() {
                                 self.get_next_token();
 
-                                if !self.has_next_token() {
-                                    return Err(ParsingError::boxed("E1235 need more tokens"));
-                                }
-
                                 query_builder = query_builder.set_action(
                                     AlterTableAlterColumn {
                                         action: AlterColumnDropDefault {}.into(),
