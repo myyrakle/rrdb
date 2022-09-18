@@ -121,11 +121,11 @@ impl From<AlterTableAlterColumn> for AlterTableAction {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AlterColumnAction {
-    AlterColumnType(DataType),
+    AlterColumnType(AlterTableSetType),
     AlterColumnSetNotNull,
     AlterColumnDropNotNull,
-    AlterColumnSetDefault(AlterTableSetDefault),
-    AlterColumnDropDefault(AlterTableDropDefault),
+    AlterColumnSetDefault(AlterColumnSetDefault),
+    AlterColumnDropDefault(AlterColumnDropDefault),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -133,16 +133,46 @@ pub struct AlterTableSetType {
     pub data_type: DataType,
 }
 
+impl From<AlterTableSetType> for AlterColumnAction {
+    fn from(value: AlterTableSetType) -> AlterColumnAction {
+        AlterColumnAction::AlterColumnType(value)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlterColumnSetNotNull {}
+
+impl From<AlterColumnSetNotNull> for AlterColumnAction {
+    fn from(value: AlterColumnSetNotNull) -> AlterColumnAction {
+        AlterColumnAction::AlterColumnSetNotNull
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlterColumnDropNotNull {}
 
+impl From<AlterColumnDropNotNull> for AlterColumnAction {
+    fn from(value: AlterColumnDropNotNull) -> AlterColumnAction {
+        AlterColumnAction::AlterColumnDropNotNull
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
-pub struct AlterTableSetDefault {
+pub struct AlterColumnSetDefault {
     pub default_expression: SQLExpression,
 }
 
+impl From<AlterColumnSetDefault> for AlterColumnAction {
+    fn from(value: AlterColumnSetDefault) -> AlterColumnAction {
+        AlterColumnAction::AlterColumnSetDefault(value)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AlterTableDropDefault {}
+pub struct AlterColumnDropDefault {}
+
+impl From<AlterColumnDropDefault> for AlterColumnAction {
+    fn from(value: AlterColumnDropDefault) -> AlterColumnAction {
+        AlterColumnAction::AlterColumnDropDefault(value)
+    }
+}

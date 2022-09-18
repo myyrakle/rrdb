@@ -1,6 +1,6 @@
 use crate::lib::ast::ddl::{
-    AlterTableAddColumn, AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn,
-    AlterTableRenameTo,
+    AlterColumnDropNotNull, AlterColumnSetNotNull, AlterTableAddColumn, AlterTableAlterColumn,
+    AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
 };
 use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
@@ -300,8 +300,34 @@ impl Parser {
                     let current_token = self.get_next_token();
 
                     match current_token {
-                        Token::Set => {}
-                        Token::Drop => {}
+                        Token::Set => {
+                            if self.next_token_is_not_null() {
+                                self.get_next_token();
+                                self.get_next_token();
+
+                                query_builder = query_builder.set_action(
+                                    AlterTableAlterColumn {
+                                        action: AlterColumnSetNotNull {}.into(),
+                                        column_name,
+                                    }
+                                    .into(),
+                                );
+                            }
+                        }
+                        Token::Drop => {
+                            if self.next_token_is_not_null() {
+                                self.get_next_token();
+                                self.get_next_token();
+
+                                query_builder = query_builder.set_action(
+                                    AlterTableAlterColumn {
+                                        action: AlterColumnDropNotNull {}.into(),
+                                        column_name,
+                                    }
+                                    .into(),
+                                );
+                            }
+                        }
                         _ => {
                             return Err(ParsingError::boxed(format!(
                                 "E1229 unexpected token {:?}",
