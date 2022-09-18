@@ -1,5 +1,5 @@
-use crate::lib::ast::ddl::{AlterTableQuery, AlterTableRenameTo};
-use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement, TableName};
+use crate::lib::ast::ddl::{AlterTableAddColumn, AlterTableQuery, AlterTableRenameTo};
+use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::context::ParserContext;
@@ -142,6 +142,28 @@ impl Parser {
                     _ => {
                         return Err(ParsingError::boxed(format!(
                             "E1214 unexpected token {:?}",
+                            current_token
+                        )))
+                    }
+                }
+            }
+            Token::Add => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E1215 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Column => {
+                        let column = self.parse_table_column()?;
+
+                        query_builder =
+                            query_builder.set_action(AlterTableAddColumn { column }.into());
+                    }
+                    _ => {
+                        return Err(ParsingError::boxed(format!(
+                            "E1216 unexpected keyword '{:?}'",
                             current_token
                         )))
                     }

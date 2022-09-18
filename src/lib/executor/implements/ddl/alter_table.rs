@@ -67,10 +67,10 @@ impl Executor {
                     },
                 }
             }
-            AlterTableAction::AddColumn(action) => {}
-            AlterTableAction::AlterColumn(action) => {}
-            AlterTableAction::DropColumn(action) => {}
-            AlterTableAction::RenameColumn(action) => {}
+            AlterTableAction::AddColumn(_action) => {}
+            AlterTableAction::AlterColumn(_action) => {}
+            AlterTableAction::DropColumn(_action) => {}
+            AlterTableAction::RenameColumn(_action) => {}
             AlterTableAction::None => {}
         }
 
