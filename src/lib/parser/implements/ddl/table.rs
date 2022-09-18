@@ -281,6 +281,41 @@ impl Parser {
                     )));
                 }
             }
+            Token::Alter => {
+                if self.next_token_is_column() {
+                    self.get_next_token();
+                }
+
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E1228 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                if let Token::Identifier(column_name) = current_token {
+                    if !self.has_next_token() {
+                        return Err(ParsingError::boxed("E1230 need more tokens"));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    match current_token {
+                        Token::Set => {}
+                        Token::Drop => {}
+                        _ => {
+                            return Err(ParsingError::boxed(format!(
+                                "E1229 unexpected token {:?}",
+                                current_token
+                            )))
+                        }
+                    }
+                } else {
+                    return Err(ParsingError::boxed(format!(
+                        "E1229 unexpected token {:?}",
+                        current_token
+                    )));
+                }
+            }
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "E1202 unexpected keyword '{:?}'",
