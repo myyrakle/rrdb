@@ -32,7 +32,7 @@ impl Parser {
 
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("E0002 need more tokens"));
+                break;
             }
 
             let current_token = self.get_next_token();
