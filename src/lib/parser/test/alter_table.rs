@@ -1,7 +1,7 @@
 #![cfg(test)]
 use crate::lib::ast::ddl::{
-    AlterColumnDropNotNull, AlterColumnSetDefault, AlterColumnSetNotNull, AlterColumnSetType,
-    AlterTableAlterColumn, AlterTableDropColumn, AlterTableRenameColumn,
+    AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault, AlterColumnSetNotNull,
+    AlterColumnSetType, AlterTableAlterColumn, AlterTableDropColumn, AlterTableRenameColumn,
 };
 use crate::lib::ast::dml::IntegerExpression;
 use crate::lib::ast::predule::{
@@ -296,6 +296,35 @@ pub fn alter_table_alter_column_set_default_1() {
                     expression: SQLExpression::Integer(0),
                 }
                 .into(),
+            }
+            .into(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
+}
+
+#[test]
+pub fn alter_table_alter_column_drop_default_1() {
+    let text = r#"
+        ALTER TABLE foo ALTER COLUMN id DROP DEFAULT;
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = AlterTableQuery::builder()
+        .set_table(TableName {
+            table_name: "foo".to_owned(),
+            database_name: None,
+        })
+        .set_action(
+            AlterTableAlterColumn {
+                column_name: "id".into(),
+                action: AlterColumnDropDefault {}.into(),
             }
             .into(),
         )
