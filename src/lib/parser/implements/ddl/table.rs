@@ -1,7 +1,7 @@
 use crate::lib::ast::ddl::{
-    AlterColumnDropNotNull, AlterColumnSetNotNull, AlterColumnSetType, AlterTableAddColumn,
-    AlterTableAlterColumn, AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn,
-    AlterTableRenameTo,
+    AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault, AlterColumnSetNotNull,
+    AlterColumnSetType, AlterTableAddColumn, AlterTableAlterColumn, AlterTableDropColumn,
+    AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
 };
 use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
@@ -330,6 +330,22 @@ impl Parser {
                                     }
                                     .into(),
                                 );
+                            } else if self.next_token_is_default() {
+                                self.get_next_token();
+
+                                if !self.has_next_token() {
+                                    return Err(ParsingError::boxed("E1234 need more tokens"));
+                                }
+
+                                let expression = self.parse_expression(context)?;
+
+                                query_builder = query_builder.set_action(
+                                    AlterTableAlterColumn {
+                                        action: AlterColumnSetDefault { expression }.into(),
+                                        column_name,
+                                    }
+                                    .into(),
+                                );
                             } else {
                                 return Err(ParsingError::boxed("E1231 unexpected tokens"));
                             }
@@ -342,6 +358,20 @@ impl Parser {
                                 query_builder = query_builder.set_action(
                                     AlterTableAlterColumn {
                                         action: AlterColumnDropNotNull {}.into(),
+                                        column_name,
+                                    }
+                                    .into(),
+                                );
+                            } else if self.next_token_is_default() {
+                                self.get_next_token();
+
+                                if !self.has_next_token() {
+                                    return Err(ParsingError::boxed("E1235 need more tokens"));
+                                }
+
+                                query_builder = query_builder.set_action(
+                                    AlterTableAlterColumn {
+                                        action: AlterColumnDropDefault {}.into(),
                                         column_name,
                                     }
                                     .into(),

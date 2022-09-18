@@ -159,7 +159,7 @@ impl From<AlterColumnDropNotNull> for AlterColumnAction {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AlterColumnSetDefault {
-    pub default_expression: SQLExpression,
+    pub expression: SQLExpression,
 }
 
 impl From<AlterColumnSetDefault> for AlterColumnAction {
