@@ -57,7 +57,7 @@ pub enum Token {
     Databases,
     Tables,
     Use,
-
+    Type,
     Default,
 
     // ETC
