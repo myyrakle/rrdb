@@ -329,6 +329,7 @@ impl Parser {
                                     .into(),
                                 );
                             } else {
+                                self.show_tokens();
                                 return Err(ParsingError::boxed("E1231 unexpected tokens"));
                             }
                         }

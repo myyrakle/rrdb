@@ -760,7 +760,7 @@ impl Parser {
                     } else {
                         let second_token = self.get_next_token();
 
-                        match first_token {
+                        match second_token {
                             Token::Null => {
                                 self.unget_next_token(second_token);
                                 self.unget_next_token(first_token);
