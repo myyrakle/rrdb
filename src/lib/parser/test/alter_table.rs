@@ -1,5 +1,5 @@
 #![cfg(test)]
-use crate::lib::ast::ddl::AlterTableRenameColumn;
+use crate::lib::ast::ddl::{AlterTableDropColumn, AlterTableRenameColumn};
 use crate::lib::ast::predule::{
     AlterTableAddColumn, AlterTableQuery, AlterTableRenameTo, Column, DataType, TableName,
 };
@@ -137,6 +137,34 @@ pub fn alter_table_rename_column_2() {
             AlterTableRenameColumn {
                 from_name: "name".into(),
                 to_name: "name_1".into(),
+            }
+            .into(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
+}
+
+#[test]
+pub fn alter_table_drop_column_1() {
+    let text = r#"
+        ALTER TABLE foo DROP COLUMN name;
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = AlterTableQuery::builder()
+        .set_table(TableName {
+            table_name: "foo".to_owned(),
+            database_name: None,
+        })
+        .set_action(
+            AlterTableDropColumn {
+                column_name: "name".into(),
             }
             .into(),
         )
