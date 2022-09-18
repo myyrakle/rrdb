@@ -1,3 +1,4 @@
+use crate::lib::ast::ddl::AlterTableQuery;
 use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -12,7 +13,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1205 need more tokens"));
         }
 
         let mut query_builder = CreateTableQuery::builder();
@@ -27,14 +28,14 @@ impl Parser {
 
         // 여는 괄호 체크
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1206 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::LeftParentheses != current_token {
             return Err(ParsingError::boxed(format!(
-                "expected '('. but your input word is '{:?}'",
+                "E1207 expected '('. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -42,7 +43,7 @@ impl Parser {
         // 닫는 괄호 나올때까지 행 파싱 반복
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("need more tokens"));
+                return Err(ParsingError::boxed("E1208 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -62,14 +63,14 @@ impl Parser {
 
         // 닫는 괄호 체크
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1209 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::RightParentheses != current_token {
             return Err(ParsingError::boxed(format!(
-                "expected ')'. but your input word is '{:?}'",
+                "E1210 expected ')'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -82,7 +83,7 @@ impl Parser {
 
         if Token::SemiColon != current_token {
             return Err(ParsingError::boxed(format!(
-                "expected ';'. but your input word is '{:?}'",
+                "E1211 expected ';'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -93,12 +94,12 @@ impl Parser {
     // ALTER TABLE 쿼리 분석
     pub(crate) fn handle_alter_table_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1201 need more tokens"));
         }
 
         let _current_token = self.get_next_token();
 
-        let query_builder = CreateTableQuery::builder();
+        let query_builder = AlterTableQuery::builder();
 
         if !self.has_next_token() {
             return Ok(query_builder.build());
@@ -108,7 +109,7 @@ impl Parser {
 
         if Token::SemiColon != current_token {
             return Err(ParsingError::boxed(format!(
-                "expected ';'. but your input word is '{:?}'",
+                "E1202 expected ';'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -129,7 +130,7 @@ impl Parser {
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1203 need more tokens"));
         }
 
         let table = self.parse_table_name(context)?;
@@ -145,7 +146,7 @@ impl Parser {
 
         if Token::SemiColon != current_token {
             return Err(ParsingError::boxed(format!(
-                "expected ';'. but your input word is '{:?}'",
+                "E1204 expected ';'. but your input word is '{:?}'",
                 current_token
             )));
         }
