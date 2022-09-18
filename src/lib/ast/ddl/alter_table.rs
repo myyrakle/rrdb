@@ -15,8 +15,27 @@ ALTER TABLE [database_name.]table_name
 */
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlterTableQuery {
-    pub table: TableName,
+    pub table: Option<TableName>,
     pub action: AlterTableAction,
+}
+
+impl AlterTableQuery {
+    pub fn builder() -> Self {
+        AlterTableQuery {
+            table: None,
+            action: AlterTableAction::None,
+        }
+    }
+
+    pub fn set_table(mut self, table: TableName) -> Self {
+        self.table = Some(table);
+        self
+    }
+
+    pub fn set_action(mut self, action: AlterTableAction) -> Self {
+        self.action = action;
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -26,6 +45,7 @@ pub enum AlterTableAction {
     AlterColumn(AlterTableAlterColumn),
     DropColumn(AlterTableDropColumn),
     RenameColumn(AlterTableRenameColumn),
+    None,
 }
 
 // 테이블명 변경

@@ -20,7 +20,7 @@ impl Executor {
         let TableName {
             database_name,
             table_name,
-        } = query.table;
+        } = query.table.unwrap();
 
         let database_name = database_name.unwrap();
 
@@ -71,6 +71,7 @@ impl Executor {
             AlterTableAction::AlterColumn(action) => {}
             AlterTableAction::DropColumn(action) => {}
             AlterTableAction::RenameColumn(action) => {}
+            AlterTableAction::None => {}
         }
 
         Ok(ExecuteResult {
