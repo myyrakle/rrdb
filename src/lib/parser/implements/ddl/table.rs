@@ -1,5 +1,6 @@
 use crate::lib::ast::ddl::{
-    AlterTableAddColumn, AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
+    AlterTableAddColumn, AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn,
+    AlterTableRenameTo,
 };
 use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
@@ -259,7 +260,27 @@ impl Parser {
                     }
                 }
             }
-            Token::Drop => {}
+            Token::Drop => {
+                if self.next_token_is_column() {
+                    self.get_next_token();
+                }
+
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E1226 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                if let Token::Identifier(column_name) = current_token {
+                    query_builder =
+                        query_builder.set_action(AlterTableDropColumn { column_name }.into());
+                } else {
+                    return Err(ParsingError::boxed(format!(
+                        "E1227 unexpected token {:?}",
+                        current_token
+                    )));
+                }
+            }
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "E1202 unexpected keyword '{:?}'",
