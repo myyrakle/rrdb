@@ -15,7 +15,7 @@ CREATE TABLE [IF NOT EXISTS] [database_name.]table_name (
 );
 */
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CreateTableQuery {
     pub table: Option<TableName>,
     pub columns: Vec<Column>,
