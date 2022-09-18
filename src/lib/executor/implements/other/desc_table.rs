@@ -12,10 +12,13 @@ impl Executor {
     pub async fn desc_table(&self, query: DescTableQuery) -> Result<ExecuteResult, Box<dyn Error>> {
         let encoder = StorageEncoder::new();
 
+        let database_name = query.table_name.database_name.unwrap();
+        let table_name = query.table_name.table_name;
+
         let base_path = self.get_base_path();
         let mut table_path = base_path;
-        table_path.push(query.table_name.database_name.unwrap());
-        table_path.push(query.table_name.table_name);
+        table_path.push(&database_name);
+        table_path.push(&table_name);
         table_path.push("table.config");
 
         match std::fs::read(&table_path) {
@@ -63,7 +66,10 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
+                ErrorKind::NotFound => Err(ExecuteError::boxed(format!(
+                    "table '{}' not exists",
+                    table_name
+                ))),
                 _ => Err(ExecuteError::boxed("database listup failed")),
             },
         }
