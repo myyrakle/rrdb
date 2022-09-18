@@ -39,6 +39,10 @@ impl Executor {
                             data_type: ExecuteColumnType::String,
                         },
                         ExecuteColumn {
+                            name: "Default".into(),
+                            data_type: ExecuteColumnType::String,
+                        },
+                        ExecuteColumn {
                             name: "Comment".into(),
                             data_type: ExecuteColumnType::String,
                         },
@@ -51,6 +55,7 @@ impl Executor {
                                 ExecuteField::String(e.name.to_owned()),
                                 ExecuteField::String(e.data_type.to_owned().into()),
                                 ExecuteField::String(if e.not_null { "NO" } else { "YES" }.into()),
+                                ExecuteField::String(format!("{:?}", e.default)), // TODO: 표현식 역 parsing 구현
                                 ExecuteField::String(e.comment.to_owned()),
                             ],
                         })

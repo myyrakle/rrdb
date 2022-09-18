@@ -32,7 +32,7 @@ impl Parser {
 
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("E0002 need more tokens"));
+                break;
             }
 
             let current_token = self.get_next_token();
@@ -719,6 +719,120 @@ impl Parser {
                 }
                 _ => {
                     self.unget_next_token(current_token);
+                    false
+                }
+            }
+        }
+    }
+
+    // 다음 토큰이 COLUMN인지
+    pub(crate) fn next_token_is_column(&mut self) -> bool {
+        if !self.has_next_token() {
+            false
+        } else {
+            let current_token = self.get_next_token();
+
+            match current_token {
+                Token::Column => {
+                    self.unget_next_token(current_token);
+                    true
+                }
+                _ => {
+                    self.unget_next_token(current_token);
+                    false
+                }
+            }
+        }
+    }
+
+    // 다음 토큰이 COLUMN인지
+    pub(crate) fn next_token_is_not_null(&mut self) -> bool {
+        if !self.has_next_token() {
+            false
+        } else {
+            let first_token = self.get_next_token();
+
+            match first_token {
+                Token::Not => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(first_token);
+                        false
+                    } else {
+                        let second_token = self.get_next_token();
+
+                        match second_token {
+                            Token::Null => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(first_token);
+                                true
+                            }
+                            _ => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(first_token);
+                                false
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    self.unget_next_token(first_token);
+                    false
+                }
+            }
+        }
+    }
+
+    // 다음 토큰이 COLUMN인지
+    pub(crate) fn next_token_is_data_type(&mut self) -> bool {
+        if !self.has_next_token() {
+            false
+        } else {
+            let first_token = self.get_next_token();
+
+            match first_token {
+                Token::Data => {
+                    if !self.has_next_token() {
+                        self.unget_next_token(first_token);
+                        false
+                    } else {
+                        let second_token = self.get_next_token();
+
+                        match second_token {
+                            Token::Type => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(first_token);
+                                true
+                            }
+                            _ => {
+                                self.unget_next_token(second_token);
+                                self.unget_next_token(first_token);
+                                false
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    self.unget_next_token(first_token);
+                    false
+                }
+            }
+        }
+    }
+
+    // 다음 토큰이 COLUMN인지
+    pub(crate) fn next_token_is_default(&mut self) -> bool {
+        if !self.has_next_token() {
+            false
+        } else {
+            let first_token = self.get_next_token();
+
+            match first_token {
+                Token::Default => {
+                    self.unget_next_token(first_token);
+                    true
+                }
+                _ => {
+                    self.unget_next_token(first_token);
                     false
                 }
             }

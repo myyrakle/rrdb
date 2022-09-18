@@ -3,8 +3,9 @@ use crate::lib::ast::predule::{
     NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
     UnaryOperatorExpression, WhereClause,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub enum SQLExpression {
     // 복합 표현식
     Unary(Box<UnaryOperatorExpression>),     // 단항 연산식

@@ -1,6 +1,8 @@
 use crate::lib::ast::predule::{SQLExpression, TableName};
 
-#[derive(Clone, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct JoinClause {
     pub join_type: JoinType,
     pub right: TableName,
@@ -10,7 +12,7 @@ pub struct JoinClause {
 
 impl JoinClause {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum JoinType {
     InnerJoin,
     LeftOuterJoin,
