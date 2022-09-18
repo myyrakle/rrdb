@@ -242,6 +242,38 @@ pub fn alter_table_alter_column_set_type_1() {
 }
 
 #[test]
+pub fn alter_table_alter_column_set_type_2() {
+    let text = r#"
+        ALTER TABLE foo ALTER COLUMN name SET DATA TYPE int;
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = AlterTableQuery::builder()
+        .set_table(TableName {
+            table_name: "foo".to_owned(),
+            database_name: None,
+        })
+        .set_action(
+            AlterTableAlterColumn {
+                column_name: "name".into(),
+                action: AlterColumnSetType {
+                    data_type: DataType::Int,
+                }
+                .into(),
+            }
+            .into(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
+}
+
+#[test]
 pub fn alter_table_drop_column_1() {
     let text = r#"
         ALTER TABLE foo DROP COLUMN name;
