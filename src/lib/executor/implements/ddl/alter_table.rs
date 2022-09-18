@@ -75,7 +75,6 @@ impl Executor {
 
                 let column_to_add = action.column;
 
-                println!("1");
                 match tokio::fs::read(&config_path).await {
                     Ok(data) => {
                         let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
@@ -89,10 +88,8 @@ impl Executor {
                                     )));
                                 }
 
-                                println!("2");
                                 table_config.columns.push(column_to_add);
 
-                                println!("3");
                                 tokio::fs::write(config_path, encoder.encode(table_config)).await?;
                             }
                             None => {
