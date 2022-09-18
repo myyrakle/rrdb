@@ -83,7 +83,7 @@ impl Executor {
                             Some(mut table_config) => {
                                 if table_config.columns.contains(&column_to_add) {
                                     return Err(ExecuteError::boxed(format!(
-                                        "already exists column {}",
+                                        "column {} already exists ",
                                         column_to_add.name
                                     )));
                                 }
@@ -113,8 +113,62 @@ impl Executor {
             AlterTableAction::DropColumn(_action) => {
                 // TODO: 실 데이터 목록에도 반영하기
             }
-            AlterTableAction::RenameColumn(_action) => {
+            AlterTableAction::RenameColumn(action) => {
                 // TODO: 실 데이터 목록에도 반영하기
+
+                // config data 파일 내용 변경
+                let config_path = table_path.clone().join("table.config");
+
+                match tokio::fs::read(&config_path).await {
+                    Ok(data) => {
+                        let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
+
+                        match table_config {
+                            Some(mut table_config) => {
+                                if table_config
+                                    .columns
+                                    .iter()
+                                    .any(|e| &e.name == &action.to_name)
+                                {
+                                    return Err(ExecuteError::boxed(format!(
+                                        "column {} already exists ",
+                                        action.to_name
+                                    )));
+                                }
+
+                                let target = table_config
+                                    .columns
+                                    .iter_mut()
+                                    .find(|e| &e.name == &action.from_name);
+
+                                match target {
+                                    Some(target) => {
+                                        target.name = action.to_name;
+                                    }
+                                    None => {
+                                        return Err(ExecuteError::boxed(format!(
+                                            "column {} not exists ",
+                                            action.from_name
+                                        )));
+                                    }
+                                }
+
+                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
+                            }
+                            None => {
+                                return Err(ExecuteError::boxed("invalid config data"));
+                            }
+                        }
+                    }
+                    Err(error) => match error.kind() {
+                        ErrorKind::NotFound => {
+                            return Err(ExecuteError::boxed("table not found"));
+                        }
+                        _ => {
+                            return Err(ExecuteError::boxed(format!("{:?}", error)));
+                        }
+                    },
+                }
             }
             AlterTableAction::None => {}
         }
