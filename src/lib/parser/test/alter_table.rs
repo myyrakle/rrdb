@@ -175,3 +175,31 @@ pub fn alter_table_drop_column_1() {
         vec![expected],
     );
 }
+
+#[test]
+pub fn alter_table_drop_column_2() {
+    let text = r#"
+        ALTER TABLE foo DROP name;
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = AlterTableQuery::builder()
+        .set_table(TableName {
+            table_name: "foo".to_owned(),
+            database_name: None,
+        })
+        .set_action(
+            AlterTableDropColumn {
+                column_name: "name".into(),
+            }
+            .into(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
+}
