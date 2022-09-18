@@ -143,7 +143,7 @@ impl From<AlterTableSetType> for AlterColumnAction {
 pub struct AlterColumnSetNotNull {}
 
 impl From<AlterColumnSetNotNull> for AlterColumnAction {
-    fn from(value: AlterColumnSetNotNull) -> AlterColumnAction {
+    fn from(_value: AlterColumnSetNotNull) -> AlterColumnAction {
         AlterColumnAction::AlterColumnSetNotNull
     }
 }
@@ -152,7 +152,7 @@ impl From<AlterColumnSetNotNull> for AlterColumnAction {
 pub struct AlterColumnDropNotNull {}
 
 impl From<AlterColumnDropNotNull> for AlterColumnAction {
-    fn from(value: AlterColumnDropNotNull) -> AlterColumnAction {
+    fn from(_value: AlterColumnDropNotNull) -> AlterColumnAction {
         AlterColumnAction::AlterColumnDropNotNull
     }
 }

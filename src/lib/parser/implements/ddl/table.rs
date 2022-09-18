@@ -312,6 +312,8 @@ impl Parser {
                                     }
                                     .into(),
                                 );
+                            } else {
+                                return Err(ParsingError::boxed("E1231 unexpected tokens"));
                             }
                         }
                         Token::Drop => {
@@ -326,6 +328,8 @@ impl Parser {
                                     }
                                     .into(),
                                 );
+                            } else {
+                                return Err(ParsingError::boxed("E1231 unexpected tokens"));
                             }
                         }
                         _ => {
