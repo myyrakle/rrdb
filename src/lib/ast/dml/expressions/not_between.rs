@@ -1,7 +1,9 @@
 use crate::lib::ast::predule::SQLExpression;
 
+use serde::{Deserialize, Serialize};
+
 // a NOT BETWEEN x AND y
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct NotBetweenExpression {
     pub a: SQLExpression,
     pub x: SQLExpression,

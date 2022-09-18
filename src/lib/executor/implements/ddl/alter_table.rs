@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
+use crate::lib::ast::ddl::AlterColumnAction;
 use crate::lib::ast::predule::{AlterTableAction, AlterTableQuery, TableName};
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::predule::{
@@ -107,8 +108,18 @@ impl Executor {
                     },
                 }
             }
-            AlterTableAction::AlterColumn(_action) => {
+            AlterTableAction::AlterColumn(action) => {
                 // TODO: 실 데이터 목록에도 반영하기
+
+                let column_name = action.column_name;
+
+                match action.action {
+                    AlterColumnAction::AlterColumnSetDefault(action) => {}
+                    AlterColumnAction::AlterColumnDropDefault(_) => {}
+                    AlterColumnAction::AlterColumnSetNotNull => {}
+                    AlterColumnAction::AlterColumnDropNotNull => {}
+                    AlterColumnAction::AlterColumnSetType(action) => {}
+                }
             }
             AlterTableAction::DropColumn(action) => {
                 // TODO: 실 데이터 목록에도 반영하기

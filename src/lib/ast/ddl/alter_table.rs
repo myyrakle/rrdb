@@ -81,7 +81,7 @@ impl From<AlterTableRenameColumn> for AlterTableAction {
 
 // 컬럼 추가
 // ALTER TABLE [database_name.]table_name ADD COLUMN column_name column_type [NOT NULL | NULL] [PRIMARY KEY] [COMMENT 'comment'];
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AlterTableAddColumn {
     pub column: Column,
 }

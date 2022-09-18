@@ -1,6 +1,8 @@
 use crate::lib::ast::predule::SQLExpression;
 
-#[derive(Clone, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct WhereClause {
     pub expression: Option<Box<SQLExpression>>,
 }
