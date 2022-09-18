@@ -243,6 +243,14 @@ impl Parser {
                         query_builder =
                             query_builder.set_action(AlterTableAddColumn { column }.into());
                     }
+                    Token::Identifier(_) => {
+                        self.unget_next_token(current_token);
+
+                        let column = self.parse_table_column()?;
+
+                        query_builder =
+                            query_builder.set_action(AlterTableAddColumn { column }.into());
+                    }
                     _ => {
                         return Err(ParsingError::boxed(format!(
                             "E1216 unexpected keyword '{:?}'",
@@ -251,6 +259,7 @@ impl Parser {
                     }
                 }
             }
+            Token::Drop => {}
             _ => {
                 return Err(ParsingError::boxed(format!(
                     "E1202 unexpected keyword '{:?}'",
