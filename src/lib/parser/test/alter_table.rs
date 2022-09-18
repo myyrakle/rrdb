@@ -3,7 +3,6 @@ use crate::lib::ast::ddl::{
     AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault, AlterColumnSetNotNull,
     AlterColumnSetType, AlterTableAlterColumn, AlterTableDropColumn, AlterTableRenameColumn,
 };
-use crate::lib::ast::dml::IntegerExpression;
 use crate::lib::ast::predule::{
     AlterTableAddColumn, AlterTableQuery, AlterTableRenameTo, Column, DataType, SQLExpression,
     TableName,
