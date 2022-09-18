@@ -298,7 +298,51 @@ impl Executor {
                             },
                         }
                     }
-                    AlterColumnAction::AlterColumnSetType(action) => {}
+                    AlterColumnAction::AlterColumnSetType(action) => {
+                        let config_path = table_path.clone().join("table.config");
+
+                        match tokio::fs::read(&config_path).await {
+                            Ok(data) => {
+                                let table_config: Option<TableConfig> =
+                                    encoder.decode(data.as_slice());
+
+                                match table_config {
+                                    Some(mut table_config) => {
+                                        let target = table_config
+                                            .columns
+                                            .iter_mut()
+                                            .find(|e| &e.name == &column_name);
+
+                                        match target {
+                                            Some(target) => {
+                                                target.data_type = action.data_type;
+                                            }
+                                            None => {
+                                                return Err(ExecuteError::boxed(format!(
+                                                    "column '{}' not exists ",
+                                                    column_name
+                                                )));
+                                            }
+                                        }
+
+                                        tokio::fs::write(config_path, encoder.encode(table_config))
+                                            .await?;
+                                    }
+                                    None => {
+                                        return Err(ExecuteError::boxed("invalid config data"));
+                                    }
+                                }
+                            }
+                            Err(error) => match error.kind() {
+                                ErrorKind::NotFound => {
+                                    return Err(ExecuteError::boxed("table not found"));
+                                }
+                                _ => {
+                                    return Err(ExecuteError::boxed(format!("{:?}", error)));
+                                }
+                            },
+                        }
+                    }
                 }
             }
             AlterTableAction::DropColumn(action) => {
