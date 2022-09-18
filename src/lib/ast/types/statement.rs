@@ -15,7 +15,7 @@ pub enum SQLStatement {
     Other(OtherStatement),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DDLStatement {
     CreateDatabaseQuery(CreateDatabaseQuery),
     AlterDatabase(AlterDatabaseQuery),

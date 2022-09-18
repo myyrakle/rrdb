@@ -1,5 +1,5 @@
-use crate::lib::ast::ddl::AlterTableQuery;
-use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
+use crate::lib::ast::ddl::{AlterTableQuery, AlterTableRenameTo};
+use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement, TableName};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::context::ParserContext;
@@ -92,14 +92,19 @@ impl Parser {
     }
 
     // ALTER TABLE 쿼리 분석
-    pub(crate) fn handle_alter_table_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_alter_table_query(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E1201 need more tokens"));
         }
 
-        let _current_token = self.get_next_token();
+        let mut query_builder = AlterTableQuery::builder();
 
-        let query_builder = AlterTableQuery::builder();
+        let table_name = self.parse_table_name(context.clone())?;
+
+        query_builder = query_builder.set_table(table_name);
 
         if !self.has_next_token() {
             return Ok(query_builder.build());
@@ -107,11 +112,47 @@ impl Parser {
 
         let current_token = self.get_next_token();
 
-        if Token::SemiColon != current_token {
-            return Err(ParsingError::boxed(format!(
-                "E1202 expected ';'. but your input word is '{:?}'",
-                current_token
-            )));
+        match current_token {
+            Token::SemiColon => return Ok(query_builder.build()),
+            Token::Rename => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E1212 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                if Token::To != current_token {
+                    return Err(ParsingError::boxed(format!(
+                        "E1213 expected token is 'TO', but you input is {:?}",
+                        current_token
+                    )));
+                }
+
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E1213 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Identifier(identifier) => {
+                        query_builder = query_builder
+                            .set_action(AlterTableRenameTo { name: identifier }.into());
+                    }
+                    _ => {
+                        return Err(ParsingError::boxed(format!(
+                            "E1214 unexpected token {:?}",
+                            current_token
+                        )))
+                    }
+                }
+            }
+            _ => {
+                return Err(ParsingError::boxed(format!(
+                    "E1202 unexpected keyword '{:?}'",
+                    current_token
+                )))
+            }
         }
 
         Ok(query_builder.build())

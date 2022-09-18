@@ -45,7 +45,7 @@ impl Parser {
                         continue;
                     }
                     Token::Create => statements.push(self.handle_create_query(context.clone())?),
-                    Token::Alter => statements.push(self.handle_alter_query()?),
+                    Token::Alter => statements.push(self.handle_alter_query(context.clone())?),
                     Token::Drop => statements.push(self.handle_drop_query(context.clone())?),
                     Token::Select => {
                         self.unget_next_token(current_token);
