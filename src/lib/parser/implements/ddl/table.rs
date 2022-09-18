@@ -313,6 +313,23 @@ impl Parser {
                                     }
                                     .into(),
                                 );
+                            } else if self.next_token_is_data_type() {
+                                self.get_next_token();
+                                self.get_next_token();
+
+                                if !self.has_next_token() {
+                                    return Err(ParsingError::boxed("E1233 need more tokens"));
+                                }
+
+                                let data_type = self.parse_data_type()?;
+
+                                query_builder = query_builder.set_action(
+                                    AlterTableAlterColumn {
+                                        action: AlterColumnSetType { data_type }.into(),
+                                        column_name,
+                                    }
+                                    .into(),
+                                );
                             } else {
                                 return Err(ParsingError::boxed("E1231 unexpected tokens"));
                             }
