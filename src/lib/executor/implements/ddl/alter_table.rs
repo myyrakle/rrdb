@@ -1,12 +1,12 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::lib::ast::ddl::{AlterTableAction, AlterTableQuery, Column};
-use crate::lib::ast::predule::TableName;
+use crate::lib::ast::predule::{AlterTableAction, AlterTableQuery, TableName};
 use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::encoder::StorageEncoder;
-use crate::lib::executor::predule::{ExecuteResult, Executor, TableConfig};
-use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
+use crate::lib::executor::predule::{
+    ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
+    StorageEncoder, TableConfig,
+};
 
 impl Executor {
     pub async fn alter_table(
@@ -75,6 +75,7 @@ impl Executor {
 
                 let column_to_add = action.column;
 
+                println!("1");
                 match tokio::fs::read(&config_path).await {
                     Ok(data) => {
                         let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
@@ -88,8 +89,10 @@ impl Executor {
                                     )));
                                 }
 
+                                println!("2");
                                 table_config.columns.push(column_to_add);
 
+                                println!("3");
                                 tokio::fs::write(config_path, encoder.encode(table_config)).await?;
                             }
                             None => {
