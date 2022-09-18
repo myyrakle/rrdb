@@ -1,6 +1,7 @@
 #![cfg(test)]
 use crate::lib::ast::ddl::{
-    AlterColumnDropNotNull, AlterTableAlterColumn, AlterTableDropColumn, AlterTableRenameColumn,
+    AlterColumnDropNotNull, AlterColumnSetNotNull, AlterTableAlterColumn, AlterTableDropColumn,
+    AlterTableRenameColumn,
 };
 use crate::lib::ast::predule::{
     AlterTableAddColumn, AlterTableQuery, AlterTableRenameTo, Column, DataType, TableName,
@@ -151,7 +152,7 @@ pub fn alter_table_rename_column_2() {
 }
 
 #[test]
-pub fn alter_table_alter_column_drop_null_1() {
+pub fn alter_table_alter_column_drop_not_null_1() {
     let text = r#"
         ALTER TABLE foo ALTER COLUMN name DROP NOT NULL;
     "#
@@ -168,6 +169,35 @@ pub fn alter_table_alter_column_drop_null_1() {
             AlterTableAlterColumn {
                 column_name: "name".into(),
                 action: AlterColumnDropNotNull {}.into(),
+            }
+            .into(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected],
+    );
+}
+
+#[test]
+pub fn alter_table_alter_column_set_not_null_1() {
+    let text = r#"
+        ALTER TABLE foo ALTER COLUMN name SET NOT NULL;
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = AlterTableQuery::builder()
+        .set_table(TableName {
+            table_name: "foo".to_owned(),
+            database_name: None,
+        })
+        .set_action(
+            AlterTableAlterColumn {
+                column_name: "name".into(),
+                action: AlterColumnSetNotNull {}.into(),
             }
             .into(),
         )
