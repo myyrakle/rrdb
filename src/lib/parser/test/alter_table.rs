@@ -1,11 +1,8 @@
 #![cfg(test)]
-use crate::lib::ast::ddl::{
-    AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo, AlterTableAddColumn,
-    AlterTableQuery, AlterTableRenameTo, Column,
+use crate::lib::ast::predule::{
+    AlterTableAddColumn, AlterTableQuery, AlterTableRenameTo, Column, DataType, TableName,
 };
-use crate::lib::ast::predule::{DataType, TableName};
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::lib::parser::predule::{Parser, ParserContext};
 
 #[test]
 pub fn alter_table_rename_1() {

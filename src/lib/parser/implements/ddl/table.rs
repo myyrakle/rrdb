@@ -1,4 +1,6 @@
-use crate::lib::ast::ddl::{AlterTableAddColumn, AlterTableQuery, AlterTableRenameTo};
+use crate::lib::ast::ddl::{
+    AlterTableAddColumn, AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
+};
 use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -121,27 +123,107 @@ impl Parser {
 
                 let current_token = self.get_next_token();
 
-                if Token::To != current_token {
-                    return Err(ParsingError::boxed(format!(
-                        "E1213 expected token is 'TO', but you input is {:?}",
-                        current_token
-                    )));
-                }
-
-                if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E1213 need more tokens"));
-                }
-
-                let current_token = self.get_next_token();
-
                 match current_token {
-                    Token::Identifier(identifier) => {
-                        query_builder = query_builder
-                            .set_action(AlterTableRenameTo { name: identifier }.into());
+                    // table name rename
+                    Token::To => {
+                        if !self.has_next_token() {
+                            return Err(ParsingError::boxed("E1213 need more tokens"));
+                        }
+
+                        let current_token = self.get_next_token();
+
+                        match current_token {
+                            Token::Identifier(identifier) => {
+                                query_builder = query_builder
+                                    .set_action(AlterTableRenameTo { name: identifier }.into());
+                            }
+                            _ => {
+                                return Err(ParsingError::boxed(format!(
+                                    "E1214 unexpected token {:?}",
+                                    current_token
+                                )))
+                            }
+                        }
+                    }
+                    // table column name rename
+                    Token::Column => {
+                        if !self.has_next_token() {
+                            return Err(ParsingError::boxed("E1217 need more tokens"));
+                        }
+
+                        let current_token = self.get_next_token();
+
+                        if let Token::Identifier(from_name) = current_token {
+                            if !self.has_next_token() {
+                                return Err(ParsingError::boxed("E1219 need more tokens"));
+                            }
+
+                            let current_token = self.get_next_token();
+
+                            if Token::To != current_token {
+                                return Err(ParsingError::boxed(format!(
+                                    "E1220 expected token is 'TO', but you input is {:?}",
+                                    current_token
+                                )));
+                            }
+
+                            if !self.has_next_token() {
+                                return Err(ParsingError::boxed("E1221 need more tokens"));
+                            }
+
+                            let current_token = self.get_next_token();
+
+                            if let Token::Identifier(to_name) = current_token {
+                                query_builder = query_builder.set_action(
+                                    AlterTableRenameColumn { from_name, to_name }.into(),
+                                );
+                            } else {
+                                return Err(ParsingError::boxed(format!(
+                                    "E1222 expected token is 'identifer', but you input is {:?}",
+                                    current_token
+                                )));
+                            }
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E1218 expected token {:?}",
+                                current_token
+                            )));
+                        }
+                    }
+                    // table column name rename
+                    Token::Identifier(from_name) => {
+                        if !self.has_next_token() {
+                            return Err(ParsingError::boxed("E1218 need more tokens"));
+                        }
+
+                        let current_token = self.get_next_token();
+
+                        if Token::To != current_token {
+                            return Err(ParsingError::boxed(format!(
+                                "E1223 expected token is 'TO', but you input is {:?}",
+                                current_token
+                            )));
+                        }
+
+                        if !self.has_next_token() {
+                            return Err(ParsingError::boxed("E1224 need more tokens"));
+                        }
+
+                        let current_token = self.get_next_token();
+
+                        if let Token::Identifier(to_name) = current_token {
+                            query_builder = query_builder
+                                .set_action(AlterTableRenameColumn { from_name, to_name }.into());
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E1225 expected token is 'identifer', but you input is {:?}",
+                                current_token
+                            )));
+                        }
                     }
                     _ => {
                         return Err(ParsingError::boxed(format!(
-                            "E1214 unexpected token {:?}",
+                            "E1213 expected token is 'TO' or 'COLUMN', but you input is {:?}",
                             current_token
                         )))
                     }
