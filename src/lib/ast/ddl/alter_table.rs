@@ -121,7 +121,7 @@ impl From<AlterTableAlterColumn> for AlterTableAction {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AlterColumnAction {
-    AlterColumnType(AlterTableSetType),
+    AlterColumnSetType(AlterColumnSetType),
     AlterColumnSetNotNull,
     AlterColumnDropNotNull,
     AlterColumnSetDefault(AlterColumnSetDefault),
@@ -129,13 +129,13 @@ pub enum AlterColumnAction {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AlterTableSetType {
+pub struct AlterColumnSetType {
     pub data_type: DataType,
 }
 
-impl From<AlterTableSetType> for AlterColumnAction {
-    fn from(value: AlterTableSetType) -> AlterColumnAction {
-        AlterColumnAction::AlterColumnType(value)
+impl From<AlterColumnSetType> for AlterColumnAction {
+    fn from(value: AlterColumnSetType) -> AlterColumnAction {
+        AlterColumnAction::AlterColumnSetType(value)
     }
 }
 

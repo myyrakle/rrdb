@@ -59,6 +59,7 @@ pub enum Token {
     Use,
     Type,
     Default,
+    Data,
 
     // ETC
     // Analyze,

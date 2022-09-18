@@ -168,6 +168,7 @@ impl Tokenizer {
                 "EXISTS" => Token::Exists,
                 "ON" => Token::On,
                 "USE" => Token::Use,
+                "DATA" => Token::Data,
                 "TYPE" => Token::Type,
                 _ => Token::Identifier(identifier),
             };

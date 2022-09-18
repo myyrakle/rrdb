@@ -1,6 +1,7 @@
 use crate::lib::ast::ddl::{
-    AlterColumnDropNotNull, AlterColumnSetNotNull, AlterTableAddColumn, AlterTableAlterColumn,
-    AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
+    AlterColumnDropNotNull, AlterColumnSetNotNull, AlterColumnSetType, AlterTableAddColumn,
+    AlterTableAlterColumn, AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn,
+    AlterTableRenameTo,
 };
 use crate::lib::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
 use crate::lib::errors::predule::ParsingError;
@@ -329,9 +330,23 @@ impl Parser {
                                     .into(),
                                 );
                             } else {
-                                self.show_tokens();
                                 return Err(ParsingError::boxed("E1231 unexpected tokens"));
                             }
+                        }
+                        Token::Type => {
+                            if !self.has_next_token() {
+                                return Err(ParsingError::boxed("E1232 need more tokens"));
+                            }
+
+                            let data_type = self.parse_data_type()?;
+
+                            query_builder = query_builder.set_action(
+                                AlterTableAlterColumn {
+                                    action: AlterColumnSetType { data_type }.into(),
+                                    column_name,
+                                }
+                                .into(),
+                            );
                         }
                         _ => {
                             return Err(ParsingError::boxed(format!(
