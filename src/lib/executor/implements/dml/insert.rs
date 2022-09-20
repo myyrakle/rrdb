@@ -1,6 +1,9 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::io::ErrorKind;
+use std::iter::FromIterator;
 
+use crate::lib::ast::dml::InsertData;
 use crate::lib::ast::predule::InsertQuery;
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::predule::{
@@ -58,8 +61,27 @@ impl Executor {
             },
         };
 
+        let input_columns_set: HashSet<String> = HashSet::from_iter(query.columns.iter().cloned());
+
         // 필수 입력 컬럼값 검증
-        let grequired_columns_map = table_config.get_required_columns_map();
+        let required_columns = table_config.get_required_columns();
+
+        for required_column in required_columns {
+            if !input_columns_set.contains(&required_column.name) {
+                return Err(ExecuteError::boxed(format!(
+                    "column '{}' is required, but it was not provided",
+                    &required_column.name
+                )));
+            }
+        }
+
+        match query.data {
+            InsertData::Values(values) => for column in query.columns {},
+            InsertData::Select(_select) => {
+                todo!("아직 미구현")
+            }
+            InsertData::None => {}
+        }
 
         // 입력값 타입 검증
 

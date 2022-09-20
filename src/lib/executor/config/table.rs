@@ -21,14 +21,12 @@ impl TableConfig {
         HashMap::from_iter(self.columns.iter().cloned().map(|e| (e.name.clone(), e)))
     }
 
-    pub fn get_required_columns_map(&self) -> HashMap<String, Column> {
-        HashMap::from_iter(
-            self.columns
-                .iter()
-                .cloned()
-                .filter(|e| e.not_null && e.default.is_none())
-                .map(|e| (e.name.clone(), e)),
-        )
+    pub fn get_required_columns(&self) -> Vec<Column> {
+        self.columns
+            .iter()
+            .filter(|e| e.not_null && e.default.is_none())
+            .cloned()
+            .collect()
     }
 }
 
