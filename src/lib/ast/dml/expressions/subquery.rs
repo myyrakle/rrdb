@@ -1,14 +1,14 @@
-use crate::lib::ast::predule::{SQLExpression, SelectQuery};
+// use crate::lib::ast::predule::{SQLExpression, SelectQuery};
 
-use serde::{Deserialize, Serialize};
+// use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
-pub enum SubqueryExpression {
-    Select(Box<SelectQuery>),
-}
+// #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+// pub enum SubqueryExpression {
+//     Select(Box<SelectQuery>),
+// }
 
-impl From<SubqueryExpression> for SQLExpression {
-    fn from(value: SubqueryExpression) -> SQLExpression {
-        SQLExpression::Subquery(value)
-    }
-}
+// impl From<SubqueryExpression> for SQLExpression {
+//     fn from(value: SubqueryExpression) -> SQLExpression {
+//         SQLExpression::Subquery(value)
+//     }
+// }

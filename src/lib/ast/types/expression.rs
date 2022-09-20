@@ -1,9 +1,10 @@
+use crate::lib::ast::dml::SelectQuery;
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperatorExpression, CallExpression, ListExpression,
-    NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
-    UnaryOperatorExpression, WhereClause,
+    NotBetweenExpression, ParenthesesExpression, SelectColumn, UnaryOperatorExpression,
+    WhereClause,
 };
-use crate::lib::utils::collection::{join_vec, join_vec_impl};
+use crate::lib::utils::collection::join_vec;
 
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +17,7 @@ pub enum SQLExpression {
     NotBetween(Box<NotBetweenExpression>),   // NOT BETWEEN 식
     Parentheses(Box<ParenthesesExpression>), // 소괄호 표현식
     FunctionCall(CallExpression),            // 함수호출 표현식
-    Subquery(SubqueryExpression),            // SQL 서브쿼리 (미구현)
+    Subquery(SelectQuery),                   // SQL 서브쿼리 (미구현)
 
     // 끝단 Primitive 값
     Integer(i64),
@@ -50,21 +51,41 @@ impl SQLExpression {
             | SQLExpression::Null => {
                 vec![]
             }
+            SQLExpression::List(list) => list
+                .value
+                .iter()
+                .map(|e| Self::get_select_column_list_recursion(e))
+                .flatten()
+                .collect(),
             SQLExpression::SelectColumn(column) => {
                 vec![column.to_owned()]
             }
             SQLExpression::Unary(unary) => Self::get_select_column_list(&unary.operand),
             SQLExpression::Binary(binary) => join_vec!(
                 Self::get_select_column_list(&binary.lhs),
-                Self::get_select_column_list(&binary.rhs).into_iter()
+                Self::get_select_column_list(&binary.rhs)
             ),
-            SQLExpression::Between(between) => {
-                vec![column.to_owned()]
-            }
+            SQLExpression::Between(between) => join_vec!(
+                Self::get_select_column_list(&between.a),
+                Self::get_select_column_list(&between.x),
+                Self::get_select_column_list(&between.y)
+            ),
+            SQLExpression::NotBetween(between) => join_vec!(
+                Self::get_select_column_list(&between.a),
+                Self::get_select_column_list(&between.x),
+                Self::get_select_column_list(&between.y)
+            ),
             SQLExpression::SelectColumn(column) => {
                 vec![column.to_owned()]
             }
-            _ => {}
+            SQLExpression::Parentheses(paren) => Self::get_select_column_list(&paren.expression),
+            SQLExpression::FunctionCall(function_call) => function_call
+                .arguments
+                .iter()
+                .map(|e| Self::get_select_column_list_recursion(e))
+                .flatten()
+                .collect(),
+            SQLExpression::Subquery(_subquery) => unimplemented!(),
         }
     }
 }
