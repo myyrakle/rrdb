@@ -3,6 +3,8 @@ use crate::lib::ast::predule::{
     NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
     UnaryOperatorExpression, WhereClause,
 };
+use crate::lib::utils::collection::{join_vec, join_vec_impl};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
@@ -32,6 +34,37 @@ impl SQLExpression {
         match self.clone() {
             Self::Unary(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn get_select_column_list(&self) -> Vec<SelectColumn> {
+        Self::get_select_column_list_recursion(self)
+    }
+
+    fn get_select_column_list_recursion(expression: &Self) -> Vec<SelectColumn> {
+        match expression {
+            SQLExpression::Integer(_)
+            | SQLExpression::Float(_)
+            | SQLExpression::Boolean(_)
+            | SQLExpression::String(_)
+            | SQLExpression::Null => {
+                vec![]
+            }
+            SQLExpression::SelectColumn(column) => {
+                vec![column.to_owned()]
+            }
+            SQLExpression::Unary(unary) => Self::get_select_column_list(&unary.operand),
+            SQLExpression::Binary(binary) => join_vec!(
+                Self::get_select_column_list(&binary.lhs),
+                Self::get_select_column_list(&binary.rhs).into_iter()
+            ),
+            SQLExpression::Between(between) => {
+                vec![column.to_owned()]
+            }
+            SQLExpression::SelectColumn(column) => {
+                vec![column.to_owned()]
+            }
+            _ => {}
         }
     }
 }
