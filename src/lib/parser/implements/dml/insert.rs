@@ -67,7 +67,7 @@ impl Parser {
 
                 if values.iter().any(|e| e.list.len() != columns.len()) {
                     return Err(ParsingError::boxed(
-                        "E0415 The number of values ​​in insert and the number of columns do not match.",
+                        "E0415 The number of values in insert and the number of columns do not match.",
                     ));
                 }
 
@@ -79,7 +79,7 @@ impl Parser {
 
                 if select.select_items.len() != columns.len() {
                     return Err(ParsingError::boxed(
-                        "E0416 The number of values ​​in insert and the number of columns do not match.",
+                        "E0416 The number of values in insert and the number of columns do not match.",
                     ));
                 }
 

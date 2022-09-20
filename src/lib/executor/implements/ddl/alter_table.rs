@@ -37,7 +37,7 @@ impl Executor {
                 if let Err(error) = tokio::fs::rename(&table_path, &change_path).await {
                     return Err(ExecuteError::boxed(format!(
                         "table rename failed: {}",
-                        error.to_string()
+                        error
                     )));
                 }
 
@@ -128,7 +128,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -174,7 +174,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -220,7 +220,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -266,7 +266,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -311,7 +311,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -357,10 +357,10 @@ impl Executor {
 
                         match table_config {
                             Some(mut table_config) => {
-                                if let None = table_config
+                                if !table_config
                                     .columns
                                     .iter()
-                                    .find(|e| &e.name == &action.column_name)
+                                    .any(|e| e.name == action.column_name)
                                 {
                                     return Err(ExecuteError::boxed(format!(
                                         "column '{}' not exists ",
@@ -404,7 +404,7 @@ impl Executor {
                                 if table_config
                                     .columns
                                     .iter()
-                                    .any(|e| &e.name == &action.to_name)
+                                    .any(|e| e.name == action.to_name)
                                 {
                                     return Err(ExecuteError::boxed(format!(
                                         "column '{}' already exists ",
@@ -415,7 +415,7 @@ impl Executor {
                                 let target = table_config
                                     .columns
                                     .iter_mut()
-                                    .find(|e| &e.name == &action.from_name);
+                                    .find(|e| e.name == action.from_name);
 
                                 match target {
                                     Some(target) => {

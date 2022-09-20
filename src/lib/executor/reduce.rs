@@ -262,9 +262,9 @@ impl Executor {
                         )),
                     },
                     BinaryOperator::Eq =>
-                        return Ok(TableDataFieldType::Boolean(lhs == rhs)),    
+                         Ok(TableDataFieldType::Boolean(lhs == rhs)),    
                     BinaryOperator::Neq =>
-                        return Ok(TableDataFieldType::Boolean(lhs != rhs)),    
+                         Ok(TableDataFieldType::Boolean(lhs != rhs)),    
                     BinaryOperator::Like => unimplemented!("미구현"),   
                     BinaryOperator::NotLike => unimplemented!("미구현"),  
                     BinaryOperator::In => unimplemented!("미구현"),      
@@ -276,7 +276,7 @@ impl Executor {
             SQLExpression::Between(_between) => unimplemented!("미구현"),
             SQLExpression::NotBetween(_between) => unimplemented!("미구현"),
             SQLExpression::Parentheses(paren) => {
-                return self.reduce_expression(paren.expression);
+                 self.reduce_expression(paren.expression)
             }
             SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
             SQLExpression::Subquery(_) => unimplemented!("미구현"),
