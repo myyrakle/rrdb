@@ -27,20 +27,10 @@ impl Executor {
 
         let table_path = database_path.clone().join(&table_name);
 
+        // 데이터 행 파일 경로
         let rows_path = table_path.clone().join("rows");
 
-        if let Err(error) = tokio::fs::create_dir(&table_path).await {
-            match error.kind() {
-                ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::boxed("already exists table"))
-                }
-                _ => {
-                    return Err(ExecuteError::boxed("table create failed"));
-                }
-            }
-        }
-
-        // 각 데이터베이스 단위 설정파일 생성
+        // 설정파일 경로
         let config_path = table_path.join("table.config");
 
         let table_config = match tokio::fs::read(&config_path).await {
