@@ -76,7 +76,11 @@ impl Executor {
         }
 
         match query.data {
-            InsertData::Values(values) => for column in query.columns {},
+            InsertData::Values(values) => {
+                for (i, column) in query.columns.iter().enumerate() {
+                    let value = &values[i];
+                }
+            }
             InsertData::Select(_select) => {
                 todo!("아직 미구현")
             }

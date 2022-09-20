@@ -4,5 +4,6 @@ pub mod encoder;
 pub mod executor;
 pub mod implements;
 pub mod predule;
+pub mod reduce;
 pub mod result;
 pub mod util;
