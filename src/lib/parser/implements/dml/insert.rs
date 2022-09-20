@@ -52,7 +52,7 @@ impl Parser {
 
         // 컬럼명 지정 파싱
         let columns = self.parse_insert_columns(context.clone())?;
-        query_builder = query_builder.set_columns(columns);
+        query_builder = query_builder.set_columns(columns.clone());
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0413 need more tokens"));
@@ -64,11 +64,25 @@ impl Parser {
             Token::Values => {
                 self.unget_next_token(current_token);
                 let values = self.parse_insert_values(context)?;
+
+                if values.iter().any(|e| e.list.len() != columns.len()) {
+                    return Err(ParsingError::boxed(
+                        "E0415 The number of values ​​in insert and the number of columns do not match.",
+                    ));
+                }
+
                 query_builder = query_builder.set_values(values);
             }
             Token::Select => {
                 self.unget_next_token(current_token);
                 let select = self.handle_select_query(context)?;
+
+                if select.select_items.len() != columns.len() {
+                    return Err(ParsingError::boxed(
+                        "E0416 The number of values ​​in insert and the number of columns do not match.",
+                    ));
+                }
+
                 query_builder = query_builder.set_select(select);
             }
             _ => {
