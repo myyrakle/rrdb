@@ -23,6 +23,10 @@ psql -U rrdb -p 55555
 
 ### Syntax
 
+1. 키워드는 대소문자를 구별하지 않습니다.
+2. 문자열은 작은 따옴표(')로 구분되며, 따옴표를 포함시킬 때는 2개를 겹칩니다.
+3. 식별자는 단순 텍스트르로 구성해도 되고, 큰 따옴표(")로 구분해도 됩니다.
+
 #### Database
 
 ```
@@ -50,4 +54,59 @@ ALTER DATABASE "from name" rename to "to name";
 USE "database name";
 or
 \c "database name";
+```
+
+#### Table
+
+```
+# 테이블 목록 조회
+SHOW TABLES
+```
+
+```
+# 테이블 상세정보 조회
+DESC "table name"
+```
+
+```
+# 테이블 생성
+# (table_constraint는 차후 추가할 예정입니다.)
+CREATE TABLE [ IF NOT EXISTS ] "table name"
+(
+    [
+        {
+            "column name" data_type  [ column_constraint [ ... ] ]
+        }
+        [, ... ]
+    ]
+)
+
+# column_constraint는 아래 형태 중 하나입니다.
+# (CONSTRAINT나 CHECK, UNIQUE, REFERENCES 등은 차후 추가할 예정입니다.)
+{
+    NOT NULL |
+    NULL |
+    DEFAULT default_expr |
+    PRIMARY KEY index_parameters
+}
+```
+
+```
+# 테이블 수정
+
+1. ALTER TABLE [ IF EXISTS ] name
+    action
+2. ALTER TABLE [ IF EXISTS ] name
+    RENAME [ COLUMN ] column_name TO new_column_name
+3. ALTER TABLE [ IF EXISTS ] name
+    RENAME TO new_name
+
+# action은 다음 중 하나입니다.
+
+1. ADD [ COLUMN ] column_name data_type [ column_constraint [ ... ] ] # 향후 [IF NOT EXISTS] 신택스 추가 필요
+2. DROP [ COLUMN ]  column_name # 향후 [ IF EXISTS ] 신택스 추가 필요
+3. ALTER [ COLUMN ] column_name [ SET DATA ] TYPE data_type
+4. ALTER [ COLUMN ] column_name SET DEFAULT expression
+5. ALTER [ COLUMN ] column_name DROP DEFAULT
+6. ALTER [ COLUMN ] column_name { SET | DROP } NOT NULL
 ```
