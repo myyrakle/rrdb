@@ -1,9 +1,9 @@
 use tokio::sync::mpsc::Sender;
 
-use super::channel::ChannelRequest;
+use super::{channel::ChannelRequest, client::ClientInfo};
 
 #[derive(Clone, Debug)]
 pub struct SharedState {
     pub sender: Sender<ChannelRequest>,
-    pub database: String, // current database name
+    pub client_info: ClientInfo,
 }

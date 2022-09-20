@@ -55,9 +55,11 @@ pub enum Token {
     To,
     Show,
     Databases,
+    Tables,
     Use,
-
+    Type,
     Default,
+    Data,
 
     // ETC
     // Analyze,

@@ -1,7 +1,7 @@
 #![cfg(test)]
 
-use crate::lib::ast::other::UseDatabaseQuery;
-use crate::lib::ast::predule::ShowDatabasesQuery;
+use crate::lib::ast::other::{DescTableQuery, ShowTablesQuery, UseDatabaseQuery};
+use crate::lib::ast::predule::{ShowDatabasesQuery, TableName};
 use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
 
@@ -54,6 +54,49 @@ pub fn use_databases_1() {
 
     assert_eq!(
         parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
+pub fn desc_table_1() {
+    let text = r#"
+        desc asdf;
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = DescTableQuery {
+        table_name: TableName {
+            database_name: None,
+            table_name: "asdf".into(),
+        },
+    };
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
+pub fn show_tables_1() {
+    let text = r#"
+        show tables;
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = ShowTablesQuery {
+        database: "rrdb".into(),
+    };
+
+    assert_eq!(
+        parser
+            .parse(ParserContext::default().set_default_database("rrdb".into()))
+            .unwrap(),
         vec![expected.into()],
     );
 }

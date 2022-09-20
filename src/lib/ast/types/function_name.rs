@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 // 함수명을 가리키는 값입니다.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct FunctionName {
     pub database_name: Option<String>,
     pub function_name: String,

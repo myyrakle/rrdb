@@ -1,6 +1,7 @@
 use crate::lib::ast::predule::{SQLExpression, UnaryOperator};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct UnaryOperatorExpression {
     pub operator: UnaryOperator,
     pub operand: SQLExpression,

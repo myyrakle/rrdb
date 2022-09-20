@@ -1,11 +1,13 @@
 use crate::lib::ast::predule::SQLExpression;
 
-#[derive(Clone, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct GroupByClause {
     pub group_by_items: Vec<GroupByItem>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct GroupByItem {
     pub item: SQLExpression,
 }

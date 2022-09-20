@@ -1,4 +1,5 @@
 pub mod channel;
+pub mod client;
 pub mod option;
 pub mod predule;
 #[allow(clippy::module_inception)]

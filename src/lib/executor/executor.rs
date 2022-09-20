@@ -62,7 +62,7 @@ impl Executor {
     pub async fn process_query(
         &self,
         mut statement: SQLStatement,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         Logger::info(format!("AST echo: {:?}", statement));
 
         // 최적화 작업
@@ -70,7 +70,7 @@ impl Executor {
         optimizer.optimize(&mut statement);
 
         // 쿼리 실행
-        match statement {
+        let result = match statement {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
                 self.create_database(query).await
             }
@@ -80,13 +80,27 @@ impl Executor {
             SQLStatement::DDL(DDLStatement::DropDatabaseQuery(query)) => {
                 self.drop_database(query).await
             }
+            SQLStatement::DDL(DDLStatement::CreateTableQuery(query)) => {
+                self.create_table(query).await
+            }
+            SQLStatement::DDL(DDLStatement::AlterTableQuery(query)) => {
+                self.alter_table(query).await
+            }
+            SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }
             SQLStatement::Other(OtherStatement::UseDatabase(query)) => {
                 self.use_databases(query).await
             }
-            _ => Err(ExecuteError::boxed("test")),
+            SQLStatement::Other(OtherStatement::ShowTables(query)) => self.show_tables(query).await,
+            SQLStatement::Other(OtherStatement::DescTable(query)) => self.desc_table(query).await,
+            _ => unimplemented!("no execute implementation"),
+        };
+
+        match result {
+            Ok(result) => Ok(result),
+            Err(error) => Err(ExecuteError::boxed(error.to_string())),
         }
     }
 }

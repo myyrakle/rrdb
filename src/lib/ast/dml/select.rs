@@ -4,7 +4,9 @@ use crate::lib::ast::predule::{
     TableName, WhereClause,
 };
 
-#[derive(Clone, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectItem>,
     pub from_table: Option<FromClause>,

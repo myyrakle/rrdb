@@ -1,7 +1,8 @@
 use crate::lib::ast::predule::SQLExpression;
+use serde::{Deserialize, Serialize};
 
 // a BETWEEN x AND y
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct BetweenExpression {
     pub a: SQLExpression,
     pub x: SQLExpression,

@@ -13,7 +13,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1101 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -22,25 +22,28 @@ impl Parser {
             Token::Table => self.handle_create_table_query(context),
             Token::Database => self.handle_create_database_query(),
             _ => Err(ParsingError::boxed(format!(
-                "not supported command. possible commands: (create table). but your input is {:?}",
+                "E1102 not supported command. possible commands: (create table). but your input is {:?}",
                 current_token
             ))),
         }
     }
 
     // ALTER TABLE...
-    pub(crate) fn handle_alter_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_alter_query(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1103 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Table => self.handle_alter_table_query(),
+            Token::Table => self.handle_alter_table_query(context),
             Token::Database => self.handle_alter_database_query(),
             _ => Err(ParsingError::boxed(
-                "not supported command. possible commands: (alter table)",
+                "E1104 not supported command. possible commands: (alter table)",
             )),
         }
     }
@@ -50,7 +53,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLStatement, Box<dyn Error>> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("need more tokens"));
+            return Err(ParsingError::boxed("E1105 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -59,7 +62,7 @@ impl Parser {
             Token::Table => self.handle_drop_table_query(context),
             Token::Database => self.handle_drop_database_query(),
             _ => Err(ParsingError::boxed(
-                "not supported command. possible commands: (create table)",
+                "E1106 not supported command. possible commands: (create table)",
             )),
         }
     }

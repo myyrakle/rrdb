@@ -152,6 +152,7 @@ impl Tokenizer {
                 "TO" => Token::To,
                 "SHOW" => Token::Show,
                 "DATABASES" => Token::Databases,
+                "TABLES" => Token::Tables,
                 "AND" => Token::And,
                 "OR" => Token::Or,
                 "NOT" => Token::Not,
@@ -167,6 +168,8 @@ impl Tokenizer {
                 "EXISTS" => Token::Exists,
                 "ON" => Token::On,
                 "USE" => Token::Use,
+                "DATA" => Token::Data,
+                "TYPE" => Token::Type,
                 _ => Token::Identifier(identifier),
             };
 

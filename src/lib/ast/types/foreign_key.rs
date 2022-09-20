@@ -1,6 +1,7 @@
 use crate::lib::ast::predule::TableName;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct ForeignKey {
     pub key_name: String,
     pub table: TableName,

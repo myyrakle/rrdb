@@ -1,6 +1,8 @@
 use crate::lib::ast::predule::{SQLExpression, SelectQuery};
 
-#[derive(Clone, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub enum SubqueryExpression {
     Select(Box<SelectQuery>),
 }

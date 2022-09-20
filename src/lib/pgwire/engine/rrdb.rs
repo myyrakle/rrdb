@@ -87,13 +87,10 @@ impl Engine for RRDBEngine {
                         })
                         .collect());
 
-                    // portal이 없을 경우 생성
-                    if self.portal.is_none() {
-                        self.portal = Some(RRDBPortal {
-                            execute_result: result,
-                            shared_state: self.shared_state.clone(),
-                        });
-                    }
+                    self.portal = Some(RRDBPortal {
+                        execute_result: result,
+                        shared_state: self.shared_state.clone(),
+                    });
 
                     return return_value;
                 }
