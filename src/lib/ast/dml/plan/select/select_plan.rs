@@ -1,19 +1,54 @@
 use crate::lib::ast::predule::{
-    GroupByClause, OrderByClause, SelectFromPlan, SelectJoinPlan, SelectSubqueryPlan,
+    GroupByClause, JoinPlan, LimitOffsetPlan, OrderByClause, SelectFromPlan, SelectSubqueryPlan,
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectPlan {
-    list: Vec<SelectPlanItem>,
+    pub list: Vec<SelectPlanItem>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SelectPlanItem {
     From(SelectFromPlan),
     Subquery(SelectSubqueryPlan),
-    Join(SelectJoinPlan),
+    Join(JoinPlan),
     Order(OrderByClause),
     Group(GroupByClause),
-    Offset(u32),
-    Limit(u32),
+    LimitOffset(LimitOffsetPlan),
+}
+
+impl From<SelectFromPlan> for SelectPlanItem {
+    fn from(value: SelectFromPlan) -> SelectPlanItem {
+        SelectPlanItem::From(value)
+    }
+}
+
+impl From<SelectSubqueryPlan> for SelectPlanItem {
+    fn from(value: SelectSubqueryPlan) -> SelectPlanItem {
+        SelectPlanItem::Subquery(value)
+    }
+}
+
+impl From<JoinPlan> for SelectPlanItem {
+    fn from(value: JoinPlan) -> SelectPlanItem {
+        SelectPlanItem::Join(value)
+    }
+}
+
+impl From<OrderByClause> for SelectPlanItem {
+    fn from(value: OrderByClause) -> SelectPlanItem {
+        SelectPlanItem::Order(value)
+    }
+}
+
+impl From<GroupByClause> for SelectPlanItem {
+    fn from(value: GroupByClause) -> SelectPlanItem {
+        SelectPlanItem::Group(value)
+    }
+}
+
+impl From<LimitOffsetPlan> for SelectPlanItem {
+    fn from(value: LimitOffsetPlan) -> SelectPlanItem {
+        SelectPlanItem::LimitOffset(value)
+    }
 }

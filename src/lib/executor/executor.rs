@@ -1,13 +1,15 @@
-use crate::lib::ast::ddl::{CreateDatabaseQuery, DDLStatement, SQLStatement};
-use crate::lib::ast::predule::{DMLStatement, OtherStatement};
+use path_absolutize::*;
+use std::error::Error;
+use std::path::PathBuf;
+
+use crate::lib::ast::predule::{
+    CreateDatabaseQuery, DDLStatement, DMLStatement, OtherStatement, SQLStatement,
+};
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
 use crate::lib::logger::predule::Logger;
 use crate::lib::optimizer::predule::Optimizer;
 use crate::lib::utils::predule::set_system_env;
-use path_absolutize::*;
-use std::error::Error;
-use std::path::PathBuf;
 
 pub struct Executor {}
 
@@ -61,13 +63,9 @@ impl Executor {
     // 쿼리 최적화 및 실행, 결과 반환
     pub async fn process_query(
         &self,
-        mut statement: SQLStatement,
+        statement: SQLStatement,
     ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         Logger::info(format!("AST echo: {:?}", statement));
-
-        // 최적화 작업
-        let optimizer = Optimizer::new();
-        optimizer.optimize(&mut statement);
 
         // 쿼리 실행
         let result = match statement {
@@ -88,6 +86,7 @@ impl Executor {
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
             SQLStatement::DML(DMLStatement::InsertQuery(query)) => self.insert(query).await,
+            SQLStatement::DML(DMLStatement::SelectQuery(query)) => self.select(query).await,
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }
