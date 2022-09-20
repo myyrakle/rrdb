@@ -10,6 +10,18 @@ pub enum TableDataFieldType {
     Null,
 }
 
+impl TableDataFieldType {
+    pub fn type_code(&self) -> isize {
+        match self {
+            TableDataFieldType::Integer(_) => 1,
+            TableDataFieldType::Float(_) => 2,
+            TableDataFieldType::Boolean(_) => 3,
+            TableDataFieldType::String(_) => 4,
+            TableDataFieldType::Null => 0,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TableDataField {
     pub column_name: String,
