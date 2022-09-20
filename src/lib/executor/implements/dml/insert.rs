@@ -6,7 +6,7 @@ use std::iter::FromIterator;
 use crate::lib::ast::dml::InsertData;
 use crate::lib::ast::predule::InsertQuery;
 use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::config::TableDataField;
+use crate::lib::executor::config::{TableDataField, TableDataRow};
 use crate::lib::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
     StorageEncoder, TableConfig,
@@ -78,7 +78,7 @@ impl Executor {
                 let mut rows = vec![];
 
                 for value in &values {
-                    let mut row = vec![];
+                    let mut fields = vec![];
 
                     for (i, column_name) in query.columns.iter().enumerate() {
                         let value = value.list[i].clone();
@@ -107,9 +107,10 @@ impl Executor {
 
                         let column_name = column_name.to_owned();
 
-                        row.push(TableDataField { column_name, data });
+                        fields.push(TableDataField { column_name, data });
                     }
 
+                    let row = TableDataRow { fields };
                     rows.push(row);
                 }
 
