@@ -1,3 +1,5 @@
+
+
 use crate::lib::ast::dml::{BinaryOperator, UnaryOperator};
 use crate::lib::ast::predule::SQLExpression;
 use crate::lib::errors::execute_error::ExecuteError;
@@ -7,8 +9,7 @@ use super::config::TableDataFieldType;
 use super::predule::Executor;
 
 impl Executor {
-    // 기본 설정파일 세팅
-    pub fn reduce_expression(
+    pub  fn reduce_expression(
         &self,
         expression: SQLExpression,
     ) -> Result<TableDataFieldType, Box<dyn Error>> {
@@ -18,6 +19,7 @@ impl Executor {
             SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value)),
             SQLExpression::String(value) => Ok(TableDataFieldType::String(value)),
             SQLExpression::Null => Ok(TableDataFieldType::Null),
+            SQLExpression::List(_list) => unimplemented!("미구현"),
             SQLExpression::Unary(unary) => match unary.operator {
                 UnaryOperator::Neg => {
                     let operand = self.reduce_expression(unary.operand)?;
@@ -271,7 +273,14 @@ impl Executor {
                     BinaryOperator::IsNot => unimplemented!("미구현"),  
                 }
             }
-            _ => unimplemented!("미구현"),
+            SQLExpression::Between(_between) => unimplemented!("미구현"),
+            SQLExpression::NotBetween(_between) => unimplemented!("미구현"),
+            SQLExpression::Parentheses(paren) => {
+                return self.reduce_expression(paren.expression);
+            }
+            SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
+            SQLExpression::Subquery(_) => unimplemented!("미구현"),
+            SQLExpression::SelectColumn(_) => unimplemented!("미구현"),
         }
     }
 }

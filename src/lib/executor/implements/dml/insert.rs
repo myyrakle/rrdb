@@ -6,6 +6,7 @@ use std::iter::FromIterator;
 use crate::lib::ast::dml::InsertData;
 use crate::lib::ast::predule::InsertQuery;
 use crate::lib::errors::predule::ExecuteError;
+use crate::lib::executor::config::TableDataField;
 use crate::lib::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
     StorageEncoder, TableConfig,
@@ -25,6 +26,8 @@ impl Executor {
         let database_path = base_path.clone().join(&database_name);
 
         let table_path = database_path.clone().join(&table_name);
+
+        let rows_path = table_path.clone().join("rows");
 
         if let Err(error) = tokio::fs::create_dir(&table_path).await {
             match error.kind() {
@@ -61,11 +64,16 @@ impl Executor {
             },
         };
 
+        // 입력된 컬럼
         let input_columns_set: HashSet<String> = HashSet::from_iter(query.columns.iter().cloned());
 
-        // 필수 입력 컬럼값 검증
+        // 필수 컬럼
         let required_columns = table_config.get_required_columns();
 
+        // 테이블 컬럼 맵
+        let columns_map = table_config.get_columns_map();
+
+        // 필수 입력 컬럼값 검증
         for required_column in required_columns {
             if !input_columns_set.contains(&required_column.name) {
                 return Err(ExecuteError::boxed(format!(
@@ -77,8 +85,52 @@ impl Executor {
 
         match query.data {
             InsertData::Values(values) => {
-                for (i, column) in query.columns.iter().enumerate() {
-                    let value = &values[i];
+                let mut rows = vec![];
+
+                for value in &values {
+                    let mut row = vec![];
+
+                    for (i, column_name) in query.columns.iter().enumerate() {
+                        let value = value.list[i].clone();
+
+                        let data = self.reduce_expression(value)?;
+
+                        match columns_map.get(column_name) {
+                            Some(column) => {
+                                if column.data_type.type_code() != data.type_code()
+                                    && data.type_code() != 0
+                                {
+                                    return Err(ExecuteError::boxed(format!(
+                                        "column '{}' type mismatch
+                                        ",
+                                        column_name
+                                    )));
+                                }
+                            }
+                            None => {
+                                return Err(ExecuteError::boxed(format!(
+                                    "column '{}' not exists",
+                                    column_name
+                                )))
+                            }
+                        }
+
+                        let column_name = column_name.to_owned();
+
+                        row.push(TableDataField { column_name, data });
+                    }
+
+                    rows.push(row);
+                }
+
+                for row in rows {
+                    let file_name = uuid::Uuid::new_v4().to_string();
+
+                    let row_file_path = rows_path.join(file_name);
+
+                    if let Err(error) = tokio::fs::write(row_file_path, encoder.encode(row)).await {
+                        return Err(ExecuteError::boxed(error.to_string()));
+                    }
                 }
             }
             InsertData::Select(_select) => {
@@ -86,12 +138,6 @@ impl Executor {
             }
             InsertData::None => {}
         }
-
-        // 입력값 타입 검증
-
-        // 입력값의 내부 표현식 계산
-
-        let columns_map = table_config.get_columns_map();
 
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
