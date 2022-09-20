@@ -1,5 +1,5 @@
 use crate::lib::ast::ddl::{CreateDatabaseQuery, DDLStatement, SQLStatement};
-use crate::lib::ast::predule::OtherStatement;
+use crate::lib::ast::predule::{DMLStatement, OtherStatement};
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
 use crate::lib::logger::predule::Logger;
@@ -87,6 +87,7 @@ impl Executor {
                 self.alter_table(query).await
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
+            SQLStatement::DML(DMLStatement::InsertQuery(query)) => self.insert(query).await,
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }
