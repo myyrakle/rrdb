@@ -10,6 +10,8 @@ Rust-based RDB
 
 ### 설치
 
+cargo를 사용한다.
+
 ```
 cargo install rrdb
 ```
