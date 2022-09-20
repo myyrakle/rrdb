@@ -1,12 +1,24 @@
 # rrdb
 
-![](https://img.shields.io/badge/language-Rust-red) ![](https://img.shields.io/badge/version-0.0.0%20alpha-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/myyrakle/rrdb/blob/master/LICENSE)
+![](https://img.shields.io/badge/language-Rust-red) ![](https://img.shields.io/badge/version-0.0.1%20alpha-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/myyrakle/rrdb/blob/master/LICENSE)
 
 Rust-based RDB
 
-not complete
+## not complete
 
-### Server
+---
+
+### 설치
+
+```
+cargo install rrdb
+```
+
+---
+
+### 기본 사용법
+
+#### Server
 
 ```
 # 스토리지 초기화
@@ -15,11 +27,13 @@ cargo run --bin rrdb init
 cargo run --bin rrdb run
 ```
 
-### Client
+#### Client
 
 ```
 psql -U rrdb -p 55555
 ```
+
+---
 
 ### Syntax
 
