@@ -1,5 +1,6 @@
 use crate::lib::ast::predule::{
-    GroupByClause, JoinPlan, LimitOffsetPlan, OrderByClause, SelectFromPlan, SelectSubqueryPlan,
+    FilterPlan, GroupByClause, JoinPlan, LimitOffsetPlan, OrderByClause, SelectFromPlan,
+    SelectSubqueryPlan,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +16,7 @@ pub enum SelectPlanItem {
     Order(OrderByClause),
     Group(GroupByClause),
     LimitOffset(LimitOffsetPlan),
+    Filter(FilterPlan),
 }
 
 impl From<SelectFromPlan> for SelectPlanItem {

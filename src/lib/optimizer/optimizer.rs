@@ -20,12 +20,27 @@ impl Optimizer {
             let alias = from_clause.alias;
 
             match from_clause.from {
-                FromTarget::Table(table_name) => plan.list.push(SelectFromPlan {
-                    table_name,
-                    alias,
-                    index: None,
-                    select_columns: query.select_items.iter().filter(|e|e.).cloned().collect()
-                }.into()),
+                FromTarget::Table(table_name) => plan.list.push(
+                    SelectFromPlan {
+                        table_name,
+                        alias,
+                        index: None,
+                        select_columns: query
+                            .select_items
+                            .iter()
+                            .map(|e| {
+                                e.item
+                                    .clone()
+                                    .unwrap()
+                                    .get_select_column_list()
+                                    .into_iter()
+                                    .map(|e| e.column_name)
+                            })
+                            .flatten()
+                            .collect(),
+                    }
+                    .into(),
+                ),
                 FromTarget::Subquery(_subquery) => {}
             }
 
@@ -41,17 +56,17 @@ impl Optimizer {
         }
 
         // GROUP BY 절 구성
-        if let Some(group_by_clause)= query.group_by_clause {
+        if let Some(group_by_clause) = query.group_by_clause {
             // TODO
 
             // HAVING 절 구성
-            if let Some(having_clause)= query.having_clause {
+            if let Some(having_clause) = query.having_clause {
                 // TODO
             }
         }
 
         // ORDER BY 절 구성
-        if let Some(order_by_clause)= query.order_by_clause {
+        if let Some(order_by_clause) = query.order_by_clause {
             // TODO
         }
 

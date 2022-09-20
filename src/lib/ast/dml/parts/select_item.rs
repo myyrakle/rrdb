@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectItem {
-    item: Option<SQLExpression>, // select 요소
-    alias: Option<String>,       // as 절이 있을 경우 alias 정보
+    pub item: Option<SQLExpression>, // select 요소
+    pub alias: Option<String>,       // as 절이 있을 경우 alias 정보
 }
 
 impl SelectItem {
