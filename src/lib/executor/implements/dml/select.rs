@@ -55,14 +55,25 @@ impl Executor {
             }
         }
 
+        // 필요한 SELECT Item만 최종 계산
+        let rows = rows
+            .into_iter()
+            .map(|row| {
+                let fields = select_items
+                    .iter()
+                    .map(|select_item| ExecuteField::String(format!("inserted into ",)))
+                    .collect();
+
+                ExecuteRow { fields }
+            })
+            .collect();
+
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
             }]),
-            rows: (vec![ExecuteRow {
-                fields: vec![ExecuteField::String(format!("inserted into ",))],
-            }]),
+            rows: (rows),
         })
     }
 

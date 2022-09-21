@@ -83,7 +83,7 @@ impl Executor {
                     for (i, column_name) in query.columns.iter().enumerate() {
                         let value = value.list[i].clone();
 
-                        let data = self.reduce_expression(value)?;
+                        let data = self.reduce_expression(value).await?;
 
                         match columns_map.get(column_name) {
                             Some(column) => {

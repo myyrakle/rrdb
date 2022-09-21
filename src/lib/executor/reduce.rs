@@ -1,15 +1,20 @@
 
 
-use crate::lib::ast::dml::{BinaryOperator, UnaryOperator};
-use crate::lib::ast::predule::SQLExpression;
-use crate::lib::errors::execute_error::ExecuteError;
 use std::error::Error;
 
+use crate::lib::ast::dml::{BinaryOperator, UnaryOperator};
+use crate::lib::ast::predule::SQLExpression;
+use crate::lib::errors::predule::{TypeError};
 use super::config::TableDataFieldType;
 use super::predule::Executor;
 
+pub struct ReduceContext {
+
+}
+
 impl Executor {
-    pub  fn reduce_expression(
+    #[async_recursion::async_recursion]
+    pub async fn reduce_expression(
         &self,
         expression: SQLExpression,
     ) -> Result<TableDataFieldType, Box<dyn Error>> {
@@ -22,7 +27,7 @@ impl Executor {
             SQLExpression::List(_list) => unimplemented!("미구현"),
             SQLExpression::Unary(unary) => match unary.operator {
                 UnaryOperator::Neg => {
-                    let operand = self.reduce_expression(unary.operand)?;
+                    let operand = self.reduce_expression(unary.operand).await?;
 
                     match operand {
                         TableDataFieldType::Integer(value) => {
@@ -31,41 +36,41 @@ impl Executor {
                         TableDataFieldType::Float(value) => {
                             Ok(TableDataFieldType::Float(-value))
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "unary '-' operator is valid only for integer and float types.",
                         )),
                     }
                 }
                 UnaryOperator::Pos => {
-                    let operand = self.reduce_expression(unary.operand)?;
+                    let operand = self.reduce_expression(unary.operand).await?;
 
                     match operand {
                         TableDataFieldType::Integer(_) => Ok(operand),
                         TableDataFieldType::Float(_) => Ok(operand),
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "unary '+' operator is valid only for integer and float types.",
                         )),
                     }
                 }
                 UnaryOperator::Not => {
-                    let operand = self.reduce_expression(unary.operand)?;
+                    let operand = self.reduce_expression(unary.operand).await?;
 
                     match operand {
                         TableDataFieldType::Boolean(value) => {
                             Ok(TableDataFieldType::Boolean(!value))
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "unary '!' operator is valid only for integer and float types.",
                         )),
                     }
                 }
             },
             SQLExpression::Binary(binary) => {
-                let lhs = self.reduce_expression(binary.lhs)?;
-                let rhs = self.reduce_expression(binary.rhs)?;
+                let lhs = self.reduce_expression(binary.lhs).await?;
+                let rhs = self.reduce_expression(binary.rhs).await?;
 
                 if lhs.type_code() != rhs.type_code() {
-                    return Err(ExecuteError::boxed(
+                    return Err(TypeError::dyn_boxed(
                         "The types of lhs and rhs do not match.",
                     ));
                 }
@@ -92,7 +97,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '-' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -109,7 +114,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '-' operator is valid only for integer and float types.",
                         )),
                     },
@@ -126,7 +131,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '*' operator is valid only for integer and float types.",
                         )),
                     },
@@ -143,7 +148,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '/' operator is valid only for integer and float types.",
                         )),
                     },
@@ -154,7 +159,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary 'And' operator is valid only for boolean type.",
                         )),
                     },
@@ -165,7 +170,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary 'Or' operator is valid only for boolean type.",
                         )),
                     },
@@ -188,7 +193,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '<' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -211,7 +216,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '>' operator is valid only for integer and float and string types.",
                         )),
                     }, 
@@ -234,7 +239,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '<=' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -257,7 +262,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(ExecuteError::boxed(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '>=' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -276,7 +281,7 @@ impl Executor {
             SQLExpression::Between(_between) => unimplemented!("미구현"),
             SQLExpression::NotBetween(_between) => unimplemented!("미구현"),
             SQLExpression::Parentheses(paren) => {
-                 self.reduce_expression(paren.expression)
+                 self.reduce_expression(paren.expression).await
             }
             SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
             SQLExpression::Subquery(_) => unimplemented!("미구현"),
