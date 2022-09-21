@@ -1,5 +1,7 @@
 use crate::lib::pgwire::protocol::DataTypeOid;
 
+use super::config::TableDataFieldType;
+
 #[derive(Debug, Clone)]
 pub struct ExecuteResult {
     pub rows: Vec<ExecuteRow>,       // 데이터 행 -> 실 데이터
@@ -25,14 +27,6 @@ pub enum ExecuteColumnType {
     String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExecuteField {
-    Bool(bool),
-    Integer(i64),
-    Float(f64),
-    String(String),
-}
-
 impl From<ExecuteColumnType> for DataTypeOid {
     fn from(value: ExecuteColumnType) -> DataTypeOid {
         match value {
@@ -40,6 +34,27 @@ impl From<ExecuteColumnType> for DataTypeOid {
             ExecuteColumnType::Integer => DataTypeOid::Int8,
             ExecuteColumnType::Float => DataTypeOid::Float8,
             ExecuteColumnType::String => DataTypeOid::Text,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExecuteField {
+    Bool(bool),
+    Integer(i64),
+    Float(f64),
+    String(String),
+    Null,
+}
+
+impl From<TableDataFieldType> for ExecuteField {
+    fn from(value: TableDataFieldType) -> ExecuteField {
+        match value {
+            TableDataFieldType::Boolean(value) => ExecuteField::Bool(value),
+            TableDataFieldType::Integer(value) => ExecuteField::Integer(value),
+            TableDataFieldType::Float(value) => ExecuteField::Float(value),
+            TableDataFieldType::String(value) => ExecuteField::String(value),
+            TableDataFieldType::Null => ExecuteField::Null,
         }
     }
 }

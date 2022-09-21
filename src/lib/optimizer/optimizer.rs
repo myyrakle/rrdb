@@ -45,7 +45,7 @@ impl Optimizer {
             }
 
             // WHERE 절 필터링 구성
-            if let Some(where_clause) = query.where_clause {
+            if let Some(_where_clause) = query.where_clause {
                 // TODO
             }
         }
@@ -56,17 +56,17 @@ impl Optimizer {
         }
 
         // GROUP BY 절 구성
-        if let Some(group_by_clause) = query.group_by_clause {
+        if let Some(_group_by_clause) = query.group_by_clause {
             // TODO
 
             // HAVING 절 구성
-            if let Some(having_clause) = query.having_clause {
+            if let Some(_having_clause) = query.having_clause {
                 // TODO
             }
         }
 
         // ORDER BY 절 구성
-        if let Some(order_by_clause) = query.order_by_clause {
+        if let Some(_order_by_clause) = query.order_by_clause {
             // TODO
         }
 

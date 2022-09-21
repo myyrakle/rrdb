@@ -18,8 +18,8 @@ impl Executor {
 
         let into_table = query.into_table.unwrap();
 
-        let database_name = into_table.database_name.clone().unwrap();
-        let table_name = into_table.table_name;
+        let database_name = into_table.clone().database_name.clone().unwrap();
+        let table_name = into_table.clone().table_name;
 
         let base_path = self.get_base_path();
 
@@ -83,7 +83,7 @@ impl Executor {
                     for (i, column_name) in query.columns.iter().enumerate() {
                         let value = value.list[i].clone();
 
-                        let data = self.reduce_expression(value).await?;
+                        let data = self.reduce_expression(value, Default::default()).await?;
 
                         match columns_map.get(column_name) {
                             Some(column) => {
@@ -107,7 +107,11 @@ impl Executor {
 
                         let column_name = column_name.to_owned();
 
-                        fields.push(TableDataField { column_name, data });
+                        fields.push(TableDataField {
+                            column_name,
+                            data,
+                            table_name: into_table.clone(),
+                        });
                     }
 
                     let row = TableDataRow { fields };

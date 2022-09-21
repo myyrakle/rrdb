@@ -62,7 +62,7 @@ impl Executor {
                             match database_config {
                                 Some(mut database_config) => {
                                     database_config.database_name = to_database_name;
-                                    if let Err(error) = tokio::fs::write(
+                                    if let Err(_error) = tokio::fs::write(
                                         config_path,
                                         encoder.encode(database_config),
                                     )

@@ -74,9 +74,6 @@ impl SQLExpression {
                 Self::get_select_column_list(&between.x),
                 Self::get_select_column_list(&between.y)
             ),
-            SQLExpression::SelectColumn(column) => {
-                vec![column.to_owned()]
-            }
             SQLExpression::Parentheses(paren) => Self::get_select_column_list(&paren.expression),
             SQLExpression::FunctionCall(function_call) => function_call
                 .arguments

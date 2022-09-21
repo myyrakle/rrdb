@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::lib::ast::predule::TableName;
+
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub enum TableDataFieldType {
     // 끝단 Primitive 값
@@ -36,6 +38,7 @@ impl ToString for TableDataFieldType {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TableDataField {
+    pub table_name: TableName,
     pub column_name: String,
     pub data: TableDataFieldType,
 }

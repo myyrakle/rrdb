@@ -10,7 +10,7 @@ use crate::lib::ast::predule::{SelectQuery, TableName};
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::config::TableDataRow;
 use crate::lib::executor::encoder::StorageEncoder;
-use crate::lib::executor::predule::{ExecuteResult, Executor};
+use crate::lib::executor::predule::{ExecuteResult, Executor, ReduceContext};
 use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 use crate::lib::optimizer::predule::Optimizer;
 
@@ -46,7 +46,7 @@ impl Executor {
 
                             rows.append(&mut result);
                         }
-                        SelectScanType::IndexScan(index) => {
+                        SelectScanType::IndexScan(_index) => {
                             unimplemented!()
                         }
                     }
@@ -56,25 +56,60 @@ impl Executor {
         }
 
         // 필요한 SELECT Item만 최종 계산
-        let rows = rows
+        let rows = rows.into_iter().map(|row| {
+            let table_alias_map = table_alias_map.clone();
+            let select_items = select_items.clone();
+            async move {
+                let fields = select_items.iter().map(|select_item| {
+                    let table_alias_map = table_alias_map.clone();
+                    let row = row.clone();
+                    async move {
+                        let reduce_context = ReduceContext {
+                            row: Some(row.clone()),
+                            table_alias_map: table_alias_map.clone(),
+                        };
+
+                        let value = self
+                            .reduce_expression(
+                                select_item.item.as_ref().unwrap().clone(),
+                                reduce_context.clone(),
+                            )
+                            .await;
+
+                        match value {
+                            Ok(value) => Ok(ExecuteField::from(value)),
+                            Err(error) => Err(error),
+                        }
+                    }
+                });
+
+                let fields = join_all(fields)
+                    .await
+                    .into_iter()
+                    .collect::<Result<Vec<_>, _>>();
+
+                match fields {
+                    Ok(fields) => Ok(ExecuteRow { fields }),
+                    Err(error) => Err(error),
+                }
+            }
+        });
+
+        let rows = join_all(rows)
+            .await
             .into_iter()
-            .map(|row| {
-                let fields = select_items
-                    .iter()
-                    .map(|select_item| ExecuteField::String(format!("inserted into ",)))
-                    .collect();
+            .collect::<Result<Vec<_>, _>>();
 
-                ExecuteRow { fields }
-            })
-            .collect();
-
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
-                name: "desc".into(),
-                data_type: ExecuteColumnType::String,
-            }]),
-            rows: (rows),
-        })
+        match rows {
+            Ok(rows) => Ok(ExecuteResult {
+                columns: (vec![ExecuteColumn {
+                    name: "desc".into(),
+                    data_type: ExecuteColumnType::String,
+                }]),
+                rows: (rows),
+            }),
+            Err(error) => Err(error),
+        }
     }
 
     pub async fn full_scan(
