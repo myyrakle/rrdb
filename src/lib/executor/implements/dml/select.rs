@@ -1,6 +1,15 @@
+use std::collections::HashMap;
 use std::error::Error;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 
+use futures::future::join_all;
+
+use crate::lib::ast::dml::SelectPlanItem;
 use crate::lib::ast::predule::{SelectQuery, TableName};
+use crate::lib::errors::execute_error::ExecuteError;
+use crate::lib::executor::config::TableDataRow;
+use crate::lib::executor::encoder::StorageEncoder;
 use crate::lib::executor::predule::{ExecuteResult, Executor};
 use crate::lib::optimizer::predule::Optimizer;
 
@@ -10,10 +19,96 @@ impl Executor {
         let optimizer = Optimizer::new();
         let plan = optimizer.optimize(query).await?;
 
-        todo!();
+        let mut table_alias_map = HashMap::new();
+
+        for each_plan in plan.list {
+            match each_plan {
+                SelectPlanItem::From(from) => {
+                    if let Some(alias) = from.alias {
+                        table_alias_map.insert(alias, from.table_name);
+                    }
+                }
+                _ => unimplemented!("미구현"),
+            }
+        }
+
+        unimplemented!()
     }
 
-    pub async fn full_scan(&self, _table_name: TableName) {}
+    pub async fn full_scan(
+        &self,
+        table_name: TableName,
+    ) -> Result<Vec<(PathBuf, TableDataRow)>, Box<dyn Error>> {
+        let encoder = StorageEncoder::new();
+
+        let database_name = table_name.database_name.unwrap();
+        let table_name = table_name.table_name;
+
+        let base_path = self.get_base_path();
+
+        let database_path = base_path.clone().join(&database_name);
+
+        let table_path = database_path.clone().join(&table_name);
+
+        // 데이터 행 파일 경로
+        let rows_path = table_path.clone().join("rows");
+
+        match std::fs::read_dir(&rows_path) {
+            Ok(read_dir_result) => {
+                let futures = read_dir_result.map(|e| async {
+                    match e {
+                        Ok(entry) => match entry.file_type() {
+                            Ok(file_type) => {
+                                if file_type.is_file() {
+                                    let path = entry.path();
+
+                                    match tokio::fs::read(&path).await {
+                                        Ok(result) => {
+                                            match encoder.decode::<TableDataRow>(result.as_slice())
+                                            {
+                                                Some(decoded) => {
+                                                    return Ok((path.to_path_buf(), decoded))
+                                                }
+                                                None => {
+                                                    return Err(ExecuteError::boxed(format!(
+                                                        "full scan failed"
+                                                    )))
+                                                }
+                                            }
+                                        }
+                                        Err(error) => {
+                                            return Err(ExecuteError::boxed(format!(
+                                                "full scan failed {}",
+                                                error.to_string()
+                                            )))
+                                        }
+                                    }
+                                } else {
+                                    return Err(ExecuteError::boxed(format!("full scan failed")));
+                                }
+                            }
+                            Err(_) => return Err(ExecuteError::boxed(format!("full scan failed"))),
+                        },
+                        Err(_) => (return Err(ExecuteError::boxed(format!("full scan failed")))),
+                    }
+                });
+
+                let rows = join_all(futures)
+                    .await
+                    .into_iter()
+                    .collect::<Result<Vec<_>, _>>();
+
+                match rows {
+                    Ok(rows) => Ok(rows),
+                    Err(error) => Err(ExecuteError::boxed(error.to_string())),
+                }
+            }
+            Err(error) => match error.kind() {
+                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
+                _ => Err(ExecuteError::boxed("full scan failed")),
+            },
+        }
+    }
 
     pub async fn filter(&self) {}
 

@@ -54,3 +54,9 @@ impl From<LimitOffsetPlan> for SelectPlanItem {
         SelectPlanItem::LimitOffset(value)
     }
 }
+
+impl From<FilterPlan> for SelectPlanItem {
+    fn from(value: FilterPlan) -> SelectPlanItem {
+        SelectPlanItem::Filter(value)
+    }
+}
