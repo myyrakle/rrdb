@@ -130,7 +130,7 @@ impl Token {
     pub fn try_into_multi_token_operator(
         self,
         second_token: Self,
-    ) -> Result<BinaryOperator, Box<dyn Error>> {
+    ) -> Result<BinaryOperator, Box<dyn Error + Send>> {
         match self {
             Token::Not => match second_token {
                 Token::Like => Ok(BinaryOperator::NotLike),
@@ -162,9 +162,9 @@ impl Token {
 }
 
 impl TryInto<BinaryOperator> for Token {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send>;
 
-    fn try_into(self) -> Result<BinaryOperator, Box<dyn Error>> {
+    fn try_into(self) -> Result<BinaryOperator, Box<dyn Error + Send>> {
         match self {
             Token::Operator(operator) => operator.try_into(),
             Token::And => Ok(BinaryOperator::And),

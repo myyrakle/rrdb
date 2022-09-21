@@ -11,7 +11,7 @@ impl Executor {
     pub async fn alter_database(
         &self,
         query: AlterDatabaseQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -24,7 +24,7 @@ impl Executor {
                     let from_database_name = query
                         .database_name
                         .clone()
-                        .ok_or_else(|| ExecuteError::boxed("no database name"))?;
+                        .ok_or_else(|| ExecuteError::dyn_boxed("no database name"))?;
 
                     // 변경할 데이터베이스명
                     let to_database_name = rename.name;
@@ -62,8 +62,14 @@ impl Executor {
                             match database_config {
                                 Some(mut database_config) => {
                                     database_config.database_name = to_database_name;
-                                    tokio::fs::write(config_path, encoder.encode(database_config))
-                                        .await?;
+                                    if let Err(error) = tokio::fs::write(
+                                        config_path,
+                                        encoder.encode(database_config),
+                                    )
+                                    .await
+                                    {
+                                        return Err(ExecuteError::dyn_boxed("no database name"));
+                                    }
                                 }
                                 None => {
                                     return Err(ExecuteError::boxed("invalid config data"));

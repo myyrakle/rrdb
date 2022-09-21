@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::lib::logger::predule::Logger;
-
 pub struct StorageEncoder {}
 
 #[allow(clippy::new_without_default)]

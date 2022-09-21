@@ -13,7 +13,7 @@ impl Executor {
     pub async fn alter_table(
         &self,
         query: AlterTableQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -51,7 +51,12 @@ impl Executor {
                         match table_config {
                             Some(mut table_config) => {
                                 table_config.table.table_name = change_name;
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
+                                if let Err(error) =
+                                    tokio::fs::write(config_path, encoder.encode(table_config))
+                                        .await
+                                {
+                                    return Err(ExecuteError::boxed(error.to_string()));
+                                }
                             }
                             None => {
                                 return Err(ExecuteError::boxed("invalid config data"));
@@ -91,7 +96,12 @@ impl Executor {
 
                                 table_config.columns.push(column_to_add);
 
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
+                                if let Err(error) =
+                                    tokio::fs::write(config_path, encoder.encode(table_config))
+                                        .await
+                                {
+                                    return Err(ExecuteError::boxed(error.to_string()));
+                                }
                             }
                             None => {
                                 return Err(ExecuteError::boxed("invalid config data"));
@@ -142,8 +152,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -188,8 +204,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -234,8 +256,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -280,8 +308,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -325,8 +359,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -372,7 +412,12 @@ impl Executor {
                                     .columns
                                     .retain(|e| e.name != action.column_name);
 
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
+                                if let Err(error) =
+                                    tokio::fs::write(config_path, encoder.encode(table_config))
+                                        .await
+                                {
+                                    return Err(ExecuteError::boxed(error.to_string()));
+                                }
                             }
                             None => {
                                 return Err(ExecuteError::boxed("invalid config data"));
@@ -429,7 +474,12 @@ impl Executor {
                                     }
                                 }
 
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
+                                if let Err(error) =
+                                    tokio::fs::write(config_path, encoder.encode(table_config))
+                                        .await
+                                {
+                                    return Err(ExecuteError::boxed(error.to_string()));
+                                }
                             }
                             None => {
                                 return Err(ExecuteError::boxed("invalid config data"));

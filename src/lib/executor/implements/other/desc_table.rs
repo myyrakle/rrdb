@@ -9,7 +9,10 @@ use crate::lib::executor::predule::{
 };
 
 impl Executor {
-    pub async fn desc_table(&self, query: DescTableQuery) -> Result<ExecuteResult, Box<dyn Error>> {
+    pub async fn desc_table(
+        &self,
+        query: DescTableQuery,
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table_name.database_name.unwrap();
@@ -25,7 +28,7 @@ impl Executor {
             Ok(read_result) => {
                 let table_info: TableConfig = encoder
                     .decode(read_result.as_slice())
-                    .ok_or_else(|| ExecuteError::boxed("config decode error"))?;
+                    .ok_or_else(|| ExecuteError::dyn_boxed("config decode error"))?;
 
                 Ok(ExecuteResult {
                     columns: (vec![

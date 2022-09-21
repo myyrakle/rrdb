@@ -11,7 +11,7 @@ impl Executor {
     pub async fn create_database(
         &self,
         query: CreateDatabaseQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -20,7 +20,7 @@ impl Executor {
         let database_name = query
             .database_name
             .clone()
-            .ok_or_else(|| ExecuteError::boxed("no database name"))?;
+            .ok_or_else(|| ExecuteError::dyn_boxed("no database name"))?;
 
         database_path.push(&database_name);
 
@@ -45,7 +45,9 @@ impl Executor {
             database_name: database_name.clone(),
         };
 
-        tokio::fs::write(database_path, encoder.encode(database_info)).await?;
+        if let Err(error) = tokio::fs::write(database_path, encoder.encode(database_info)).await {
+            return Err(ExecuteError::boxed(error.to_string()));
+        }
 
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {

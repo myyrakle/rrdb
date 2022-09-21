@@ -16,7 +16,7 @@ impl TypeError {
         Box::new(Self::new(message))
     }
 
-    pub fn dyn_boxed<T: ToString>(message: T) -> Box<dyn Error> {
+    pub fn dyn_boxed<T: ToString>(message: T) -> Box<dyn Error + Send> {
         Box::new(Self::new(message))
     }
 }

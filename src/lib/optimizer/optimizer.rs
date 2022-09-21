@@ -12,7 +12,7 @@ impl Optimizer {
         Self {}
     }
 
-    pub async fn optimize(&self, query: SelectQuery) -> Result<SelectPlan, Box<dyn Error>> {
+    pub async fn optimize(&self, query: SelectQuery) -> Result<SelectPlan, Box<dyn Error + Send>> {
         let mut plan = SelectPlan { list: vec![] };
 
         // FROM 절 분석

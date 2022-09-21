@@ -14,7 +14,7 @@ impl Executor {
     pub async fn show_tables(
         &self,
         query: ShowTablesQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();

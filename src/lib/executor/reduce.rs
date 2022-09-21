@@ -3,6 +3,7 @@
 use std::error::Error;
 
 use futures::future::join_all;
+use itertools::Itertools;
 
 use crate::lib::ast::dml::{BinaryOperator, UnaryOperator};
 use crate::lib::ast::predule::SQLExpression;
@@ -19,7 +20,7 @@ impl Executor {
     pub async fn reduce_expression(
         &self,
         expression: SQLExpression,
-    ) -> Result<TableDataFieldType, Box<dyn Error>> {
+    ) -> Result<TableDataFieldType, Box<dyn Error + Send>> {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),

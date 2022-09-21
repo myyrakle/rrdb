@@ -15,7 +15,7 @@ impl Parser {
     pub(crate) fn parse_expression(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error>> {
+    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0201 need more tokens"));
         }
@@ -170,7 +170,7 @@ impl Parser {
         &mut self,
         operator: UnaryOperator,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error>> {
+    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0201 need more tokens"));
         }
@@ -213,7 +213,7 @@ impl Parser {
     pub(crate) fn parse_parentheses_expression(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error>> {
+    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
         let context = context.set_in_parentheses(true);
 
         if !self.has_next_token() {
@@ -292,7 +292,7 @@ impl Parser {
         &mut self,
         lhs: SQLExpression,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error>> {
+    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0206 need more tokens"));
         }
@@ -378,7 +378,7 @@ impl Parser {
         database_name: Option<String>,
         function_name: String,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error>> {
+    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
         let mut call_expression = CallExpression {
             function_name: FunctionName {
                 database_name,
@@ -446,7 +446,7 @@ impl Parser {
         &mut self,
         a: SQLExpression,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error>> {
+    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
         let context = context.set_in_between_clause(true);
 
         if !self.has_next_token() {

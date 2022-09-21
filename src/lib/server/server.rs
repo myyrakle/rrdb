@@ -24,7 +24,7 @@ impl Server {
 
     /// 메인 서버 루프.
     /// 여러개의 태스크 제어
-    pub async fn run(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn run(&self) -> Result<(), Box<dyn Error + Send>> {
         // TODO: 인덱스 로딩 등 기본 로직 실행.
 
         let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
@@ -61,8 +61,9 @@ impl Server {
 
         // connection task
         // client와의 커넥션 처리 루프
-        let listener =
-            TcpListener::bind((self.option.host.to_owned(), self.option.port as u16)).await?;
+        let listener = TcpListener::bind((self.option.host.to_owned(), self.option.port as u16))
+            .await
+            .or_else(|error| Err(ExecuteError::dyn_boxed(error.to_string())))?;
 
         let connection_task = tokio::spawn(async move {
             loop {

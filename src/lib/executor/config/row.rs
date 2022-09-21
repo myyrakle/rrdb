@@ -28,7 +28,7 @@ impl ToString for TableDataFieldType {
             TableDataFieldType::Integer(value) => value.to_string(),
             TableDataFieldType::Float(value) => value.to_string(),
             TableDataFieldType::Boolean(value) => value.to_string(),
-            TableDataFieldType::String(value) => value,
+            TableDataFieldType::String(value) => value.to_owned(),
             TableDataFieldType::Null => "NULL".into(),
         }
     }

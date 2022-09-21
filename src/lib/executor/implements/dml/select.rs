@@ -15,7 +15,7 @@ use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteFiel
 use crate::lib::optimizer::predule::Optimizer;
 
 impl Executor {
-    pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, Box<dyn Error>> {
+    pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         // 최적화 작업
         let optimizer = Optimizer::new();
 
@@ -80,7 +80,7 @@ impl Executor {
     pub async fn full_scan(
         &self,
         table_name: TableName,
-    ) -> Result<Vec<(PathBuf, TableDataRow)>, Box<dyn Error>> {
+    ) -> Result<Vec<(PathBuf, TableDataRow)>, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let database_name = table_name.database_name.unwrap();

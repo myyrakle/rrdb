@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::string::ToString;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -13,6 +14,10 @@ impl ExecuteError {
     }
 
     pub fn boxed<T: ToString>(message: T) -> Box<Self> {
+        Box::new(Self::new(message))
+    }
+
+    pub fn dyn_boxed<T: ToString>(message: T) -> Box<dyn Error + Send> {
         Box::new(Self::new(message))
     }
 }

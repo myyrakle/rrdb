@@ -10,7 +10,7 @@ impl Parser {
     pub(crate) fn parse_show_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error>> {
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0701 need more tokens"));
         }

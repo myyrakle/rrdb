@@ -11,7 +11,7 @@ impl Parser {
     pub(crate) fn handle_create_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error>> {
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E1101 need more tokens"));
         }
@@ -32,7 +32,7 @@ impl Parser {
     pub(crate) fn handle_alter_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error>> {
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E1103 need more tokens"));
         }
@@ -51,7 +51,7 @@ impl Parser {
     pub(crate) fn handle_drop_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error>> {
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E1105 need more tokens"));
         }

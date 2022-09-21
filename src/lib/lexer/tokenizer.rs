@@ -94,7 +94,7 @@ impl Tokenizer {
 
     // 주어진 텍스트에서 토큰을 순서대로 획득해 반환합니다.
     // 끝을 만날 경우 Token::EOF를 반환합니다.
-    pub fn get_token(&mut self) -> Result<Token, Box<dyn Error>> {
+    pub fn get_token(&mut self) -> Result<Token, Box<dyn Error + Send>> {
         // 화이트 스페이스 삼킴
         while self.is_whitespace() && !self.is_eof() {
             self.read_char();
@@ -397,7 +397,7 @@ impl Tokenizer {
     }
 
     // Tokenizer 생성 없이 토큰 목록을 가져올 수 있는 유틸 함수입니다.
-    pub fn string_to_tokens(text: String) -> Result<Vec<Token>, Box<dyn Error>> {
+    pub fn string_to_tokens(text: String) -> Result<Vec<Token>, Box<dyn Error + Send>> {
         let mut tokenizer = Tokenizer::new(text);
 
         let mut tokens = vec![];

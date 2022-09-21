@@ -13,7 +13,7 @@ use crate::lib::executor::predule::{
 };
 
 impl Executor {
-    pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, Box<dyn Error>> {
+    pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let into_table = query.into_table.unwrap();
