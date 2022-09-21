@@ -1,38 +1,69 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use futures::future::join_all;
 
-use crate::lib::ast::dml::SelectPlanItem;
+use crate::lib::ast::dml::{SelectPlanItem, SelectScanType};
 use crate::lib::ast::predule::{SelectQuery, TableName};
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::config::TableDataRow;
 use crate::lib::executor::encoder::StorageEncoder;
 use crate::lib::executor::predule::{ExecuteResult, Executor};
+use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 use crate::lib::optimizer::predule::Optimizer;
 
 impl Executor {
     pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, Box<dyn Error>> {
         // 최적화 작업
         let optimizer = Optimizer::new();
+
+        let select_items = query.select_items.clone();
+
         let plan = optimizer.optimize(query).await?;
 
         let mut table_alias_map = HashMap::new();
+        let mut rows = vec![];
 
         for each_plan in plan.list {
             match each_plan {
                 SelectPlanItem::From(from) => {
+                    let table_name = from.table_name.clone();
+
                     if let Some(alias) = from.alias {
-                        table_alias_map.insert(alias, from.table_name);
+                        table_alias_map.insert(alias, table_name.clone());
+                    }
+
+                    match from.scan {
+                        SelectScanType::FullScan => {
+                            let mut result = self
+                                .full_scan(table_name)
+                                .await?
+                                .into_iter()
+                                .map(|(_, e)| e)
+                                .collect();
+
+                            rows.append(&mut result);
+                        }
+                        SelectScanType::IndexScan(index) => {
+                            unimplemented!()
+                        }
                     }
                 }
                 _ => unimplemented!("미구현"),
             }
         }
 
-        unimplemented!()
+        Ok(ExecuteResult {
+            columns: (vec![ExecuteColumn {
+                name: "desc".into(),
+                data_type: ExecuteColumnType::String,
+            }]),
+            rows: (vec![ExecuteRow {
+                fields: vec![ExecuteField::String(format!("inserted into ",))],
+            }]),
+        })
     }
 
     pub async fn full_scan(
