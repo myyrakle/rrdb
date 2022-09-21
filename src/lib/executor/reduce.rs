@@ -2,6 +2,8 @@
 
 use std::error::Error;
 
+use futures::future::join_all;
+
 use crate::lib::ast::dml::{BinaryOperator, UnaryOperator};
 use crate::lib::ast::predule::SQLExpression;
 use crate::lib::errors::predule::{TypeError};
@@ -24,7 +26,15 @@ impl Executor {
             SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value)),
             SQLExpression::String(value) => Ok(TableDataFieldType::String(value)),
             SQLExpression::Null => Ok(TableDataFieldType::Null),
-            SQLExpression::List(_list) => unimplemented!("미구현"),
+            SQLExpression::List(list) =>  {
+                let futures = list.value.into_iter().map(|e|{self.reduce_expression(e)});
+                let fields = join_all(futures).await.into_iter().collect::<Result<Vec<_>, 
+                _>>()?;
+
+                let serialized: String = fields.into_iter().map(|e|e.to_string()).intersperse(", ".to_owned()).collect();
+
+                Ok(TableDataFieldType::String(format!("({})", serialized)))
+        }
             SQLExpression::Unary(unary) => match unary.operator {
                 UnaryOperator::Neg => {
                     let operand = self.reduce_expression(unary.operand).await?;

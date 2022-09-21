@@ -22,6 +22,18 @@ impl TableDataFieldType {
     }
 }
 
+impl ToString for TableDataFieldType {
+    fn to_string(&self) -> String {
+        match self {
+            TableDataFieldType::Integer(value) => value.to_string(),
+            TableDataFieldType::Float(value) => value.to_string(),
+            TableDataFieldType::Boolean(value) => value.to_string(),
+            TableDataFieldType::String(value) => value,
+            TableDataFieldType::Null => "NULL".into(),
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TableDataField {
     pub column_name: String,
