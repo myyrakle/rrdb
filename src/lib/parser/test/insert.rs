@@ -24,9 +24,9 @@ pub fn insert_into_values_1() {
         .set_columns(vec!["a".into(), "b".into(), "c".into()])
         .set_values(vec![InsertValue {
             list: vec![
-                SQLExpression::Integer(1),
-                SQLExpression::Integer(2),
-                SQLExpression::Integer(3),
+                Some(SQLExpression::Integer(1)),
+                Some(SQLExpression::Integer(2)),
+                Some(SQLExpression::Integer(3)),
             ],
         }])
         .build();
@@ -56,16 +56,16 @@ pub fn insert_into_values_2() {
         .set_values(vec![
             InsertValue {
                 list: vec![
-                    SQLExpression::Integer(1),
-                    SQLExpression::Integer(2),
-                    SQLExpression::Integer(3),
+                    Some(SQLExpression::Integer(1)),
+                    Some(SQLExpression::Integer(2)),
+                    Some(SQLExpression::Integer(3)),
                 ],
             },
             InsertValue {
                 list: vec![
-                    SQLExpression::Integer(4),
-                    SQLExpression::Integer(5),
-                    SQLExpression::Integer(6),
+                    Some(SQLExpression::Integer(4)),
+                    Some(SQLExpression::Integer(5)),
+                    Some(SQLExpression::Integer(6)),
                 ],
             },
         ])

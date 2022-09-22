@@ -1,6 +1,6 @@
 use crate::lib::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
 
-use super::config::TableDataFieldType;
+use crate::lib::executor::predule::TableDataFieldType;
 
 #[derive(Debug, Clone)]
 pub struct ExecuteResult {
