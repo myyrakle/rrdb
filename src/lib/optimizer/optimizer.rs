@@ -28,7 +28,7 @@ impl Optimizer {
                         select_columns: query
                             .select_items
                             .iter()
-                            .map(|e| {
+                            .flat_map(|e| {
                                 e.item
                                     .clone()
                                     .unwrap()
@@ -36,7 +36,6 @@ impl Optimizer {
                                     .into_iter()
                                     .map(|e| e.column_name)
                             })
-                            .flatten()
                             .collect(),
                     }
                     .into(),

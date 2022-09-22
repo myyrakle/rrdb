@@ -109,15 +109,14 @@ impl Executor {
 
         let config_columns = table_infos
             .into_iter()
-            .map(|table_info| {
+            .flat_map(|table_info| {
                 table_info
                     .columns
                     .iter()
                     .cloned()
-                    .map(|column| (table_info.table.to_owned(), column.to_owned()))
+                    .map(|column| (table_info.table.to_owned(), column))
                     .collect::<Vec<_>>()
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         let reduce_context = ReduceContext {
@@ -181,37 +180,28 @@ impl Executor {
                                         Ok(result) => {
                                             match encoder.decode::<TableDataRow>(result.as_slice())
                                             {
-                                                Some(decoded) => {
-                                                    return Ok((path.to_path_buf(), decoded))
-                                                }
-                                                None => {
-                                                    return Err(ExecuteError::boxed(format!(
-                                                        "full scan failed {:?}",
-                                                        path
-                                                    )))
-                                                }
+                                                Some(decoded) => Ok((path.to_path_buf(), decoded)),
+                                                None => Err(ExecuteError::boxed(format!(
+                                                    "full scan failed {:?}",
+                                                    path
+                                                ))),
                                             }
                                         }
-                                        Err(error) => {
-                                            return Err(ExecuteError::boxed(format!(
-                                                "full scan failed {}",
-                                                error.to_string()
-                                            )))
-                                        }
+                                        Err(error) => Err(ExecuteError::boxed(format!(
+                                            "full scan failed {}",
+                                            error
+                                        ))),
                                     }
                                 } else {
-                                    return Err(ExecuteError::boxed(format!("full scan failed")));
+                                    Err(ExecuteError::boxed("full scan failed"))
                                 }
                             }
                             Err(error) => {
-                                return Err(ExecuteError::boxed(format!(
-                                    "full scan failed {}",
-                                    error
-                                )))
+                                Err(ExecuteError::boxed(format!("full scan failed {}", error)))
                             }
                         },
                         Err(error) => {
-                            return Err(ExecuteError::boxed(format!("full scan failed {}", error)))
+                            Err(ExecuteError::boxed(format!("full scan failed {}", error)))
                         }
                     }
                 });

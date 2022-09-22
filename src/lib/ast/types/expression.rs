@@ -53,8 +53,7 @@ impl SQLExpression {
             SQLExpression::List(list) => list
                 .value
                 .iter()
-                .map(|e| Self::get_select_column_list_recursion(e))
-                .flatten()
+                .flat_map(Self::get_select_column_list_recursion)
                 .collect(),
             SQLExpression::SelectColumn(column) => {
                 vec![column.to_owned()]
@@ -78,8 +77,7 @@ impl SQLExpression {
             SQLExpression::FunctionCall(function_call) => function_call
                 .arguments
                 .iter()
-                .map(|e| Self::get_select_column_list_recursion(e))
-                .flatten()
+                .flat_map(Self::get_select_column_list_recursion)
                 .collect(),
             SQLExpression::Subquery(_subquery) => unimplemented!(),
         }

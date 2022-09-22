@@ -34,21 +34,13 @@ impl Executor {
                 let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
 
                 match table_config {
-                    Some(table_config) => {
-                        return Ok(table_config);
-                    }
-                    None => {
-                        return Err(ExecuteError::boxed("invalid config data"));
-                    }
+                    Some(table_config) => Ok(table_config),
+                    None => Err(ExecuteError::boxed("invalid config data")),
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => {
-                    return Err(ExecuteError::boxed("table not found"));
-                }
-                _ => {
-                    return Err(ExecuteError::boxed(format!("{:?}", error)));
-                }
+                ErrorKind::NotFound => Err(ExecuteError::boxed("table not found")),
+                _ => Err(ExecuteError::boxed(format!("{:?}", error))),
             },
         }
     }

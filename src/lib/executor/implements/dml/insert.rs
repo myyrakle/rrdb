@@ -6,10 +6,9 @@ use std::iter::FromIterator;
 use crate::lib::ast::dml::InsertData;
 use crate::lib::ast::predule::InsertQuery;
 use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::config::{TableDataField, TableDataRow};
 use crate::lib::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
-    StorageEncoder, TableConfig,
+    StorageEncoder, TableConfig, TableDataField, TableDataRow,
 };
 
 impl Executor {
@@ -18,7 +17,7 @@ impl Executor {
 
         let into_table = query.into_table.unwrap();
 
-        let database_name = into_table.clone().database_name.clone().unwrap();
+        let database_name = into_table.clone().database_name.unwrap();
         let table_name = into_table.clone().table_name;
 
         let base_path = self.get_base_path();

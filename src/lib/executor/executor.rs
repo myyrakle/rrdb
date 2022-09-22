@@ -32,7 +32,7 @@ impl Executor {
         #[allow(non_snake_case)]
         let RRDB_BASE_PATH = path_buf
             .absolutize()
-            .or_else(|e| Err(ExecuteError::dyn_boxed(e.to_string())))?
+            .map_err(|e| ExecuteError::dyn_boxed(e.to_string()))?
             .to_str()
             .unwrap()
             .to_string();

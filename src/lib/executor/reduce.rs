@@ -339,11 +339,11 @@ impl Executor {
                                     }
                                 }) 
                                 {
-                                    return Ok(found.data.to_owned());
+                                    Ok(found.data.to_owned())
                                 } else{
-                                    return Err(ExecuteError::dyn_boxed(
+                                    Err(ExecuteError::dyn_boxed(
                                         format!("column select '{:?}' is ambiguous", select_column),
-                                    ));
+                                    ))
                                 }
                             }
                             None=>{
@@ -455,11 +455,11 @@ impl Executor {
                             }
                         }) 
                         {
-                            return Ok(found.1.data_type.to_owned().into());
+                            Ok(found.1.data_type.to_owned().into())
                         } else{
-                            return Err(ExecuteError::dyn_boxed(
+                             Err(ExecuteError::dyn_boxed(
                                 format!("column select '{:?}' is ambiguous", select_column),
-                            ));
+                            ))
                         }
                     }
                     None=>{

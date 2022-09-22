@@ -63,7 +63,7 @@ impl Server {
         // client와의 커넥션 처리 루프
         let listener = TcpListener::bind((self.option.host.to_owned(), self.option.port as u16))
             .await
-            .or_else(|error| Err(ExecuteError::dyn_boxed(error.to_string())))?;
+            .map_err(|error| ExecuteError::dyn_boxed(error.to_string()))?;
 
         let connection_task = tokio::spawn(async move {
             loop {

@@ -71,14 +71,14 @@ impl Connection {
 
     fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
         let mut parser = Parser::new(text.into())
-            .or_else(|e| Err(ErrorResponse::error(SqlState::SYNTAX_ERROR, e.to_string())))?;
+            .map_err(|e| ErrorResponse::error(SqlState::SYNTAX_ERROR, e.to_string()))?;
 
         let statements = parser
             .parse(
                 ParserContext::default()
                     .set_default_database(self.engine.shared_state.client_info.database.clone()),
             )
-            .or_else(|e| Err(ErrorResponse::error(SqlState::SYNTAX_ERROR, e.to_string())))?;
+            .map_err(|e| ErrorResponse::error(SqlState::SYNTAX_ERROR, e.to_string()))?;
 
         match statements.len() {
             0 => Ok(None),
