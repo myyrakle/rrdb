@@ -373,8 +373,7 @@ impl Executor {
         }
     }
 
-    #[async_recursion::async_recursion]
-    pub async fn reduce_type(
+    pub fn reduce_type(
         &self,
         expression: SQLExpression,
         context: ReduceContext
@@ -390,12 +389,12 @@ impl Executor {
             }
             SQLExpression::Unary(unary) => match unary.operator {
                 UnaryOperator::Neg | UnaryOperator::Pos | UnaryOperator::Not => {
-                    self.reduce_type(unary.operand, context).await
+                    self.reduce_type(unary.operand, context)
                 }
             },
             SQLExpression::Binary(binary) => {
-                let lhs = self.reduce_type(binary.lhs, context.clone()).await?;
-                let rhs = self.reduce_type(binary.rhs, context).await?;
+                let lhs = self.reduce_type(binary.lhs, context.clone())?;
+                let rhs = self.reduce_type(binary.rhs, context)?;
 
                 match binary.operator {
                     BinaryOperator::Add | BinaryOperator::Sub | BinaryOperator::Mul | BinaryOperator::Div => {
@@ -425,12 +424,12 @@ impl Executor {
                     }
                 }
             }
-            SQLExpression::Between(between) => {
+            SQLExpression::Between(_) => {
                 Ok(ExecuteColumnType::Bool)
             },
             SQLExpression::NotBetween(_between) => Ok(ExecuteColumnType::Bool),
             SQLExpression::Parentheses(paren) => {
-                 self.reduce_type(paren.expression, context).await
+                 self.reduce_type(paren.expression, context)
             }
             SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
             SQLExpression::Subquery(_) => unimplemented!("미구현"),
@@ -449,7 +448,7 @@ impl Executor {
                 match select_column.table_name {
                     Some(ref table_name)=> {
                         
-                        if let Some(found) = context.config_columns.iter().find(|(each_table_name, column)|{
+                        if let Some(found) = context.config_columns.iter().find(|(each_table_name, _)|{
                     
                             // alias가 있으면
                             if let Some(table_name) = context.table_alias_map.get(table_name) {

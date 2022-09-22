@@ -24,6 +24,8 @@ impl Executor {
         let plan = optimizer.optimize(query).await?;
 
         let mut table_alias_map = HashMap::new();
+        let mut table_infos = vec![];
+
         let mut rows = vec![];
 
         for each_plan in plan.list {
@@ -67,6 +69,7 @@ impl Executor {
                         let reduce_context = ReduceContext {
                             row: Some(row.clone()),
                             table_alias_map: table_alias_map.clone(),
+                            config_columns: vec![],
                         };
 
                         let value = self
@@ -99,6 +102,27 @@ impl Executor {
             .await
             .into_iter()
             .collect::<Result<Vec<_>, _>>();
+
+        let config_columns = ;
+
+        let reduce_context = ReduceContext {
+            row: None,
+            table_alias_map,
+            config_columns,
+        };
+
+        let colums = select_items
+            .into_iter()
+            .map(|e| {
+                let name = e.alias.unwrap_or("?column?".into());
+                let data_type = self.reduce_type(e.item.unwrap(), context)?;
+
+                Ok(ExecuteColumn {
+                    name: "a".into(),
+                    data_type: ExecuteColumnType::String,
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         match rows {
             Ok(rows) => Ok(ExecuteResult {
