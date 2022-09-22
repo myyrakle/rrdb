@@ -11,7 +11,7 @@ use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::config::TableDataRow;
 use crate::lib::executor::encoder::StorageEncoder;
 use crate::lib::executor::predule::{ExecuteResult, Executor, ReduceContext};
-use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
+use crate::lib::executor::result::{ExecuteColumn, ExecuteField, ExecuteRow};
 use crate::lib::optimizer::predule::Optimizer;
 
 impl Executor {

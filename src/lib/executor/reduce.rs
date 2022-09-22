@@ -6,14 +6,9 @@ use std::error::Error;
 use futures::future::join_all;
 use itertools::Itertools;
 
-use crate::lib::ast::ddl::Column;
-use crate::lib::ast::dml::{BinaryOperator, UnaryOperator};
-use crate::lib::ast::predule::{SQLExpression, TableName};
-use crate::lib::errors::execute_error::ExecuteError;
-use crate::lib::errors::predule::{TypeError};
-use super::config::{TableDataFieldType, TableDataRow};
-use super::predule::Executor;
-use super::result::ExecuteColumnType;
+use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column};
+use crate::lib::errors::predule::{TypeError, ExecuteError};
+use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, ExecuteColumnType};
 
 #[derive(Debug, Default, Clone)]
 pub struct ReduceContext {
