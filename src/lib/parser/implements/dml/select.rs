@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use crate::lib::ast::dml::SelectWildCard;
 use crate::lib::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
     SelectQuery, WhereClause,
@@ -52,7 +53,11 @@ impl Parser {
                     return Ok(query_builder.build());
                 }
                 Token::Comma => continue,
-                Token::Operator(OperatorToken::Asterisk) => {}
+                Token::Operator(OperatorToken::Asterisk) => {
+                    query_builder =
+                        query_builder.add_select_wildcard(SelectWildCard { alias: None });
+                    continue;
+                }
                 _ => {
                     self.unget_next_token(current_token);
                     let select_item = self.parse_select_item(context.clone())?;
