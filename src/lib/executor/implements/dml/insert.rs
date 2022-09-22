@@ -75,7 +75,7 @@ impl Executor {
         let remain_columns = table_config
             .columns
             .iter()
-            .filter(|e| query.columns.contains(&e.clone().name))
+            .filter(|e| !query.columns.contains(&e.clone().name))
             .map(|e| &e.name);
 
         match &query.data {
@@ -85,14 +85,10 @@ impl Executor {
                 for value in values {
                     let mut fields = vec![];
 
-                    for (i, column_name) in query
-                        .columns
-                        .iter()
-                        .chain(remain_columns.clone())
-                        .enumerate()
-                    {
-                        println!("@@@ {} {}", i, column_name);
+                    // 명시적으로 전달된 컬럼값 리스트 처리
+                    for (i, column_name) in query.columns.iter().enumerate() {
                         let column_config_info = columns_map.get(column_name).unwrap();
+
                         let default_value = match &column_config_info.default {
                             Some(default) => default.to_owned(),
                             None => {
@@ -111,6 +107,58 @@ impl Executor {
                         let value = value.list[i].clone().unwrap_or(default_value);
 
                         let data = self.reduce_expression(value, Default::default()).await?;
+
+                        match columns_map.get(column_name) {
+                            Some(column) => {
+                                if column.data_type.type_code() != data.type_code()
+                                    && data.type_code() != 0
+                                {
+                                    return Err(ExecuteError::boxed(format!(
+                                        "column '{}' type mismatch
+                                        ",
+                                        column_name
+                                    )));
+                                }
+                            }
+                            None => {
+                                return Err(ExecuteError::boxed(format!(
+                                    "column '{}' not exists",
+                                    column_name
+                                )))
+                            }
+                        }
+
+                        let column_name = column_name.to_owned();
+
+                        fields.push(TableDataField {
+                            column_name,
+                            data,
+                            table_name: into_table.clone(),
+                        });
+                    }
+
+                    // 명시되지 않은 컬럼 리스트 처리
+                    for column_name in remain_columns.clone() {
+                        let column_config_info = columns_map.get(column_name).unwrap();
+
+                        let default_value = match &column_config_info.default {
+                            Some(default) => default.to_owned(),
+                            None => {
+                                if column_config_info.not_null {
+                                    return Err(ExecuteError::boxed(format!(
+                                        "column '{}' is not null column
+                                        ",
+                                        column_name
+                                    )));
+                                }
+
+                                SQLExpression::Null
+                            }
+                        };
+
+                        let data = self
+                            .reduce_expression(default_value, Default::default())
+                            .await?;
 
                         match columns_map.get(column_name) {
                             Some(column) => {
