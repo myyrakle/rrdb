@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use futures::future::join_all;
 
 use crate::lib::ast::dml::{SelectPlanItem, SelectScanType};
-use crate::lib::ast::predule::{SelectQuery, TableName};
+use crate::lib::ast::predule::{SQLExpression, SelectQuery, TableName};
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::executor::config::TableDataRow;
 use crate::lib::executor::encoder::StorageEncoder;
@@ -32,6 +32,10 @@ impl Executor {
             match each_plan {
                 SelectPlanItem::From(from) => {
                     let table_name = from.table_name.clone();
+
+                    let table_config = self.get_table_config(table_name.clone()).await?;
+
+                    table_infos.push(table_config);
 
                     if let Some(alias) = from.alias {
                         table_alias_map.insert(alias, table_name.clone());
@@ -103,7 +107,18 @@ impl Executor {
             .into_iter()
             .collect::<Result<Vec<_>, _>>();
 
-        let config_columns = ;
+        let config_columns = table_infos
+            .into_iter()
+            .map(|table_info| {
+                table_info
+                    .columns
+                    .iter()
+                    .cloned()
+                    .map(|column| (table_info.table.to_owned(), column.to_owned()))
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
+            .collect::<Vec<_>>();
 
         let reduce_context = ReduceContext {
             row: None,
@@ -111,37 +126,26 @@ impl Executor {
             config_columns,
         };
 
-        let colums = select_items
+        let columns = select_items
             .into_iter()
             .map(|e| {
-                let name = e.alias.unwrap_or("?column?".into());
-                let data_type = self.reduce_type(e.item.unwrap(), context)?;
+                let item = e.item.unwrap();
 
-                Ok(ExecuteColumn {
-                    name: "a".into(),
-                    data_type: ExecuteColumnType::String,
-                })
+                let name = match e.alias {
+                    Some(alias) => alias,
+                    None => match &item {
+                        SQLExpression::SelectColumn(column) => column.column_name.to_owned(),
+                        _ => "?column?".into(),
+                    },
+                };
+                let data_type = self.reduce_type(item, reduce_context.clone())?;
+
+                Ok(ExecuteColumn { name, data_type })
             })
             .collect::<Result<Vec<_>, _>>()?;
 
         match rows {
-            Ok(rows) => Ok(ExecuteResult {
-                columns: (vec![
-                    ExecuteColumn {
-                        name: "a".into(),
-                        data_type: ExecuteColumnType::String,
-                    },
-                    ExecuteColumn {
-                        name: "b".into(),
-                        data_type: ExecuteColumnType::String,
-                    },
-                    ExecuteColumn {
-                        name: "c".into(),
-                        data_type: ExecuteColumnType::String,
-                    },
-                ]),
-                rows: (rows),
-            }),
+            Ok(rows) => Ok(ExecuteResult { columns, rows }),
             Err(error) => Err(error),
         }
     }
