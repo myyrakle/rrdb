@@ -126,3 +126,15 @@ CREATE TABLE [ IF NOT EXISTS ] "table name"
 5. ALTER [ COLUMN ] column_name DROP DEFAULT
 6. ALTER [ COLUMN ] column_name { SET | DROP } NOT NULL
 ```
+
+#### Insert
+
+```
+INSERT INTO table_name ( column_name [, ...] )
+{
+    VALUES ( { expression | DEFAULT } [, ...] ) [, ...]
+    |
+    select_query
+}
+[, ...] ]
+```

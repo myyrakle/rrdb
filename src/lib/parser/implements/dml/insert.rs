@@ -204,6 +204,9 @@ impl Parser {
                     Token::RightParentheses => {
                         break;
                     }
+                    Token::Default => {
+                        list.push(None);
+                    }
                     _ => {
                         if current_token.is_expression() {
                             self.unget_next_token(current_token);
