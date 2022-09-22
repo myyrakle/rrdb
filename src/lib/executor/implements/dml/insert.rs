@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use std::iter::FromIterator;
 
 use crate::lib::ast::dml::InsertData;
-use crate::lib::ast::predule::InsertQuery;
+use crate::lib::ast::predule::{InsertQuery, SQLExpression};
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
@@ -80,7 +80,23 @@ impl Executor {
                     let mut fields = vec![];
 
                     for (i, column_name) in query.columns.iter().enumerate() {
-                        let value = value.list[i].clone();
+                        let column_config_info = columns_map.get(column_name).unwrap();
+                        let default_value = match &column_config_info.default {
+                            Some(default) => default.to_owned(),
+                            None => {
+                                if column_config_info.not_null {
+                                    return Err(ExecuteError::boxed(format!(
+                                        "column '{}' is not null column
+                                        ",
+                                        column_name
+                                    )));
+                                }
+
+                                SQLExpression::Null
+                            }
+                        };
+
+                        let value = value.list[i].clone().unwrap_or(default_value);
 
                         let data = self.reduce_expression(value, Default::default()).await?;
 
