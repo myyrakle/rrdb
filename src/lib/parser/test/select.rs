@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use crate::lib::ast::dml::SelectWildCard;
 use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, GroupByItem, HavingClause, JoinClause, JoinType,
     OrderByItem, OrderByType, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
@@ -104,6 +105,30 @@ pub fn select_from_3() {
                 .into(),
         )
         .set_from_alias("boom".into())
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
+pub fn select_from_4() {
+    let text = r#"
+        SELECT *
+        FROM foo.bar
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_wildcard(SelectWildCard { alias: None })
+        .set_from_table(TableName {
+            database_name: Some("foo".into()),
+            table_name: "bar".into(),
+        })
         .build();
 
     assert_eq!(
