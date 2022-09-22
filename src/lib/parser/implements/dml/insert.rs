@@ -172,7 +172,7 @@ impl Parser {
         }
 
         loop {
-            let mut list: Vec<SQLExpression> = vec![];
+            let mut list = vec![];
 
             if !self.has_next_token() {
                 break;
@@ -206,12 +206,13 @@ impl Parser {
                     }
                     Token::Default => {
                         list.push(None);
+                        continue;
                     }
                     _ => {
                         if current_token.is_expression() {
                             self.unget_next_token(current_token);
                             let expression = self.parse_expression(context.clone())?;
-                            list.push(expression);
+                            list.push(Some(expression));
                             continue;
                         }
                     }
