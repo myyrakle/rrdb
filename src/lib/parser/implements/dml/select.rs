@@ -5,7 +5,7 @@ use crate::lib::ast::predule::{
     SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
+use crate::lib::lexer::predule::{OperatorToken, Token};
 use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
@@ -52,6 +52,7 @@ impl Parser {
                     return Ok(query_builder.build());
                 }
                 Token::Comma => continue,
+                Token::Operator(OperatorToken::Asterisk) => {}
                 _ => {
                     self.unget_next_token(current_token);
                     let select_item = self.parse_select_item(context.clone())?;

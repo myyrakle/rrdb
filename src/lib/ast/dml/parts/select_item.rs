@@ -3,6 +3,17 @@ use crate::lib::ast::predule::SQLExpression;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+pub enum SelectKind {
+    WildCard(SelectWildCard),
+    SelectItem(SelectItem),
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+pub struct SelectWildCard {
+    pub alias: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectItem {
     pub item: Option<SQLExpression>, // select 요소
     pub alias: Option<String>,       // as 절이 있을 경우 alias 정보

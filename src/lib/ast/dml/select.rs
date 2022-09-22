@@ -6,9 +6,11 @@ use crate::lib::ast::predule::{
 
 use serde::{Deserialize, Serialize};
 
+use super::SelectKind;
+
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectQuery {
-    pub select_items: Vec<SelectItem>,
+    pub select_items: Vec<SelectKind>,
     pub from_table: Option<FromClause>,
     pub join_clause: Vec<JoinClause>,
     pub where_clause: Option<WhereClause>,
