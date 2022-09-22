@@ -4,6 +4,5 @@ use crate::lib::ast::predule::{SelectScanType, TableName};
 pub struct SelectFromPlan {
     pub table_name: TableName,
     pub alias: Option<String>,
-    pub select_columns: Vec<String>,
     pub scan: SelectScanType,
 }

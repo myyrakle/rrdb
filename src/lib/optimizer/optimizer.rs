@@ -25,18 +25,6 @@ impl Optimizer {
                         table_name,
                         alias,
                         scan: SelectScanType::FullScan, // TODO: 인덱스 스캔 처리
-                        select_columns: query
-                            .select_items
-                            .iter()
-                            .flat_map(|e| {
-                                e.item
-                                    .clone()
-                                    .unwrap()
-                                    .get_select_column_list()
-                                    .into_iter()
-                                    .map(|e| e.column_name)
-                            })
-                            .collect(),
                     }
                     .into(),
                 ),

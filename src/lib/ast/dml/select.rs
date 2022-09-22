@@ -6,7 +6,7 @@ use crate::lib::ast::predule::{
 
 use serde::{Deserialize, Serialize};
 
-use super::SelectKind;
+use super::{SelectKind, SelectWildCard};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectQuery {
@@ -37,7 +37,12 @@ impl SelectQuery {
     }
 
     pub fn add_select_item(mut self, item: SelectItem) -> Self {
-        self.select_items.push(item);
+        self.select_items.push(SelectKind::SelectItem(item));
+        self
+    }
+
+    pub fn add_select_wildcard(mut self, item: SelectWildCard) -> Self {
+        self.select_items.push(SelectKind::WildCard(item));
         self
     }
 

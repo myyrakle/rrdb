@@ -5,8 +5,9 @@ use std::path::PathBuf;
 
 use futures::future::join_all;
 
+use crate::lib::ast::dml::{SelectItem, SelectKind};
 use crate::lib::ast::predule::{
-    SQLExpression, SelectPlanItem, SelectQuery, SelectScanType, TableName,
+    SQLExpression, SelectColumn, SelectPlanItem, SelectQuery, SelectScanType, TableName,
 };
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::executor::predule::{
@@ -62,6 +63,77 @@ impl Executor {
             }
         }
 
+        let config_columns = table_infos
+            .into_iter()
+            .flat_map(|table_info| {
+                table_info
+                    .columns
+                    .iter()
+                    .cloned()
+                    .map(|column| (table_info.table.to_owned(), column))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        // *까지 전부 유효한 항목으로 펼침
+        let select_items = select_items
+            .into_iter()
+            .flat_map(|e| match e {
+                SelectKind::SelectItem(item) => vec![item],
+                SelectKind::WildCard(wildcard) => match wildcard.alias {
+                    // a.* 와 같은 형태일 경우
+                    Some(alias) => match table_alias_map.get(&alias) {
+                        Some(found_table_name) => config_columns
+                            .iter()
+                            .filter(|(table_name, _)| {
+                                found_table_name.table_name == table_name.table_name
+                            })
+                            .map(|(table_name, column_name)| {
+                                SelectItem::builder()
+                                    .set_item(
+                                        SelectColumn::new(
+                                            Some(table_name.table_name.clone()),
+                                            column_name.name.clone(),
+                                        )
+                                        .into(),
+                                    )
+                                    .build()
+                            })
+                            .collect(),
+                        None => config_columns
+                            .iter()
+                            .filter(|(table_name, _)| alias == table_name.table_name)
+                            .map(|(table_name, column_name)| {
+                                SelectItem::builder()
+                                    .set_item(
+                                        SelectColumn::new(
+                                            Some(table_name.table_name.clone()),
+                                            column_name.name.clone(),
+                                        )
+                                        .into(),
+                                    )
+                                    .build()
+                            })
+                            .collect(),
+                    },
+                    None => config_columns
+                        .iter()
+                        .map(|(table_name, column_name)| {
+                            SelectItem::builder()
+                                .set_item(
+                                    SelectColumn::new(
+                                        Some(table_name.table_name.clone()),
+                                        column_name.name.clone(),
+                                    )
+                                    .into(),
+                                )
+                                .build()
+                        })
+                        .collect(),
+                },
+            })
+            .collect::<Vec<_>>();
+
         // 필요한 SELECT Item만 최종 계산
         let rows = rows.into_iter().map(|row| {
             let table_alias_map = table_alias_map.clone();
@@ -107,18 +179,6 @@ impl Executor {
             .await
             .into_iter()
             .collect::<Result<Vec<_>, _>>();
-
-        let config_columns = table_infos
-            .into_iter()
-            .flat_map(|table_info| {
-                table_info
-                    .columns
-                    .iter()
-                    .cloned()
-                    .map(|column| (table_info.table.to_owned(), column))
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
 
         let reduce_context = ReduceContext {
             row: None,
