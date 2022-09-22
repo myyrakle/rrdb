@@ -102,10 +102,20 @@ impl Executor {
 
         match rows {
             Ok(rows) => Ok(ExecuteResult {
-                columns: (vec![ExecuteColumn {
-                    name: "desc".into(),
-                    data_type: ExecuteColumnType::String,
-                }]),
+                columns: (vec![
+                    ExecuteColumn {
+                        name: "a".into(),
+                        data_type: ExecuteColumnType::String,
+                    },
+                    ExecuteColumn {
+                        name: "b".into(),
+                        data_type: ExecuteColumnType::String,
+                    },
+                    ExecuteColumn {
+                        name: "c".into(),
+                        data_type: ExecuteColumnType::String,
+                    },
+                ]),
                 rows: (rows),
             }),
             Err(error) => Err(error),
@@ -148,7 +158,8 @@ impl Executor {
                                                 }
                                                 None => {
                                                     return Err(ExecuteError::boxed(format!(
-                                                        "full scan failed"
+                                                        "full scan failed {:?}",
+                                                        path
                                                     )))
                                                 }
                                             }
@@ -164,9 +175,16 @@ impl Executor {
                                     return Err(ExecuteError::boxed(format!("full scan failed")));
                                 }
                             }
-                            Err(_) => return Err(ExecuteError::boxed(format!("full scan failed"))),
+                            Err(error) => {
+                                return Err(ExecuteError::boxed(format!(
+                                    "full scan failed {}",
+                                    error
+                                )))
+                            }
                         },
-                        Err(_) => (return Err(ExecuteError::boxed(format!("full scan failed")))),
+                        Err(error) => {
+                            return Err(ExecuteError::boxed(format!("full scan failed {}", error)))
+                        }
                     }
                 });
 

@@ -1,4 +1,4 @@
-use crate::lib::pgwire::protocol::DataTypeOid;
+use crate::lib::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
 
 use super::config::TableDataFieldType;
 
@@ -25,6 +25,7 @@ pub enum ExecuteColumnType {
     Integer,
     Float,
     String,
+    Null,
 }
 
 impl From<ExecuteColumnType> for DataTypeOid {
@@ -34,6 +35,18 @@ impl From<ExecuteColumnType> for DataTypeOid {
             ExecuteColumnType::Integer => DataTypeOid::Int8,
             ExecuteColumnType::Float => DataTypeOid::Float8,
             ExecuteColumnType::String => DataTypeOid::Text,
+            ExecuteColumnType::Null => DataTypeOid::Unspecified,
+        }
+    }
+}
+
+impl From<DataType> for ExecuteColumnType {
+    fn from(value: DataType) -> ExecuteColumnType {
+        match value {
+            DataType::Boolean => ExecuteColumnType::Bool,
+            DataType::Int => ExecuteColumnType::Integer,
+            DataType::Float => ExecuteColumnType::Float,
+            DataType::Varchar(_) => ExecuteColumnType::String,
         }
     }
 }

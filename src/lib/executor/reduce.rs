@@ -6,17 +6,20 @@ use std::error::Error;
 use futures::future::join_all;
 use itertools::Itertools;
 
+use crate::lib::ast::ddl::Column;
 use crate::lib::ast::dml::{BinaryOperator, UnaryOperator};
 use crate::lib::ast::predule::{SQLExpression, TableName};
 use crate::lib::errors::execute_error::ExecuteError;
 use crate::lib::errors::predule::{TypeError};
 use super::config::{TableDataFieldType, TableDataRow};
 use super::predule::Executor;
+use super::result::ExecuteColumnType;
 
 #[derive(Debug, Default, Clone)]
 pub struct ReduceContext {
     pub table_alias_map: HashMap<String, TableName>,
-    pub row: Option<TableDataRow>
+    pub row: Option<TableDataRow>,
+    pub config_columns: Vec<(TableName, Column)>
 }
 
 impl Executor {
@@ -37,6 +40,7 @@ impl Executor {
                 let fields = join_all(futures).await.into_iter().collect::<Result<Vec<_>, 
                 _>>()?;
 
+                #[allow(unstable_name_collisions)]
                 let serialized: String = fields.into_iter().map(|e|e.to_string()).intersperse(", ".to_owned()).collect();
 
                 Ok(TableDataFieldType::String(format!("({})", serialized)))
@@ -365,6 +369,115 @@ impl Executor {
                     }
                 }
                 
+            },
+        }
+    }
+
+    #[async_recursion::async_recursion]
+    pub async fn reduce_type(
+        &self,
+        expression: SQLExpression,
+        context: ReduceContext
+    ) -> Result<ExecuteColumnType, Box<dyn Error + Send>> {
+        match expression {
+            SQLExpression::Integer(_) => Ok(ExecuteColumnType::Integer),
+            SQLExpression::Boolean(_) => Ok(ExecuteColumnType::Bool),
+            SQLExpression::Float(_) => Ok(ExecuteColumnType::Float),
+            SQLExpression::String(_) => Ok(ExecuteColumnType::String),
+            SQLExpression::Null => Ok(ExecuteColumnType::Null),
+            SQLExpression::List(_list) =>  {
+                unimplemented!()
+            }
+            SQLExpression::Unary(unary) => match unary.operator {
+                UnaryOperator::Neg | UnaryOperator::Pos | UnaryOperator::Not => {
+                    self.reduce_type(unary.operand, context).await
+                }
+            },
+            SQLExpression::Binary(binary) => {
+                let lhs = self.reduce_type(binary.lhs, context.clone()).await?;
+                let rhs = self.reduce_type(binary.rhs, context).await?;
+
+                match binary.operator {
+                    BinaryOperator::Add | BinaryOperator::Sub | BinaryOperator::Mul | BinaryOperator::Div => {
+                        if let ExecuteColumnType::Null = lhs {
+                            return Ok(ExecuteColumnType::Null);
+                        }
+        
+                        if let ExecuteColumnType::Null = rhs {
+                            return Ok(ExecuteColumnType::Null);
+                        }
+
+                        Ok(lhs)
+                    },
+                    BinaryOperator::And | BinaryOperator::Or | BinaryOperator::Lt | BinaryOperator::Gt | BinaryOperator::Lte | BinaryOperator::Gte |  BinaryOperator::Eq | BinaryOperator::Neq | BinaryOperator::Like | BinaryOperator::NotLike | BinaryOperator::In | BinaryOperator::NotIn => {
+                        if let ExecuteColumnType::Null = lhs {
+                            return Ok(ExecuteColumnType::Null);
+                        }
+        
+                        if let ExecuteColumnType::Null = rhs {
+                            return Ok(ExecuteColumnType::Null);
+                        }
+
+                        Ok(ExecuteColumnType::Bool)
+                    },   
+                    BinaryOperator::Is | BinaryOperator::IsNot => {
+                        Ok(ExecuteColumnType::Bool)
+                    }
+                }
+            }
+            SQLExpression::Between(between) => {
+                Ok(ExecuteColumnType::Bool)
+            },
+            SQLExpression::NotBetween(_between) => Ok(ExecuteColumnType::Bool),
+            SQLExpression::Parentheses(paren) => {
+                 self.reduce_type(paren.expression, context).await
+            }
+            SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
+            SQLExpression::Subquery(_) => unimplemented!("미구현"),
+            SQLExpression::SelectColumn(select_column) => {
+                let column_name  = select_column.column_name.clone();
+                
+                if context.config_columns.is_empty() {
+                    return Err(ExecuteError::dyn_boxed(
+                        format!("column select '{:?}' not exists", select_column),
+                    ));
+                }
+
+                let same_name_columns = context.config_columns.iter().filter(|(_, e)|e.name == column_name).cloned().collect::<Vec<_>>();
+
+                // 테이블명 선택한게 있으면 
+                match select_column.table_name {
+                    Some(ref table_name)=> {
+                        
+                        if let Some(found) = context.config_columns.iter().find(|(each_table_name, column)|{
+                    
+                            // alias가 있으면
+                            if let Some(table_name) = context.table_alias_map.get(table_name) {
+                                table_name == each_table_name
+                            }
+                            // 없으면 자체 테이블명 비교
+                            else {
+                                table_name == &each_table_name.table_name
+                            }
+                        }) 
+                        {
+                            return Ok(found.1.data_type.to_owned().into());
+                        } else{
+                            return Err(ExecuteError::dyn_boxed(
+                                format!("column select '{:?}' is ambiguous", select_column),
+                            ));
+                        }
+                    }
+                    None=>{
+                        if same_name_columns.len()>=2 {
+                             Err(ExecuteError::dyn_boxed(
+                                format!("column select '{:?}' is ambiguous", select_column),
+                            ))
+                        } else {
+                            Ok(same_name_columns[0].1.data_type.to_owned().into())
+                        }
+                    }
+                }
             },
         }
     }
