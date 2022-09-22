@@ -134,9 +134,6 @@ impl Executor {
             })
             .collect::<Vec<_>>();
 
-        println!("config_columns {:?}", config_columns);
-        println!("select_items {:?}", select_items);
-
         // 필요한 SELECT Item만 최종 계산
         let rows = rows.into_iter().map(|row| {
             let table_alias_map = table_alias_map.clone();
