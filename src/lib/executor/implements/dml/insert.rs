@@ -15,7 +15,7 @@ impl Executor {
     pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
-        let into_table = query.into_table.unwrap();
+        let into_table = query.into_table.as_ref().unwrap();
 
         let database_name = into_table.clone().database_name.unwrap();
         let table_name = into_table.clone().table_name;
@@ -72,14 +72,26 @@ impl Executor {
             }
         }
 
-        match query.data {
+        let remain_columns = table_config
+            .columns
+            .iter()
+            .filter(|e| query.columns.contains(&e.clone().name))
+            .map(|e| &e.name);
+
+        match &query.data {
             InsertData::Values(values) => {
                 let mut rows = vec![];
 
-                for value in &values {
+                for value in values {
                     let mut fields = vec![];
 
-                    for (i, column_name) in query.columns.iter().enumerate() {
+                    for (i, column_name) in query
+                        .columns
+                        .iter()
+                        .chain(remain_columns.clone())
+                        .enumerate()
+                    {
+                        println!("@@@ {} {}", i, column_name);
                         let column_config_info = columns_map.get(column_name).unwrap();
                         let default_value = match &column_config_info.default {
                             Some(default) => default.to_owned(),
@@ -129,6 +141,7 @@ impl Executor {
                         });
                     }
 
+                    println!("! {:?}", fields);
                     let row = TableDataRow { fields };
                     rows.push(row);
                 }

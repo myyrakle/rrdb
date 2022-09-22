@@ -312,14 +312,15 @@ impl Executor {
                 let column_name  = select_column.column_name.clone();
 
                 match context.row {
-
                     Some(ref row) => {
                         let same_name_datas = row.fields.iter().filter(|e|e.column_name == column_name).cloned().collect::<Vec<_>>();
 
                         // 없으면 오류
                         if same_name_datas.is_empty() {
+                            println!("{:?}", row.fields);
+                            println!("{:?}", column_name);
                             return Err(ExecuteError::dyn_boxed(
-                                format!("column select '{:?}' not exists", select_column),
+                                format!("1 column select '{:?}' not exists", select_column),
                             ));
                         }
 
