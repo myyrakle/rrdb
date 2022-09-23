@@ -13,7 +13,7 @@ impl Executor {
     pub async fn alter_table(
         &self,
         query: AlterTableQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -21,7 +21,7 @@ impl Executor {
         let TableName {
             database_name,
             table_name,
-        } = query.table.unwrap();
+        } = query.table.clone().unwrap();
 
         let database_name = database_name.unwrap();
 
@@ -37,35 +37,20 @@ impl Executor {
                 if let Err(error) = tokio::fs::rename(&table_path, &change_path).await {
                     return Err(ExecuteError::boxed(format!(
                         "table rename failed: {}",
-                        error.to_string()
+                        error
                     )));
                 }
 
                 // config data 파일 내용 변경
                 let config_path = change_path.clone().join("table.config");
 
-                match tokio::fs::read(&config_path).await {
-                    Ok(data) => {
-                        let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
+                let mut table_config = self.get_table_config(query.table.unwrap()).await?;
 
-                        match table_config {
-                            Some(mut table_config) => {
-                                table_config.table.table_name = change_name;
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
-                            }
-                            None => {
-                                return Err(ExecuteError::boxed("invalid config data"));
-                            }
-                        }
-                    }
-                    Err(error) => match error.kind() {
-                        ErrorKind::NotFound => {
-                            return Err(ExecuteError::boxed("table not found"));
-                        }
-                        _ => {
-                            return Err(ExecuteError::boxed(format!("{:?}", error)));
-                        }
-                    },
+                table_config.table.table_name = change_name;
+                if let Err(error) =
+                    tokio::fs::write(config_path, encoder.encode(table_config)).await
+                {
+                    return Err(ExecuteError::boxed(error.to_string()));
                 }
             }
             AlterTableAction::AddColumn(action) => {
@@ -76,36 +61,21 @@ impl Executor {
 
                 let column_to_add = action.column;
 
-                match tokio::fs::read(&config_path).await {
-                    Ok(data) => {
-                        let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
+                let mut table_config = self.get_table_config(query.table.unwrap()).await?;
 
-                        match table_config {
-                            Some(mut table_config) => {
-                                if table_config.columns.contains(&column_to_add) {
-                                    return Err(ExecuteError::boxed(format!(
-                                        "column '{}' already exists ",
-                                        column_to_add.name
-                                    )));
-                                }
+                if table_config.columns.contains(&column_to_add) {
+                    return Err(ExecuteError::boxed(format!(
+                        "column '{}' already exists ",
+                        column_to_add.name
+                    )));
+                }
 
-                                table_config.columns.push(column_to_add);
+                table_config.columns.push(column_to_add);
 
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
-                            }
-                            None => {
-                                return Err(ExecuteError::boxed("invalid config data"));
-                            }
-                        }
-                    }
-                    Err(error) => match error.kind() {
-                        ErrorKind::NotFound => {
-                            return Err(ExecuteError::boxed("table not found"));
-                        }
-                        _ => {
-                            return Err(ExecuteError::boxed(format!("{:?}", error)));
-                        }
-                    },
+                if let Err(error) =
+                    tokio::fs::write(config_path, encoder.encode(table_config)).await
+                {
+                    return Err(ExecuteError::boxed(error.to_string()));
                 }
             }
             AlterTableAction::AlterColumn(action) => {
@@ -118,46 +88,29 @@ impl Executor {
                         // config data 파일 내용 변경
                         let config_path = table_path.clone().join("table.config");
 
-                        match tokio::fs::read(&config_path).await {
-                            Ok(data) => {
-                                let table_config: Option<TableConfig> =
-                                    encoder.decode(data.as_slice());
+                        let mut table_config = self.get_table_config(query.table.unwrap()).await?;
 
-                                match table_config {
-                                    Some(mut table_config) => {
-                                        let target = table_config
-                                            .columns
-                                            .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                        let target = table_config
+                            .columns
+                            .iter_mut()
+                            .find(|e| e.name == column_name);
 
-                                        match target {
-                                            Some(target) => {
-                                                target.default = Some(action.expression);
-                                            }
-                                            None => {
-                                                return Err(ExecuteError::boxed(format!(
-                                                    "column '{}' not exists ",
-                                                    column_name
-                                                )));
-                                            }
-                                        }
-
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
-                                    }
-                                    None => {
-                                        return Err(ExecuteError::boxed("invalid config data"));
-                                    }
-                                }
+                        match target {
+                            Some(target) => {
+                                target.default = Some(action.expression);
                             }
-                            Err(error) => match error.kind() {
-                                ErrorKind::NotFound => {
-                                    return Err(ExecuteError::boxed("table not found"));
-                                }
-                                _ => {
-                                    return Err(ExecuteError::boxed(format!("{:?}", error)));
-                                }
-                            },
+                            None => {
+                                return Err(ExecuteError::boxed(format!(
+                                    "column '{}' not exists ",
+                                    column_name
+                                )));
+                            }
+                        }
+
+                        if let Err(error) =
+                            tokio::fs::write(config_path, encoder.encode(table_config)).await
+                        {
+                            return Err(ExecuteError::boxed(error.to_string()));
                         }
                     }
                     AlterColumnAction::AlterColumnDropDefault(_) => {
@@ -174,7 +127,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -188,8 +141,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -220,7 +179,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -234,8 +193,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -266,7 +231,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -280,8 +245,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -311,7 +282,7 @@ impl Executor {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
-                                            .find(|e| &e.name == &column_name);
+                                            .find(|e| e.name == column_name);
 
                                         match target {
                                             Some(target) => {
@@ -325,8 +296,14 @@ impl Executor {
                                             }
                                         }
 
-                                        tokio::fs::write(config_path, encoder.encode(table_config))
-                                            .await?;
+                                        if let Err(error) = tokio::fs::write(
+                                            config_path,
+                                            encoder.encode(table_config),
+                                        )
+                                        .await
+                                        {
+                                            return Err(ExecuteError::boxed(error.to_string()));
+                                        }
                                     }
                                     None => {
                                         return Err(ExecuteError::boxed("invalid config data"));
@@ -351,42 +328,27 @@ impl Executor {
                 // config data 파일 내용 변경
                 let config_path = table_path.clone().join("table.config");
 
-                match tokio::fs::read(&config_path).await {
-                    Ok(data) => {
-                        let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
+                let mut table_config = self.get_table_config(query.table.unwrap()).await?;
 
-                        match table_config {
-                            Some(mut table_config) => {
-                                if let None = table_config
-                                    .columns
-                                    .iter()
-                                    .find(|e| &e.name == &action.column_name)
-                                {
-                                    return Err(ExecuteError::boxed(format!(
-                                        "column '{}' not exists ",
-                                        action.column_name
-                                    )));
-                                }
+                if !table_config
+                    .columns
+                    .iter()
+                    .any(|e| e.name == action.column_name)
+                {
+                    return Err(ExecuteError::boxed(format!(
+                        "column '{}' not exists ",
+                        action.column_name
+                    )));
+                }
 
-                                table_config
-                                    .columns
-                                    .retain(|e| e.name != action.column_name);
+                table_config
+                    .columns
+                    .retain(|e| e.name != action.column_name);
 
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
-                            }
-                            None => {
-                                return Err(ExecuteError::boxed("invalid config data"));
-                            }
-                        }
-                    }
-                    Err(error) => match error.kind() {
-                        ErrorKind::NotFound => {
-                            return Err(ExecuteError::boxed("table not found"));
-                        }
-                        _ => {
-                            return Err(ExecuteError::boxed(format!("{:?}", error)));
-                        }
-                    },
+                if let Err(error) =
+                    tokio::fs::write(config_path, encoder.encode(table_config)).await
+                {
+                    return Err(ExecuteError::boxed(error.to_string()));
                 }
             }
             AlterTableAction::RenameColumn(action) => {
@@ -395,55 +357,40 @@ impl Executor {
                 // config data 파일 내용 변경
                 let config_path = table_path.clone().join("table.config");
 
-                match tokio::fs::read(&config_path).await {
-                    Ok(data) => {
-                        let table_config: Option<TableConfig> = encoder.decode(data.as_slice());
+                let mut table_config = self.get_table_config(query.table.unwrap()).await?;
 
-                        match table_config {
-                            Some(mut table_config) => {
-                                if table_config
-                                    .columns
-                                    .iter()
-                                    .any(|e| &e.name == &action.to_name)
-                                {
-                                    return Err(ExecuteError::boxed(format!(
-                                        "column '{}' already exists ",
-                                        action.to_name
-                                    )));
-                                }
+                if table_config
+                    .columns
+                    .iter()
+                    .any(|e| e.name == action.to_name)
+                {
+                    return Err(ExecuteError::boxed(format!(
+                        "column '{}' already exists ",
+                        action.to_name
+                    )));
+                }
 
-                                let target = table_config
-                                    .columns
-                                    .iter_mut()
-                                    .find(|e| &e.name == &action.from_name);
+                let target = table_config
+                    .columns
+                    .iter_mut()
+                    .find(|e| e.name == action.from_name);
 
-                                match target {
-                                    Some(target) => {
-                                        target.name = action.to_name;
-                                    }
-                                    None => {
-                                        return Err(ExecuteError::boxed(format!(
-                                            "column '{}' not exists ",
-                                            action.from_name
-                                        )));
-                                    }
-                                }
-
-                                tokio::fs::write(config_path, encoder.encode(table_config)).await?;
-                            }
-                            None => {
-                                return Err(ExecuteError::boxed("invalid config data"));
-                            }
-                        }
+                match target {
+                    Some(target) => {
+                        target.name = action.to_name;
                     }
-                    Err(error) => match error.kind() {
-                        ErrorKind::NotFound => {
-                            return Err(ExecuteError::boxed("table not found"));
-                        }
-                        _ => {
-                            return Err(ExecuteError::boxed(format!("{:?}", error)));
-                        }
-                    },
+                    None => {
+                        return Err(ExecuteError::boxed(format!(
+                            "column '{}' not exists ",
+                            action.from_name
+                        )));
+                    }
+                }
+
+                if let Err(error) =
+                    tokio::fs::write(config_path, encoder.encode(table_config)).await
+                {
+                    return Err(ExecuteError::boxed(error.to_string()));
                 }
             }
             AlterTableAction::None => {}

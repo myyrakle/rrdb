@@ -9,7 +9,7 @@ impl Parser {
     pub(crate) fn parse_backslash_query(
         &mut self,
         _context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error>> {
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0801 need more tokens"));
         }

@@ -1,4 +1,6 @@
-use crate::lib::pgwire::protocol::DataTypeOid;
+use crate::lib::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
+
+use crate::lib::executor::predule::TableDataFieldType;
 
 #[derive(Debug, Clone)]
 pub struct ExecuteResult {
@@ -23,14 +25,7 @@ pub enum ExecuteColumnType {
     Integer,
     Float,
     String,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExecuteField {
-    Bool(bool),
-    Integer(i64),
-    Float(f64),
-    String(String),
+    Null,
 }
 
 impl From<ExecuteColumnType> for DataTypeOid {
@@ -40,6 +35,39 @@ impl From<ExecuteColumnType> for DataTypeOid {
             ExecuteColumnType::Integer => DataTypeOid::Int8,
             ExecuteColumnType::Float => DataTypeOid::Float8,
             ExecuteColumnType::String => DataTypeOid::Text,
+            ExecuteColumnType::Null => DataTypeOid::Unspecified,
+        }
+    }
+}
+
+impl From<DataType> for ExecuteColumnType {
+    fn from(value: DataType) -> ExecuteColumnType {
+        match value {
+            DataType::Boolean => ExecuteColumnType::Bool,
+            DataType::Int => ExecuteColumnType::Integer,
+            DataType::Float => ExecuteColumnType::Float,
+            DataType::Varchar(_) => ExecuteColumnType::String,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExecuteField {
+    Bool(bool),
+    Integer(i64),
+    Float(f64),
+    String(String),
+    Null,
+}
+
+impl From<TableDataFieldType> for ExecuteField {
+    fn from(value: TableDataFieldType) -> ExecuteField {
+        match value {
+            TableDataFieldType::Boolean(value) => ExecuteField::Bool(value),
+            TableDataFieldType::Integer(value) => ExecuteField::Integer(value),
+            TableDataFieldType::Float(value) => ExecuteField::Float(value),
+            TableDataFieldType::String(value) => ExecuteField::String(value),
+            TableDataFieldType::Null => ExecuteField::Null,
         }
     }
 }

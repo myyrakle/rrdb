@@ -3,6 +3,8 @@ use crate::lib::ast::predule::{
     NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
     UnaryOperatorExpression, WhereClause,
 };
+use crate::lib::utils::collection::join_vec;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
@@ -32,6 +34,52 @@ impl SQLExpression {
         match self.clone() {
             Self::Unary(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn get_select_column_list(&self) -> Vec<SelectColumn> {
+        Self::get_select_column_list_recursion(self)
+    }
+
+    fn get_select_column_list_recursion(expression: &Self) -> Vec<SelectColumn> {
+        match expression {
+            SQLExpression::Integer(_)
+            | SQLExpression::Float(_)
+            | SQLExpression::Boolean(_)
+            | SQLExpression::String(_)
+            | SQLExpression::Null => {
+                vec![]
+            }
+            SQLExpression::List(list) => list
+                .value
+                .iter()
+                .flat_map(Self::get_select_column_list_recursion)
+                .collect(),
+            SQLExpression::SelectColumn(column) => {
+                vec![column.to_owned()]
+            }
+            SQLExpression::Unary(unary) => Self::get_select_column_list(&unary.operand),
+            SQLExpression::Binary(binary) => join_vec!(
+                Self::get_select_column_list(&binary.lhs),
+                Self::get_select_column_list(&binary.rhs)
+            ),
+            SQLExpression::Between(between) => join_vec!(
+                Self::get_select_column_list(&between.a),
+                Self::get_select_column_list(&between.x),
+                Self::get_select_column_list(&between.y)
+            ),
+            SQLExpression::NotBetween(between) => join_vec!(
+                Self::get_select_column_list(&between.a),
+                Self::get_select_column_list(&between.x),
+                Self::get_select_column_list(&between.y)
+            ),
+            SQLExpression::Parentheses(paren) => Self::get_select_column_list(&paren.expression),
+            SQLExpression::FunctionCall(function_call) => function_call
+                .arguments
+                .iter()
+                .flat_map(Self::get_select_column_list_recursion)
+                .collect(),
+            SQLExpression::Subquery(_subquery) => unimplemented!(),
         }
     }
 }

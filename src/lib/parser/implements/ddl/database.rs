@@ -8,7 +8,9 @@ use std::error::Error;
 
 impl Parser {
     // CREATE DATABASE 쿼리 분석
-    pub(crate) fn handle_create_database_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_create_database_query(
+        &mut self,
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0101 need more tokens"));
         }
@@ -53,7 +55,9 @@ impl Parser {
     }
 
     // DROP DATABASE 쿼리 분석
-    pub(crate) fn handle_drop_database_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_drop_database_query(
+        &mut self,
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         let mut query_builder = DropDatabaseQuery::builder();
 
         // IF EXISTS 파싱
@@ -96,7 +100,9 @@ impl Parser {
     }
 
     // ALTER DATABASE 쿼리 분석
-    pub(crate) fn handle_alter_database_query(&mut self) -> Result<SQLStatement, Box<dyn Error>> {
+    pub(crate) fn handle_alter_database_query(
+        &mut self,
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0105 need more tokens"));
         }

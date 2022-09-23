@@ -1,9 +1,8 @@
-use crate::lib::ast::predule::{Index, SQLExpression, TableName};
+use crate::lib::ast::predule::{SelectScanType, TableName};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectFromPlan {
-    table_name: TableName,
-    select_columns: Vec<String>,
-    index: Option<Index>,
-    filter: Option<SQLExpression>,
+    pub table_name: TableName,
+    pub alias: Option<String>,
+    pub scan: SelectScanType,
 }

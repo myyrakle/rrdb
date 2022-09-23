@@ -12,7 +12,7 @@ pub struct Parser {
 
 impl Parser {
     // 파서 객체 생성
-    pub fn new(text: String) -> Result<Self, Box<dyn Error>> {
+    pub fn new(text: String) -> Result<Self, Box<dyn Error + Send>> {
         Ok(Self {
             current_token: Token::EOF,
             tokens: VecDeque::from(Tokenizer::string_to_tokens(text)?),
@@ -27,7 +27,10 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self, context: ParserContext) -> Result<Vec<SQLStatement>, Box<dyn Error>> {
+    pub fn parse(
+        &mut self,
+        context: ParserContext,
+    ) -> Result<Vec<SQLStatement>, Box<dyn Error + Send>> {
         let mut statements: Vec<SQLStatement> = vec![];
 
         // Top-Level Parser Loop

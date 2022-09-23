@@ -35,6 +35,9 @@ impl Portal for RRDBPortal {
                     ExecuteField::String(data) => {
                         writer.write_string(&data);
                     }
+                    ExecuteField::Null => {
+                        writer.write_null();
+                    }
                 }
             }
         }

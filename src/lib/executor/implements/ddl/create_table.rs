@@ -11,7 +11,7 @@ impl Executor {
     pub async fn create_table(
         &self,
         query: CreateTableQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table.clone().unwrap().database_name.unwrap();
@@ -44,7 +44,16 @@ impl Executor {
         table_path.push("table.config");
         let table_info: TableConfig = query.into();
 
-        tokio::fs::write(table_path, encoder.encode(table_info)).await?;
+        if let Err(error) = tokio::fs::write(&table_path, encoder.encode(table_info)).await {
+            return Err(ExecuteError::boxed(error.to_string()));
+        }
+
+        let rows_path = table_path.clone().join("rows");
+
+        // 데이터 경로 생성
+        if let Err(error) = tokio::fs::create_dir(&rows_path).await {
+            return Err(ExecuteError::boxed(error.to_string()));
+        }
 
         // TODO: primary key 데이터 생성
         // TODO: unique key 데이터 생성

@@ -1,3 +1,5 @@
+use std::error::Error;
+
 pub mod command;
 pub mod lib;
 
@@ -9,7 +11,7 @@ use lib::server::predule::{Server, ServerOption};
 use clap::Parser;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn Error + Send>> {
     let args = Command::parse();
 
     match args.action {

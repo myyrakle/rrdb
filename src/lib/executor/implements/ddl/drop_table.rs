@@ -8,7 +8,10 @@ use crate::lib::executor::predule::{ExecuteResult, Executor};
 use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
 impl Executor {
-    pub async fn drop_table(&self, query: DropTableQuery) -> Result<ExecuteResult, Box<dyn Error>> {
+    pub async fn drop_table(
+        &self,
+        query: DropTableQuery,
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let base_path = self.get_base_path();
         let mut table_path = base_path.clone();
 

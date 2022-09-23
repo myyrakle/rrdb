@@ -24,9 +24,9 @@ pub fn insert_into_values_1() {
         .set_columns(vec!["a".into(), "b".into(), "c".into()])
         .set_values(vec![InsertValue {
             list: vec![
-                SQLExpression::Integer(1),
-                SQLExpression::Integer(2),
-                SQLExpression::Integer(3),
+                Some(SQLExpression::Integer(1)),
+                Some(SQLExpression::Integer(2)),
+                Some(SQLExpression::Integer(3)),
             ],
         }])
         .build();
@@ -56,16 +56,56 @@ pub fn insert_into_values_2() {
         .set_values(vec![
             InsertValue {
                 list: vec![
-                    SQLExpression::Integer(1),
-                    SQLExpression::Integer(2),
-                    SQLExpression::Integer(3),
+                    Some(SQLExpression::Integer(1)),
+                    Some(SQLExpression::Integer(2)),
+                    Some(SQLExpression::Integer(3)),
                 ],
             },
             InsertValue {
                 list: vec![
-                    SQLExpression::Integer(4),
-                    SQLExpression::Integer(5),
-                    SQLExpression::Integer(6),
+                    Some(SQLExpression::Integer(4)),
+                    Some(SQLExpression::Integer(5)),
+                    Some(SQLExpression::Integer(6)),
+                ],
+            },
+        ])
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
+pub fn insert_into_values_3() {
+    let text = r#"
+        INSERT INTO foo.bar(a, b, c)
+        Values(1, 2, 3), (4, 5, DEFAULT)
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = InsertQuery::builder()
+        .set_into_table(TableName {
+            database_name: Some("foo".into()),
+            table_name: "bar".into(),
+        })
+        .set_columns(vec!["a".into(), "b".into(), "c".into()])
+        .set_values(vec![
+            InsertValue {
+                list: vec![
+                    Some(SQLExpression::Integer(1)),
+                    Some(SQLExpression::Integer(2)),
+                    Some(SQLExpression::Integer(3)),
+                ],
+            },
+            InsertValue {
+                list: vec![
+                    Some(SQLExpression::Integer(4)),
+                    Some(SQLExpression::Integer(5)),
+                    None,
                 ],
             },
         ])

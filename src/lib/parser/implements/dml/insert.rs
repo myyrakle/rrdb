@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{InsertQuery, InsertValue, SQLExpression};
+use crate::lib::ast::predule::{InsertQuery, InsertValue};
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
 use crate::lib::parser::predule::{Parser, ParserContext};
@@ -9,7 +9,7 @@ impl Parser {
     pub(crate) fn handle_insert_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<InsertQuery, Box<dyn Error>> {
+    ) -> Result<InsertQuery, Box<dyn Error + Send>> {
         let mut query_builder = InsertQuery::builder();
 
         if !self.has_next_token() {
@@ -52,7 +52,7 @@ impl Parser {
 
         // 컬럼명 지정 파싱
         let columns = self.parse_insert_columns(context.clone())?;
-        query_builder = query_builder.set_columns(columns);
+        query_builder = query_builder.set_columns(columns.clone());
 
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0413 need more tokens"));
@@ -64,11 +64,25 @@ impl Parser {
             Token::Values => {
                 self.unget_next_token(current_token);
                 let values = self.parse_insert_values(context)?;
+
+                if values.iter().any(|e| e.list.len() != columns.len()) {
+                    return Err(ParsingError::boxed(
+                        "E0415 The number of values in insert and the number of columns do not match.",
+                    ));
+                }
+
                 query_builder = query_builder.set_values(values);
             }
             Token::Select => {
                 self.unget_next_token(current_token);
                 let select = self.handle_select_query(context)?;
+
+                if select.select_items.len() != columns.len() {
+                    return Err(ParsingError::boxed(
+                        "E0416 The number of values in insert and the number of columns do not match.",
+                    ));
+                }
+
                 query_builder = query_builder.set_select(select);
             }
             _ => {
@@ -92,7 +106,7 @@ impl Parser {
     pub(crate) fn parse_insert_columns(
         &mut self,
         _context: ParserContext,
-    ) -> Result<Vec<String>, Box<dyn Error>> {
+    ) -> Result<Vec<String>, Box<dyn Error + Send>> {
         let mut names = vec![];
         loop {
             if !self.has_next_token() {
@@ -140,7 +154,7 @@ impl Parser {
     pub(crate) fn parse_insert_values(
         &mut self,
         context: ParserContext,
-    ) -> Result<Vec<InsertValue>, Box<dyn Error>> {
+    ) -> Result<Vec<InsertValue>, Box<dyn Error + Send>> {
         // Values 파싱
         let mut values: Vec<InsertValue> = vec![];
 
@@ -158,7 +172,7 @@ impl Parser {
         }
 
         loop {
-            let mut list: Vec<SQLExpression> = vec![];
+            let mut list = vec![];
 
             if !self.has_next_token() {
                 break;
@@ -190,11 +204,15 @@ impl Parser {
                     Token::RightParentheses => {
                         break;
                     }
+                    Token::Default => {
+                        list.push(None);
+                        continue;
+                    }
                     _ => {
                         if current_token.is_expression() {
                             self.unget_next_token(current_token);
                             let expression = self.parse_expression(context.clone())?;
-                            list.push(expression);
+                            list.push(Some(expression));
                             continue;
                         }
                     }

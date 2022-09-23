@@ -1,18 +1,19 @@
 use std::error::Error;
 
+use crate::lib::ast::dml::SelectWildCard;
 use crate::lib::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
     SelectQuery, WhereClause,
 };
 use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
+use crate::lib::lexer::predule::{OperatorToken, Token};
 use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn handle_select_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectQuery, Box<dyn Error>> {
+    ) -> Result<SelectQuery, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0301: need more tokens"));
         }
@@ -52,6 +53,11 @@ impl Parser {
                     return Ok(query_builder.build());
                 }
                 Token::Comma => continue,
+                Token::Operator(OperatorToken::Asterisk) => {
+                    query_builder =
+                        query_builder.add_select_wildcard(SelectWildCard { alias: None });
+                    continue;
+                }
                 _ => {
                     self.unget_next_token(current_token);
                     let select_item = self.parse_select_item(context.clone())?;
@@ -216,7 +222,7 @@ impl Parser {
     pub(crate) fn parse_select_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectItem, Box<dyn Error>> {
+    ) -> Result<SelectItem, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0305 need more tokens"));
         }
@@ -273,7 +279,7 @@ impl Parser {
     pub(crate) fn parse_order_by_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<OrderByItem, Box<dyn Error>> {
+    ) -> Result<OrderByItem, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0313 need more tokens"));
         }
@@ -312,7 +318,7 @@ impl Parser {
     pub(crate) fn parse_group_by_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<GroupByItem, Box<dyn Error>> {
+    ) -> Result<GroupByItem, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0314 need more tokens"));
         }
@@ -329,7 +335,7 @@ impl Parser {
         &mut self,
         join_type: JoinType,
         context: ParserContext,
-    ) -> Result<JoinClause, Box<dyn Error>> {
+    ) -> Result<JoinClause, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0310 need more tokens"));
         }
@@ -369,7 +375,7 @@ impl Parser {
     pub(crate) fn parse_where(
         &mut self,
         context: ParserContext,
-    ) -> Result<WhereClause, Box<dyn Error>> {
+    ) -> Result<WhereClause, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0311 need more tokens"));
         }
@@ -391,7 +397,7 @@ impl Parser {
     pub(crate) fn parse_having(
         &mut self,
         context: ParserContext,
-    ) -> Result<HavingClause, Box<dyn Error>> {
+    ) -> Result<HavingClause, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0316 need more tokens"));
         }
@@ -412,7 +418,10 @@ impl Parser {
         })
     }
 
-    pub(crate) fn parse_offset(&mut self, _context: ParserContext) -> Result<u32, Box<dyn Error>> {
+    pub(crate) fn parse_offset(
+        &mut self,
+        _context: ParserContext,
+    ) -> Result<u32, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0320 need more tokens"));
         }
@@ -451,7 +460,10 @@ impl Parser {
         }
     }
 
-    pub(crate) fn parse_limit(&mut self, _context: ParserContext) -> Result<u32, Box<dyn Error>> {
+    pub(crate) fn parse_limit(
+        &mut self,
+        _context: ParserContext,
+    ) -> Result<u32, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0325 need more tokens"));
         }

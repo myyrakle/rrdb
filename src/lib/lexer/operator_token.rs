@@ -41,7 +41,7 @@ impl OperatorToken {
 }
 
 impl TryInto<BinaryOperator> for OperatorToken {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send>;
 
     fn try_into(self) -> Result<BinaryOperator, Self::Error> {
         match self {
@@ -61,7 +61,7 @@ impl TryInto<BinaryOperator> for OperatorToken {
 }
 
 impl TryInto<UnaryOperator> for OperatorToken {
-    type Error = Box<dyn Error>;
+    type Error = Box<dyn Error + Send>;
 
     fn try_into(self) -> Result<UnaryOperator, Self::Error> {
         match self {

@@ -9,7 +9,7 @@ use crate::lib::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     // 테이블 컬럼 정의 분석
-    pub(crate) fn parse_table_column(&mut self) -> Result<Column, Box<dyn Error>> {
+    pub(crate) fn parse_table_column(&mut self) -> Result<Column, Box<dyn Error + Send>> {
         let mut builder = Column::builder();
 
         if !self.has_next_token() {
@@ -115,7 +115,7 @@ impl Parser {
     }
 
     // 데이터 타입 분석
-    pub(crate) fn parse_data_type(&mut self) -> Result<DataType, Box<dyn Error>> {
+    pub(crate) fn parse_data_type(&mut self) -> Result<DataType, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0006 need more tokens"));
         }
@@ -189,7 +189,7 @@ impl Parser {
     pub(crate) fn parse_table_name(
         &mut self,
         context: ParserContext,
-    ) -> Result<TableName, Box<dyn Error>> {
+    ) -> Result<TableName, Box<dyn Error + Send>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0010 need more tokens"));
@@ -245,7 +245,7 @@ impl Parser {
     }
 
     // IF NOT EXISTS 체크 로직
-    pub(crate) fn has_if_not_exists(&mut self) -> Result<bool, Box<dyn Error>> {
+    pub(crate) fn has_if_not_exists(&mut self) -> Result<bool, Box<dyn Error + Send>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0013 need more tokens"));
@@ -288,7 +288,7 @@ impl Parser {
     }
 
     // IF EXISTS 체크 로직
-    pub(crate) fn has_if_exists(&mut self) -> Result<bool, Box<dyn Error>> {
+    pub(crate) fn has_if_exists(&mut self) -> Result<bool, Box<dyn Error + Send>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0016 need more tokens"));
@@ -318,7 +318,7 @@ impl Parser {
     }
 
     // SELECT 컬럼 정의 분석
-    pub(crate) fn parse_select_column(&mut self) -> Result<SelectColumn, Box<dyn Error>> {
+    pub(crate) fn parse_select_column(&mut self) -> Result<SelectColumn, Box<dyn Error + Send>> {
         let mut select_column = SelectColumn::new(None, "".to_string());
 
         if !self.has_next_token() {
@@ -953,7 +953,7 @@ impl Parser {
     }
 
     // Table Alias 획득
-    pub(crate) fn parse_table_alias(&mut self) -> Result<String, Box<dyn Error>> {
+    pub(crate) fn parse_table_alias(&mut self) -> Result<String, Box<dyn Error + Send>> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0024 need more tokens"));
@@ -989,7 +989,7 @@ impl Parser {
     pub(crate) fn parse_subquery(
         &mut self,
         context: ParserContext,
-    ) -> Result<SubqueryExpression, Box<dyn Error>> {
+    ) -> Result<SubqueryExpression, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0019 need more tokens"));
         }

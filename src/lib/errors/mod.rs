@@ -4,3 +4,4 @@ pub mod lexing_error;
 pub mod parsing_error;
 pub mod predule;
 pub mod server_error;
+pub mod type_error;

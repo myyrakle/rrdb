@@ -1,13 +1,14 @@
-use crate::lib::ast::ddl::{CreateDatabaseQuery, DDLStatement, SQLStatement};
-use crate::lib::ast::predule::OtherStatement;
-use crate::lib::errors::execute_error::ExecuteError;
-use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
-use crate::lib::logger::predule::Logger;
-use crate::lib::optimizer::predule::Optimizer;
-use crate::lib::utils::predule::set_system_env;
 use path_absolutize::*;
 use std::error::Error;
 use std::path::PathBuf;
+
+use crate::lib::ast::predule::{
+    CreateDatabaseQuery, DDLStatement, DMLStatement, OtherStatement, SQLStatement,
+};
+use crate::lib::errors::execute_error::ExecuteError;
+use crate::lib::executor::predule::{ExecuteResult, GlobalConfig};
+use crate::lib::logger::predule::Logger;
+use crate::lib::utils::predule::set_system_env;
 
 pub struct Executor {}
 
@@ -23,34 +24,39 @@ impl Executor {
     }
 
     // 기본 설정파일 세팅
-    pub async fn init(&self, path: String) -> Result<(), Box<dyn Error>> {
+    pub async fn init(&self, path: String) -> Result<(), Box<dyn Error + Send>> {
         let mut path_buf = PathBuf::new();
         path_buf.push(path);
         path_buf.push(".rrdb.config");
 
         #[allow(non_snake_case)]
-        let RRDB_BASE_PATH = path_buf.absolutize()?.to_str().unwrap().to_string();
+        let RRDB_BASE_PATH = path_buf
+            .absolutize()
+            .map_err(|e| ExecuteError::dyn_boxed(e.to_string()))?
+            .to_str()
+            .unwrap()
+            .to_string();
         set_system_env("RRDB_BASE_PATH", &RRDB_BASE_PATH);
 
         // 루트 디렉터리 생성
         let base_path = path_buf.clone();
-        (match tokio::fs::create_dir(base_path.clone()).await {
-            Ok(_) => Ok(()),
-            Err(error) => {
-                if error.kind() == std::io::ErrorKind::AlreadyExists {
-                    Ok(())
-                } else {
-                    Err(error)
-                }
+        if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
+            if error.kind() == std::io::ErrorKind::AlreadyExists {
+                // Do Nothing
+            } else {
+                return Err(ExecuteError::boxed(error.to_string()));
             }
-        })?;
+        }
 
         // 전역 설정파일 생성
         let mut global_path = base_path.clone();
         global_path.push("global.config");
         let global_info = GlobalConfig::default();
         let global_config = toml::to_string(&global_info).unwrap();
-        tokio::fs::write(global_path, global_config.as_bytes()).await?;
+
+        if let Err(error) = tokio::fs::write(global_path, global_config.as_bytes()).await {
+            return Err(ExecuteError::boxed(error.to_string()));
+        }
 
         self.create_database(CreateDatabaseQuery::builder().set_name("rrdb".into()))
             .await?;
@@ -61,13 +67,9 @@ impl Executor {
     // 쿼리 최적화 및 실행, 결과 반환
     pub async fn process_query(
         &self,
-        mut statement: SQLStatement,
+        statement: SQLStatement,
     ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         Logger::info(format!("AST echo: {:?}", statement));
-
-        // 최적화 작업
-        let optimizer = Optimizer::new();
-        optimizer.optimize(&mut statement);
 
         // 쿼리 실행
         let result = match statement {
@@ -87,6 +89,8 @@ impl Executor {
                 self.alter_table(query).await
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
+            SQLStatement::DML(DMLStatement::InsertQuery(query)) => self.insert(query).await,
+            SQLStatement::DML(DMLStatement::SelectQuery(query)) => self.select(query).await,
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }

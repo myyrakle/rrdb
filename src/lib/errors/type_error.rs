@@ -1,12 +1,11 @@
-use std::error::Error;
-use std::string::ToString;
+use std::{error::Error, string::ToString};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecuteError {
+pub struct TypeError {
     pub message: String,
 }
 
-impl ExecuteError {
+impl TypeError {
     pub fn new<T: ToString>(message: T) -> Self {
         Self {
             message: message.to_string(),
@@ -22,10 +21,10 @@ impl ExecuteError {
     }
 }
 
-impl std::error::Error for ExecuteError {}
+impl std::error::Error for TypeError {}
 
-impl std::fmt::Display for ExecuteError {
+impl std::fmt::Display for TypeError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "{}", self.message)
+        write!(formatter, "parsing error: {}", self.message)
     }
 }

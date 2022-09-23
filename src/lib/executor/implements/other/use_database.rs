@@ -9,7 +9,7 @@ impl Executor {
     pub async fn use_databases(
         &self,
         query: UseDatabaseQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error>> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
                 name: "desc".into(),
