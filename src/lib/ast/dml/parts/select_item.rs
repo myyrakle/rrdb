@@ -8,7 +8,7 @@ pub enum SelectKind {
     SelectItem(SelectItem),
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct SelectWildCard {
     pub alias: Option<String>,
 }

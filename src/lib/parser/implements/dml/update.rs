@@ -108,9 +108,7 @@ impl Parser {
             self.get_next_token(); // where 토큰 삼키기
 
             let expression = self.parse_expression(context)?;
-            query_builder = query_builder.set_where(WhereClause {
-                expression: expression.into(),
-            });
+            query_builder = query_builder.set_where(WhereClause { expression });
         }
 
         Ok(query_builder.build())

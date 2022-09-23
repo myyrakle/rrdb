@@ -9,7 +9,7 @@ pub struct InsertQuery {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InsertData {
-    Select(SelectQuery),
+    Select(Box<SelectQuery>),
     Values(Vec<InsertValue>),
     None,
 }
@@ -39,7 +39,7 @@ impl InsertQuery {
     }
 
     pub fn set_select(mut self, select: SelectQuery) -> Self {
-        self.data = InsertData::Select(select);
+        self.data = InsertData::Select(Box::new(select));
         self
     }
 
