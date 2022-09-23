@@ -86,9 +86,7 @@ impl SQLExpression {
 
 impl From<SQLExpression> for WhereClause {
     fn from(value: SQLExpression) -> WhereClause {
-        WhereClause {
-            expression: Some(Box::new(value)),
-        }
+        WhereClause { expression: value }
     }
 }
 
