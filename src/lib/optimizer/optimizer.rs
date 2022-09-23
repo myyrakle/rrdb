@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::lib::ast::{
-    dml::{FromTarget, SelectFromPlan, SelectScanType},
+    dml::{FilterPlan, FromTarget, SelectFromPlan, SelectScanType},
     predule::{SelectPlan, SelectQuery},
 };
 
@@ -32,8 +32,10 @@ impl Optimizer {
             }
 
             // WHERE 절 필터링 구성
-            if let Some(_where_clause) = query.where_clause {
-                // TODO
+            if let Some(where_clause) = query.where_clause {
+                let expression = where_clause.expression;
+
+                plan.list.push(FilterPlan { expression }.into());
             }
         }
 
