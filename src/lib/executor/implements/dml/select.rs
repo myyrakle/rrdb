@@ -25,7 +25,7 @@ impl Executor {
 
         let select_items = query.select_items.clone();
 
-        let plan = optimizer.optimize(query).await?;
+        let plan = optimizer.optimize_select(query).await?;
 
         let mut table_alias_map = HashMap::new();
         let mut table_infos = vec![];

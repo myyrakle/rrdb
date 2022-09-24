@@ -1,8 +1,8 @@
-use crate::lib::ast::predule::{SelectScanType, TableName};
+use crate::lib::ast::predule::{ScanType, TableName};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectFromPlan {
     pub table_name: TableName,
     pub alias: Option<String>,
-    pub scan: SelectScanType,
+    pub scan: ScanType,
 }
