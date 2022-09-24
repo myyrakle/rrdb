@@ -2,7 +2,7 @@ use crate::lib::ast::predule::TableName;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct UpdateTarget {
     pub table: TableName,
     pub alias: Option<String>,
