@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use crate::lib::ast::dml::ParenthesesExpression;
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
     ListExpression, NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
@@ -575,23 +576,29 @@ pub fn complex_expression_1() {
             SelectItem::builder()
                 .set_item(
                     BinaryOperatorExpression {
-                        operator: BinaryOperator::Mul,
+                        operator: BinaryOperator::Sub,
                         lhs: SQLExpression::Binary(
                             BinaryOperatorExpression {
                                 operator: BinaryOperator::Add,
                                 lhs: SQLExpression::Integer(3),
-                                rhs: SQLExpression::Integer(5),
+                                rhs: ParenthesesExpression {
+                                    expression: BinaryOperatorExpression {
+                                        operator: BinaryOperator::Add,
+                                        lhs: BinaryOperatorExpression {
+                                            operator: BinaryOperator::Mul,
+                                            lhs: SQLExpression::Integer(10),
+                                            rhs: SQLExpression::Integer(2),
+                                        }
+                                        .into(),
+                                        rhs: SQLExpression::Integer(44),
+                                    }
+                                    .into(),
+                                }
+                                .into(),
                             }
                             .into(),
                         ),
-                        rhs: SQLExpression::Binary(
-                            BinaryOperatorExpression {
-                                operator: BinaryOperator::Add,
-                                lhs: SQLExpression::Integer(3),
-                                rhs: SQLExpression::Integer(5),
-                            }
-                            .into(),
-                        ),
+                        rhs: SQLExpression::Integer(11),
                     }
                     .into(),
                 )
