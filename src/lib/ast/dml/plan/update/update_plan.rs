@@ -1,5 +1,7 @@
 use crate::lib::ast::{dml::ScanType, predule::FilterPlan};
 
+use super::UpdateFromPlan;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpdatePlan {
     pub list: Vec<UpdatePlanItem>,
@@ -7,7 +9,7 @@ pub struct UpdatePlan {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdatePlanItem {
-    UpdateScan(ScanType),
+    UpdateScan(UpdateFromPlan),
     Filter(FilterPlan),
 }
 
@@ -17,8 +19,8 @@ impl From<FilterPlan> for UpdatePlanItem {
     }
 }
 
-impl From<ScanType> for UpdatePlanItem {
-    fn from(value: ScanType) -> UpdatePlanItem {
+impl From<UpdateFromPlan> for UpdatePlanItem {
+    fn from(value: UpdateFromPlan) -> UpdatePlanItem {
         UpdatePlanItem::UpdateScan(value)
     }
 }
