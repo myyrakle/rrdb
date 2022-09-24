@@ -1,7 +1,9 @@
 use std::error::Error;
 
 use crate::lib::ast::{
-    dml::{FromTarget, SelectFromPlan, SelectScanType},
+    dml::{
+        FilterPlan, FromTarget, ScanType, SelectFromPlan, UpdateFromPlan, UpdatePlan, UpdateQuery,
+    },
     predule::{SelectPlan, SelectQuery},
 };
 
@@ -12,7 +14,10 @@ impl Optimizer {
         Self {}
     }
 
-    pub async fn optimize(&self, query: SelectQuery) -> Result<SelectPlan, Box<dyn Error + Send>> {
+    pub async fn optimize_select(
+        &self,
+        query: SelectQuery,
+    ) -> Result<SelectPlan, Box<dyn Error + Send>> {
         let mut plan = SelectPlan { list: vec![] };
 
         // FROM 절 분석
@@ -24,7 +29,7 @@ impl Optimizer {
                     SelectFromPlan {
                         table_name,
                         alias,
-                        scan: SelectScanType::FullScan, // TODO: 인덱스 스캔 처리
+                        scan: ScanType::FullScan, // TODO: 인덱스 스캔 처리
                     }
                     .into(),
                 ),
@@ -32,8 +37,10 @@ impl Optimizer {
             }
 
             // WHERE 절 필터링 구성
-            if let Some(_where_clause) = query.where_clause {
-                // TODO
+            if let Some(where_clause) = query.where_clause {
+                let expression = where_clause.expression;
+
+                plan.list.push(FilterPlan { expression }.into());
             }
         }
 
@@ -60,6 +67,35 @@ impl Optimizer {
         // LIMIT OFFSET 절 구성
         if query.limit.is_some() || query.offset.is_some() {
             // TODO
+        }
+
+        Ok(plan)
+    }
+
+    pub async fn optimize_update(
+        &self,
+        query: UpdateQuery,
+    ) -> Result<UpdatePlan, Box<dyn Error + Send>> {
+        let mut plan = UpdatePlan { list: vec![] };
+
+        let target_table = query.target_table.clone().unwrap();
+
+        plan.list.push(
+            UpdateFromPlan {
+                table_name: target_table.table.clone(),
+                alias: target_table.alias,
+                scan: ScanType::FullScan, // TODO: 인덱스 스캔 처리
+            }
+            .into(),
+        );
+
+        // WHERE 절 분석
+        if let Some(where_clause) = query.where_clause {
+            // WHERE 절 필터링 구성
+
+            let expression = where_clause.expression;
+
+            plan.list.push(FilterPlan { expression }.into());
         }
 
         Ok(plan)

@@ -75,7 +75,7 @@ impl Executor {
         let remain_columns = table_config
             .columns
             .iter()
-            .filter(|e| !query.columns.contains(&e.clone().name))
+            .filter(|e| !query.columns.contains(&(*e).clone().name))
             .map(|e| &e.name);
 
         match &query.data {

@@ -91,6 +91,7 @@ impl Executor {
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
             SQLStatement::DML(DMLStatement::InsertQuery(query)) => self.insert(query).await,
             SQLStatement::DML(DMLStatement::SelectQuery(query)) => self.select(query).await,
+            SQLStatement::DML(DMLStatement::UpdateQuery(query)) => self.update(query).await,
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }

@@ -1,10 +1,10 @@
-use crate::lib::ast::predule::{
-    DMLStatement, FromClause, SQLStatement, TableName, UpdateItem, WhereClause,
-};
+use crate::lib::ast::predule::{DMLStatement, SQLStatement, TableName, UpdateItem, WhereClause};
+
+use super::UpdateTarget;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpdateQuery {
-    pub target_table: Option<FromClause>,
+    pub target_table: Option<UpdateTarget>,
     pub where_clause: Option<WhereClause>,
     pub update_items: Vec<UpdateItem>,
 }

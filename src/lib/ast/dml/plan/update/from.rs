@@ -1,7 +1,7 @@
 use crate::lib::ast::predule::{ScanType, TableName};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SelectFromPlan {
+pub struct UpdateFromPlan {
     pub table_name: TableName,
     pub alias: Option<String>,
     pub scan: ScanType,

@@ -7,9 +7,11 @@ use futures::future::join_all;
 
 use crate::lib::ast::dml::{SelectItem, SelectKind};
 use crate::lib::ast::predule::{
-    SQLExpression, SelectColumn, SelectPlanItem, SelectQuery, SelectScanType, TableName,
+    SQLExpression, ScanType, SelectColumn, SelectPlanItem, SelectQuery, TableName,
 };
 use crate::lib::errors::predule::ExecuteError;
+use crate::lib::errors::type_error::TypeError;
+use crate::lib::executor::config::TableDataFieldType;
 use crate::lib::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
     StorageEncoder, TableDataRow,
@@ -23,7 +25,7 @@ impl Executor {
 
         let select_items = query.select_items.clone();
 
-        let plan = optimizer.optimize(query).await?;
+        let plan = optimizer.optimize_select(query).await?;
 
         let mut table_alias_map = HashMap::new();
         let mut table_infos = vec![];
@@ -32,6 +34,7 @@ impl Executor {
 
         for each_plan in plan.list {
             match each_plan {
+                // Select From 처리
                 SelectPlanItem::From(from) => {
                     let table_name = from.table_name.clone();
 
@@ -44,7 +47,7 @@ impl Executor {
                     }
 
                     match from.scan {
-                        SelectScanType::FullScan => {
+                        ScanType::FullScan => {
                             let mut result = self
                                 .full_scan(table_name)
                                 .await?
@@ -54,10 +57,46 @@ impl Executor {
 
                             rows.append(&mut result);
                         }
-                        SelectScanType::IndexScan(_index) => {
+                        ScanType::IndexScan(_index) => {
                             unimplemented!()
                         }
                     }
+                }
+                SelectPlanItem::Filter(filter) => {
+                    let futures = rows.iter().cloned().map(|e| {
+                        let table_alias_map = table_alias_map.clone();
+                        let filter = filter.clone();
+                        async move {
+                            let reduce_context = ReduceContext {
+                                row: Some(e.to_owned()),
+                                table_alias_map,
+                                config_columns: vec![],
+                            };
+
+                            let condition = self
+                                .reduce_expression(filter.expression.clone(), reduce_context)
+                                .await?;
+
+                            match condition {
+                                TableDataFieldType::Boolean(boolean) => Ok((e, boolean)),
+                                TableDataFieldType::Null => Ok((e, false)),
+                                _ => Err(TypeError::dyn_boxed(
+                                    "condition expression is valid only for boolean and null types",
+                                )),
+                            }
+                        }
+                    });
+
+                    let result = join_all(futures)
+                        .await
+                        .into_iter()
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    rows = result
+                        .into_iter()
+                        .filter(|(_, boolean)| *boolean)
+                        .map(|(e, _)| e)
+                        .collect();
                 }
                 _ => unimplemented!("미구현"),
             }
