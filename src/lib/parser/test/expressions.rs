@@ -560,3 +560,48 @@ pub fn not_in_expression_1() {
         vec![expected.into()],
     );
 }
+
+#[test]
+pub fn complex_expression_1() {
+    let text = r#"
+        SELECT 3+(10*2+44)-11 AS foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::Mul,
+                        lhs: SQLExpression::Binary(
+                            BinaryOperatorExpression {
+                                operator: BinaryOperator::Add,
+                                lhs: SQLExpression::Integer(3),
+                                rhs: SQLExpression::Integer(5),
+                            }
+                            .into(),
+                        ),
+                        rhs: SQLExpression::Binary(
+                            BinaryOperatorExpression {
+                                operator: BinaryOperator::Add,
+                                lhs: SQLExpression::Integer(3),
+                                rhs: SQLExpression::Integer(5),
+                            }
+                            .into(),
+                        ),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
