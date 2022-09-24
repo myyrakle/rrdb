@@ -159,3 +159,10 @@ UPDATE table_name
 SET { column_name = { expression } } [, ...]
 [ WHERE condition ]
 ```
+
+#### Delete
+
+```
+DELETE FROM table_name
+[ WHERE condition ]
+```
