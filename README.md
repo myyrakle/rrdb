@@ -138,3 +138,16 @@ INSERT INTO table_name ( column_name [, ...] )
 }
 [, ...] ]
 ```
+
+#### Select
+
+```
+SELECT
+    [ * | expression [ [ AS ] output_name ] [, ...] ]
+[ FROM from_item [, ...] ]
+[ WHERE condition ]
+
+from_item은 다음 중 하나입니다.
+1. table_name  [ [ AS ] alias ]
+2. ( select ) [ AS ] alias
+```
