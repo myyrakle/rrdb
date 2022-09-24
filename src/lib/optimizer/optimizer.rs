@@ -2,7 +2,8 @@ use std::error::Error;
 
 use crate::lib::ast::{
     dml::{
-        FilterPlan, FromTarget, ScanType, SelectFromPlan, UpdateFromPlan, UpdatePlan, UpdateQuery,
+        DeleteFromPlan, DeletePlan, DeleteQuery, FilterPlan, FromTarget, ScanType, SelectFromPlan,
+        UpdateFromPlan, UpdatePlan, UpdateQuery,
     },
     predule::{SelectPlan, SelectQuery},
 };
@@ -82,6 +83,35 @@ impl Optimizer {
 
         plan.list.push(
             UpdateFromPlan {
+                table_name: target_table.table.clone(),
+                alias: target_table.alias,
+                scan: ScanType::FullScan, // TODO: 인덱스 스캔 처리
+            }
+            .into(),
+        );
+
+        // WHERE 절 분석
+        if let Some(where_clause) = query.where_clause {
+            // WHERE 절 필터링 구성
+
+            let expression = where_clause.expression;
+
+            plan.list.push(FilterPlan { expression }.into());
+        }
+
+        Ok(plan)
+    }
+
+    pub async fn optimize_delete(
+        &self,
+        query: DeleteQuery,
+    ) -> Result<DeletePlan, Box<dyn Error + Send>> {
+        let mut plan = DeletePlan { list: vec![] };
+
+        let target_table = query.from_table.clone().unwrap();
+
+        plan.list.push(
+            DeleteFromPlan {
                 table_name: target_table.table.clone(),
                 alias: target_table.alias,
                 scan: ScanType::FullScan, // TODO: 인덱스 스캔 처리

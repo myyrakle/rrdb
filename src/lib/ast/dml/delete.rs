@@ -1,8 +1,8 @@
-use crate::lib::ast::predule::{DMLStatement, FromClause, SQLStatement, TableName, WhereClause};
+use crate::lib::ast::predule::{DMLStatement, SQLStatement, TableName, UpdateTarget, WhereClause};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeleteQuery {
-    pub from_table: Option<FromClause>,
+    pub from_table: Option<UpdateTarget>,
     pub where_clause: Option<WhereClause>,
 }
 
