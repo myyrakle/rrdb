@@ -7,7 +7,7 @@ use futures::future::join_all;
 
 use crate::lib::ast::dml::{SelectItem, SelectKind};
 use crate::lib::ast::predule::{
-    SQLExpression, SelectColumn, SelectPlanItem, SelectQuery, SelectScanType, TableName,
+    SQLExpression, ScanType, SelectColumn, SelectPlanItem, SelectQuery, TableName,
 };
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::errors::type_error::TypeError;
@@ -47,7 +47,7 @@ impl Executor {
                     }
 
                     match from.scan {
-                        SelectScanType::FullScan => {
+                        ScanType::FullScan => {
                             let mut result = self
                                 .full_scan(table_name)
                                 .await?
@@ -57,7 +57,7 @@ impl Executor {
 
                             rows.append(&mut result);
                         }
-                        SelectScanType::IndexScan(_index) => {
+                        ScanType::IndexScan(_index) => {
                             unimplemented!()
                         }
                     }

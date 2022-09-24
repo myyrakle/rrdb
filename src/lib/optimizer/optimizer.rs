@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::lib::ast::{
-    dml::{FilterPlan, FromTarget, SelectFromPlan, SelectScanType},
+    dml::{FilterPlan, FromTarget, ScanType, SelectFromPlan},
     predule::{SelectPlan, SelectQuery},
 };
 
@@ -27,7 +27,7 @@ impl Optimizer {
                     SelectFromPlan {
                         table_name,
                         alias,
-                        scan: SelectScanType::FullScan, // TODO: 인덱스 스캔 처리
+                        scan: ScanType::FullScan, // TODO: 인덱스 스캔 처리
                     }
                     .into(),
                 ),
