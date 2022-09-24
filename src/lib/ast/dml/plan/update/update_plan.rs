@@ -9,7 +9,7 @@ pub struct UpdatePlan {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdatePlanItem {
-    UpdateScan(UpdateFromPlan),
+    UpdateFrom(UpdateFromPlan),
     Filter(FilterPlan),
 }
 
@@ -21,6 +21,6 @@ impl From<FilterPlan> for UpdatePlanItem {
 
 impl From<UpdateFromPlan> for UpdatePlanItem {
     fn from(value: UpdateFromPlan) -> UpdatePlanItem {
-        UpdatePlanItem::UpdateScan(value)
+        UpdatePlanItem::UpdateFrom(value)
     }
 }
