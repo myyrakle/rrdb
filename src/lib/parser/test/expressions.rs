@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use crate::lib::ast::dml::ParenthesesExpression;
 use crate::lib::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
     ListExpression, NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
@@ -547,6 +548,57 @@ pub fn not_in_expression_1() {
                             ],
                         }
                         .into(),
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
+pub fn complex_expression_1() {
+    let text = r#"
+        SELECT 3+(10*2+44)-11 AS foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    BinaryOperatorExpression {
+                        operator: BinaryOperator::Sub,
+                        lhs: SQLExpression::Binary(
+                            BinaryOperatorExpression {
+                                operator: BinaryOperator::Add,
+                                lhs: SQLExpression::Integer(3),
+                                rhs: ParenthesesExpression {
+                                    expression: BinaryOperatorExpression {
+                                        operator: BinaryOperator::Add,
+                                        lhs: BinaryOperatorExpression {
+                                            operator: BinaryOperator::Mul,
+                                            lhs: SQLExpression::Integer(10),
+                                            rhs: SQLExpression::Integer(2),
+                                        }
+                                        .into(),
+                                        rhs: SQLExpression::Integer(44),
+                                    }
+                                    .into(),
+                                }
+                                .into(),
+                            }
+                            .into(),
+                        ),
+                        rhs: SQLExpression::Integer(11),
                     }
                     .into(),
                 )

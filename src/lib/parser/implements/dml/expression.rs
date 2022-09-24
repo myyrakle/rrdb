@@ -119,14 +119,32 @@ impl Parser {
                     Token::Select => {
                         self.unget_next_token(second_token);
                         self.unget_next_token(current_token);
-                        let expression = self.parse_subquery(context)?.into();
-                        Ok(expression)
+                        let lhs = self.parse_subquery(context.clone())?.into();
+
+                        if self.next_token_is_binary_operator(context.clone()) {
+                            let expression = self.parse_binary_expression(lhs, context)?;
+                            Ok(expression)
+                        } else if self.next_token_is_between() {
+                            let expression = self.parse_between_expression(lhs, context)?;
+                            Ok(expression)
+                        } else {
+                            Ok(lhs)
+                        }
                     }
                     _ => {
                         self.unget_next_token(second_token);
                         self.unget_next_token(current_token);
-                        let expression = self.parse_parentheses_expression(context)?;
-                        Ok(expression)
+                        let lhs = self.parse_parentheses_expression(context.clone())?;
+
+                        if self.next_token_is_binary_operator(context.clone()) {
+                            let expression = self.parse_binary_expression(lhs, context)?;
+                            Ok(expression)
+                        } else if self.next_token_is_between() {
+                            let expression = self.parse_between_expression(lhs, context)?;
+                            Ok(expression)
+                        } else {
+                            Ok(lhs)
+                        }
                     }
                 }
             }
