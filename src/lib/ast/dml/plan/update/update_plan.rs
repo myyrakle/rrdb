@@ -1,4 +1,4 @@
-use crate::lib::ast::{dml::ScanType, predule::FilterPlan};
+use crate::lib::ast::predule::FilterPlan;
 
 use super::UpdateFromPlan;
 

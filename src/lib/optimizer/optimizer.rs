@@ -2,8 +2,7 @@ use std::error::Error;
 
 use crate::lib::ast::{
     dml::{
-        FilterPlan, FromTarget, ScanType, SelectFromPlan, UpdateFromPlan, UpdatePlan,
-        UpdatePlanItem, UpdateQuery,
+        FilterPlan, FromTarget, ScanType, SelectFromPlan, UpdateFromPlan, UpdatePlan, UpdateQuery,
     },
     predule::{SelectPlan, SelectQuery},
 };

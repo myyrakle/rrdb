@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::io::ErrorKind;
-use std::path::PathBuf;
 
 use futures::future::join_all;
 
 use crate::lib::ast::dml::{UpdatePlanItem, UpdateQuery};
-use crate::lib::ast::predule::{SQLExpression, ScanType, SelectColumn, SelectPlanItem, TableName};
+use crate::lib::ast::predule::ScanType;
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::errors::type_error::TypeError;
 use crate::lib::executor::config::TableDataFieldType;
@@ -97,7 +95,6 @@ impl Executor {
                         .map(|(path, row, _)| (path, row))
                         .collect();
                 }
-                _ => unimplemented!("미구현"),
             }
         }
 

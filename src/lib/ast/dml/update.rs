@@ -1,6 +1,4 @@
-use crate::lib::ast::predule::{
-    DMLStatement, FromClause, SQLStatement, TableName, UpdateItem, WhereClause,
-};
+use crate::lib::ast::predule::{DMLStatement, SQLStatement, TableName, UpdateItem, WhereClause};
 
 use super::UpdateTarget;
 
