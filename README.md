@@ -151,3 +151,11 @@ from_item은 다음 중 하나입니다.
 1. table_name  [ [ AS ] alias ]
 2. ( select ) [ AS ] alias
 ```
+
+#### Update
+
+```
+UPDATE table_name
+SET { column_name = { expression } } [, ...]
+[ WHERE condition ]
+```
