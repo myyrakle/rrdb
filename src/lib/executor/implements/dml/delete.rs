@@ -94,18 +94,6 @@ impl Executor {
             }
         }
 
-        let config_columns = table_infos
-            .into_iter()
-            .flat_map(|table_info| {
-                table_info
-                    .columns
-                    .iter()
-                    .cloned()
-                    .map(|column| (table_info.table.to_owned(), column))
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-
         // 삭제 작업
         for (path, _) in rows.into_iter() {
             if let Err(error) = tokio::fs::remove_file(&path).await {
