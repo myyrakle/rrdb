@@ -1,5 +1,5 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LimitOffsetPlan {
-    limit: Option<u32>,
-    offset: Option<u32>,
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
 }

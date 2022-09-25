@@ -2,8 +2,8 @@ use std::error::Error;
 
 use crate::lib::ast::{
     dml::{
-        DeleteFromPlan, DeletePlan, DeleteQuery, FilterPlan, FromTarget, ScanType, SelectFromPlan,
-        UpdateFromPlan, UpdatePlan, UpdateQuery,
+        DeleteFromPlan, DeletePlan, DeleteQuery, FilterPlan, FromTarget, LimitOffsetPlan, ScanType,
+        SelectFromPlan, UpdateFromPlan, UpdatePlan, UpdateQuery,
     },
     predule::{SelectPlan, SelectQuery},
 };
@@ -67,7 +67,13 @@ impl Optimizer {
 
         // LIMIT OFFSET 절 구성
         if query.limit.is_some() || query.offset.is_some() {
-            // TODO
+            plan.list.push(
+                LimitOffsetPlan {
+                    limit: query.limit,
+                    offset: query.offset,
+                }
+                .into(),
+            );
         }
 
         Ok(plan)
