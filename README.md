@@ -166,24 +166,3 @@ SET { column_name = { expression } } [, ...]
 DELETE FROM table_name
 [ WHERE condition ]
 ```
-
-
-Binary(BinaryOperatorExpression { 
-    operator: Sub, 
-    lhs: Binary(BinaryOperatorExpression { 
-        operator: Add, 
-        lhs: Integer(3), 
-        rhs: Parentheses(ParenthesesExpression { 
-            expression: Binary(BinaryOperatorExpression { 
-                operator: Add, 
-                lhs: Binary(BinaryOperatorExpression { 
-                    operator: Mul, 
-                    lhs: Integer(10), 
-                    rhs: Integer(2) 
-                }), 
-                rhs: Integer(44) 
-            }) 
-        }) 
-    }), 
-    rhs: Integer(11) 
-})) 
