@@ -98,6 +98,16 @@ impl Executor {
                         .map(|(e, _)| e)
                         .collect();
                 }
+                SelectPlanItem::LimitOffset(limit_offset) => {
+                    let offset = limit_offset.offset.unwrap_or(0) as usize;
+
+                    match limit_offset.limit {
+                        Some(limit) => {
+                            rows = rows.drain(offset..(offset + limit as usize)).collect()
+                        }
+                        None => rows = rows.drain(offset..).collect(),
+                    }
+                }
                 _ => unimplemented!("미구현"),
             }
         }
