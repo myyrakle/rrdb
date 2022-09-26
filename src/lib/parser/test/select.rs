@@ -702,6 +702,43 @@ pub fn select_order_by_3() {
 }
 
 #[test]
+pub fn select_order_by_4() {
+    let text = r#"
+        SELECT 
+            p.content as post
+        FROM post as p
+        ORDER BY p.user_id NULLS LAST
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                .set_alias("post".into())
+                .build(),
+        )
+        .set_from_table(TableName {
+            database_name: None,
+            table_name: "post".into(),
+        })
+        .set_from_alias("p".into())
+        .add_order_by(OrderByItem {
+            item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
+            order_type: OrderByType::Asc,
+            nulls: OrderByNulls::Last,
+        })
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
 pub fn select_group_by_1() {
     let text = r#"
         SELECT 
