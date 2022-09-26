@@ -326,6 +326,19 @@ impl Parser {
                 }
 
                 let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::First => {}
+                    Token::Last => order_by_item.nulls = OrderByNulls::Last,
+                    _ => {
+                        return Err(ParsingError::boxed(format!(
+                            "E0330 expected keyword is FIRST or LAST, but your input is {:?}",
+                            current_token
+                        )))
+                    }
+                }
+
+                Ok(order_by_item)
             }
             _ => {
                 self.unget_next_token(current_token);

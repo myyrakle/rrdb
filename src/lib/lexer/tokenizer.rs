@@ -171,6 +171,8 @@ impl Tokenizer {
                 "DATA" => Token::Data,
                 "TYPE" => Token::Type,
                 "NULLS" => Token::Nulls,
+                "FIRST" => Token::First,
+                "LAST" => Token::Last,
                 _ => Token::Identifier(identifier),
             };
 
