@@ -22,6 +22,10 @@ impl TableDataFieldType {
             TableDataFieldType::Null => 0,
         }
     }
+
+    pub fn is_null(&self) -> bool {
+        self.type_code() == 0
+    }
 }
 
 impl ToString for TableDataFieldType {

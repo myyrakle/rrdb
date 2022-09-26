@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use futures::future::join_all;
 
-use crate::lib::ast::dml::{OrderByType, SelectItem, SelectKind};
+use crate::lib::ast::dml::{OrderByNulls, OrderByType, SelectItem, SelectKind};
 use crate::lib::ast::predule::{
     SQLExpression, ScanType, SelectColumn, SelectPlanItem, SelectQuery, TableName,
 };
@@ -151,6 +151,32 @@ impl Executor {
                         for (i, order_by_item) in order_by_items.iter().enumerate() {
                             let lhs = &l[i];
                             let rhs = &r[i];
+
+                            if lhs.is_null() && rhs.is_null() {
+                                continue;
+                            }
+
+                            if lhs.is_null() {
+                                match order_by_item.nulls {
+                                    OrderByNulls::First => {
+                                        return Ordering::Less;
+                                    }
+                                    OrderByNulls::Last => {
+                                        return Ordering::Greater;
+                                    }
+                                }
+                            }
+
+                            if rhs.is_null() {
+                                match order_by_item.nulls {
+                                    OrderByNulls::First => {
+                                        return Ordering::Greater;
+                                    }
+                                    OrderByNulls::Last => {
+                                        return Ordering::Less;
+                                    }
+                                }
+                            }
 
                             match order_by_item.order_type {
                                 OrderByType::Asc => {
