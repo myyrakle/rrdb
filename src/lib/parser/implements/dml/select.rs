@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::dml::SelectWildCard;
+use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
 use crate::lib::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
     SelectQuery, WhereClause,
@@ -290,6 +290,7 @@ impl Parser {
         let mut order_by_item = OrderByItem {
             item,
             order_type: OrderByType::Asc,
+            nulls: OrderByNulls::First,
         };
 
         // 더 없을 경우 바로 반환
@@ -302,12 +303,24 @@ impl Parser {
         match current_token {
             Token::Asc => {
                 order_by_item.order_type = OrderByType::Asc;
-                Ok(order_by_item)
             }
             Token::Desc => {
                 order_by_item.order_type = OrderByType::Desc;
-                Ok(order_by_item)
             }
+            _ => {
+                self.unget_next_token(current_token);
+            }
+        }
+
+        // 더 없을 경우 바로 반환
+        if !self.has_next_token() {
+            return Ok(order_by_item);
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::Nulls => {}
             _ => {
                 self.unget_next_token(current_token);
                 Ok(order_by_item)
