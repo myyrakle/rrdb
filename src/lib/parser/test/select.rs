@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::lib::ast::dml::SelectWildCard;
+use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
 use crate::lib::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, GroupByItem, HavingClause, JoinClause, JoinType,
     OrderByItem, OrderByType, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
@@ -612,6 +612,7 @@ pub fn select_order_by_1() {
         .add_order_by(OrderByItem {
             item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
             order_type: OrderByType::Asc,
+            nulls: OrderByNulls::First,
         })
         .build();
 
@@ -648,10 +649,49 @@ pub fn select_order_by_2() {
         .add_order_by(OrderByItem {
             item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
             order_type: OrderByType::Asc,
+            nulls: OrderByNulls::First,
         })
         .add_order_by(OrderByItem {
             item: SelectColumn::new(Some("p".into()), "id".into()).into(),
             order_type: OrderByType::Desc,
+            nulls: OrderByNulls::First,
+        })
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
+pub fn select_order_by_3() {
+    let text = r#"
+        SELECT 
+            p.content as post
+        FROM post as p
+        ORDER BY p.user_id NULLS FIRST
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                .set_alias("post".into())
+                .build(),
+        )
+        .set_from_table(TableName {
+            database_name: None,
+            table_name: "post".into(),
+        })
+        .set_from_alias("p".into())
+        .add_order_by(OrderByItem {
+            item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
+            order_type: OrderByType::Asc,
+            nulls: OrderByNulls::First,
         })
         .build();
 
