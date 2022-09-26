@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::ErrorKind;
@@ -5,7 +6,7 @@ use std::path::PathBuf;
 
 use futures::future::join_all;
 
-use crate::lib::ast::dml::{SelectItem, SelectKind};
+use crate::lib::ast::dml::{OrderByType, SelectItem, SelectKind};
 use crate::lib::ast::predule::{
     SQLExpression, ScanType, SelectColumn, SelectPlanItem, SelectQuery, TableName,
 };
@@ -107,6 +108,76 @@ impl Executor {
                         }
                         None => rows = rows.drain(offset..).collect(),
                     }
+                }
+                SelectPlanItem::Order(ref order_by_clause) => {
+                    let futures = rows.into_iter().map(|e| {
+                        let table_alias_map = table_alias_map.clone();
+
+                        async move {
+                            let mut order_by_values = vec![];
+
+                            let reduce_context = ReduceContext {
+                                row: Some(e.to_owned()),
+                                table_alias_map,
+                                config_columns: vec![],
+                            };
+
+                            for order_by_item in &order_by_clause.order_by_items {
+                                let expression = &order_by_item.item;
+
+                                let value = match self
+                                    .reduce_expression(expression.clone(), reduce_context.clone())
+                                    .await
+                                {
+                                    Ok(value) => value,
+                                    Err(error) => return Err(error),
+                                };
+
+                                order_by_values.push(value);
+                            }
+
+                            Ok((e, order_by_values))
+                        }
+                    });
+
+                    let mut order_by_rows = join_all(futures)
+                        .await
+                        .into_iter()
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let order_by_items = &order_by_clause.order_by_items;
+
+                    order_by_rows.sort_by(|(_, l), (_, r)| {
+                        for (i, order_by_item) in order_by_items.iter().enumerate() {
+                            let lhs = &l[i];
+                            let rhs = &r[i];
+
+                            match order_by_item.order_type {
+                                OrderByType::Asc => {
+                                    if lhs < rhs {
+                                        return Ordering::Less;
+                                    } else if lhs > rhs {
+                                        return Ordering::Greater;
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                                OrderByType::Desc => {
+                                    if lhs < rhs {
+                                        return Ordering::Greater;
+                                    } else if lhs > rhs {
+                                        return Ordering::Less;
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+
+                        Ordering::Equal
+                    });
+
+                    rows = order_by_rows.into_iter().map(|(e, _)| e).collect();
                 }
                 _ => unimplemented!("미구현"),
             }
