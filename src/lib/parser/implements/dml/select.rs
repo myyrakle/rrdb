@@ -320,7 +320,13 @@ impl Parser {
         let current_token = self.get_next_token();
 
         match current_token {
-            Token::Nulls => {}
+            Token::Nulls => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E0329 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+            }
             _ => {
                 self.unget_next_token(current_token);
                 Ok(order_by_item)

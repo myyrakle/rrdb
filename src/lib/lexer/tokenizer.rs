@@ -170,6 +170,7 @@ impl Tokenizer {
                 "USE" => Token::Use,
                 "DATA" => Token::Data,
                 "TYPE" => Token::Type,
+                "NULLS" => Token::Nulls,
                 _ => Token::Identifier(identifier),
             };
 

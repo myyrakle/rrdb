@@ -38,6 +38,8 @@ pub enum Token {
     Outer,
     On,
     Nulls,
+    First,
+    Last,
 
     // DDL
     Create,
