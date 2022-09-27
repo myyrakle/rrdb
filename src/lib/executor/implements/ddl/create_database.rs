@@ -24,19 +24,15 @@ impl Executor {
 
         database_path.push(&database_name);
 
-        #[allow(clippy::single_match)]
-        match tokio::fs::create_dir(database_path.clone()).await {
-            Ok(()) => {
-                // 성공
-            }
-            Err(error) => match error.kind() {
+        if let Err(error) = tokio::fs::create_dir(database_path.clone()).await {
+            match error.kind() {
                 ErrorKind::AlreadyExists => {
                     return Err(ExecuteError::boxed("already exists database"))
                 }
                 _ => {
                     return Err(ExecuteError::boxed("database create failed"));
                 }
-            },
+            }
         }
 
         // 각 데이터베이스 단위 설정파일 생성
