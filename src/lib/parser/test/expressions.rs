@@ -2,9 +2,9 @@
 
 use crate::lib::ast::dml::ParenthesesExpression;
 use crate::lib::ast::predule::{
-    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    ListExpression, NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
-    UnaryOperatorExpression,
+    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, ListExpression,
+    NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
+    UnaryOperatorExpression, UserDefinedFunction,
 };
 use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
@@ -289,7 +289,7 @@ pub fn arithmetic_expression_6() {
 #[test]
 pub fn function_call_expression_1() {
     let text = r#"
-        SELECT coalesce(null, 1) as foo
+        SELECT foobar(null, 1) as foo
     "#
     .to_owned();
 
@@ -300,10 +300,11 @@ pub fn function_call_expression_1() {
             SelectItem::builder()
                 .set_item(
                     CallExpression {
-                        function_name: FunctionName {
+                        function: UserDefinedFunction {
                             database_name: None,
-                            function_name: "coalesce".into(),
-                        },
+                            function_name: "foobar".into(),
+                        }
+                        .into(),
                         arguments: vec![SQLExpression::Null, SQLExpression::Integer(1)],
                     }
                     .into(),

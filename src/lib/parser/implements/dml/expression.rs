@@ -2,9 +2,9 @@ use std::convert::TryInto;
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, FunctionName,
-    ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, SelectColumn,
-    UnaryOperator, UnaryOperatorExpression,
+    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, ListExpression,
+    NotBetweenExpression, ParenthesesExpression, SQLExpression, SelectColumn, UnaryOperator,
+    UnaryOperatorExpression,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
