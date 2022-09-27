@@ -15,14 +15,13 @@ impl Executor {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
-        let mut database_path = base_path.clone();
 
         let database_name = query
             .database_name
             .clone()
             .ok_or_else(|| ExecuteError::dyn_boxed("no database name"))?;
 
-        database_path.push(&database_name);
+        let database_path = base_path.clone().join(&database_name);
 
         if let Err(error) = tokio::fs::create_dir(database_path.clone()).await {
             match error.kind() {
@@ -35,13 +34,27 @@ impl Executor {
             }
         }
 
+        // tables 경로 추가
+        let tables_path = database_path.clone().join("tables");
+
+        if let Err(error) = tokio::fs::create_dir(&tables_path).await {
+            match error.kind() {
+                ErrorKind::AlreadyExists => {
+                    return Err(ExecuteError::boxed("already exists tables"))
+                }
+                _ => {
+                    return Err(ExecuteError::boxed("tables create failed"));
+                }
+            }
+        }
+
         // 각 데이터베이스 단위 설정파일 생성
-        database_path.push("database.config");
+        let config_path = database_path.clone().join("database.config");
         let database_info = DatabaseConfig {
             database_name: database_name.clone(),
         };
 
-        if let Err(error) = tokio::fs::write(database_path, encoder.encode(database_info)).await {
+        if let Err(error) = tokio::fs::write(config_path, encoder.encode(database_info)).await {
             return Err(ExecuteError::boxed(error.to_string()));
         }
 
