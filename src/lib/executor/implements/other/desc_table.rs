@@ -19,12 +19,10 @@ impl Executor {
         let table_name = query.table_name.table_name;
 
         let base_path = self.get_base_path();
-        let mut table_path = base_path;
-        table_path.push(&database_name);
-        table_path.push(&table_name);
-        table_path.push("table.config");
+        let table_path = base_path.clone().join(&database_name).join(&table_name);
+        let config_path = table_path.clone().join("table.config");
 
-        match std::fs::read(&table_path) {
+        match std::fs::read(&config_path) {
             Ok(read_result) => {
                 let table_info: TableConfig = encoder
                     .decode(read_result.as_slice())
