@@ -19,8 +19,8 @@ pub use data_types::*;
 pub mod select_column;
 pub use select_column::*;
 
-pub mod function_name;
-pub use function_name::*;
+pub mod function;
+pub use function::*;
 
 pub mod statement;
 pub use statement::*;
