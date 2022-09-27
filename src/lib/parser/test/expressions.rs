@@ -2,9 +2,9 @@
 
 use crate::lib::ast::dml::ParenthesesExpression;
 use crate::lib::ast::predule::{
-    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, ListExpression,
-    NotBetweenExpression, SQLExpression, SelectItem, SelectQuery, UnaryOperator,
-    UnaryOperatorExpression, UserDefinedFunction,
+    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression,
+    ConditionalFunction, ListExpression, NotBetweenExpression, SQLExpression, SelectItem,
+    SelectQuery, UnaryOperator, UnaryOperatorExpression, UserDefinedFunction,
 };
 use crate::lib::parser::context::ParserContext;
 use crate::lib::parser::predule::Parser;
@@ -305,6 +305,36 @@ pub fn function_call_expression_1() {
                             function_name: "foobar".into(),
                         }
                         .into(),
+                        arguments: vec![SQLExpression::Null, SQLExpression::Integer(1)],
+                    }
+                    .into(),
+                )
+                .set_alias("foo".into())
+                .build(),
+        )
+        .build();
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        vec![expected.into()],
+    );
+}
+
+#[test]
+pub fn function_call_expression_2() {
+    let text = r#"
+        SELECT coalesce(null, 1) as foo
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    let expected = SelectQuery::builder()
+        .add_select_item(
+            SelectItem::builder()
+                .set_item(
+                    CallExpression {
+                        function: ConditionalFunction::Coalesce.into(),
                         arguments: vec![SQLExpression::Null, SQLExpression::Integer(1)],
                     }
                     .into(),
