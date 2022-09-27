@@ -18,33 +18,26 @@ impl Executor {
         let table_name = query.table.clone().unwrap().table_name;
 
         let base_path = self.get_base_path();
-        let mut database_path = base_path.clone();
+        let database_path = base_path.clone().join(&database_name);
 
-        database_path.push(&database_name);
+        let table_path = database_path.clone().join("tables").join(&table_name);
 
-        let mut table_path = database_path.clone();
-        table_path.push(&table_name);
-
-        #[allow(clippy::single_match)]
-        match tokio::fs::create_dir(&table_path).await {
-            Ok(()) => {
-                // 성공
-            }
-            Err(error) => match error.kind() {
+        if let Err(error) = tokio::fs::create_dir(&table_path).await {
+            match error.kind() {
                 ErrorKind::AlreadyExists => {
                     return Err(ExecuteError::boxed("already exists table"))
                 }
                 _ => {
                     return Err(ExecuteError::boxed("table create failed"));
                 }
-            },
+            }
         }
 
         // 각 데이터베이스 단위 설정파일 생성
-        table_path.push("table.config");
+        let config_path = table_path.clone().join("table.config");
         let table_info: TableConfig = query.into();
 
-        if let Err(error) = tokio::fs::write(&table_path, encoder.encode(table_info)).await {
+        if let Err(error) = tokio::fs::write(&config_path, encoder.encode(table_info)).await {
             return Err(ExecuteError::boxed(error.to_string()));
         }
 
