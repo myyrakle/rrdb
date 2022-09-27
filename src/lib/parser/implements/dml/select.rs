@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::dml::SelectWildCard;
+use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
 use crate::lib::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
     SelectQuery, WhereClause,
@@ -290,6 +290,7 @@ impl Parser {
         let mut order_by_item = OrderByItem {
             item,
             order_type: OrderByType::Asc,
+            nulls: OrderByNulls::First,
         };
 
         // 더 없을 경우 바로 반환
@@ -302,10 +303,41 @@ impl Parser {
         match current_token {
             Token::Asc => {
                 order_by_item.order_type = OrderByType::Asc;
-                Ok(order_by_item)
             }
             Token::Desc => {
                 order_by_item.order_type = OrderByType::Desc;
+            }
+            _ => {
+                self.unget_next_token(current_token);
+            }
+        }
+
+        // 더 없을 경우 바로 반환
+        if !self.has_next_token() {
+            return Ok(order_by_item);
+        }
+
+        let current_token = self.get_next_token();
+
+        match current_token {
+            Token::Nulls => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::boxed("E0329 need more tokens"));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::First => {}
+                    Token::Last => order_by_item.nulls = OrderByNulls::Last,
+                    _ => {
+                        return Err(ParsingError::boxed(format!(
+                            "E0330 expected keyword is FIRST or LAST, but your input is {:?}",
+                            current_token
+                        )))
+                    }
+                }
+
                 Ok(order_by_item)
             }
             _ => {

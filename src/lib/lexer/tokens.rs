@@ -37,6 +37,9 @@ pub enum Token {
     Full,
     Outer,
     On,
+    Nulls,
+    First,
+    Last,
 
     // DDL
     Create,

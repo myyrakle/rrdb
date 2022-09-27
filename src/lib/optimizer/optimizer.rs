@@ -19,10 +19,12 @@ impl Optimizer {
         &self,
         query: SelectQuery,
     ) -> Result<SelectPlan, Box<dyn Error + Send>> {
+        let mut has_from = false;
         let mut plan = SelectPlan { list: vec![] };
 
         // FROM 절 분석
         if let Some(from_clause) = query.from_table {
+            has_from = true;
             let alias = from_clause.alias;
 
             match from_clause.from {
@@ -36,6 +38,13 @@ impl Optimizer {
                 ),
                 FromTarget::Subquery(_subquery) => {}
             }
+        }
+
+        if has_from {
+            // JOIN 절 구성
+            if !query.join_clause.is_empty() {
+                // TODO
+            }
 
             // WHERE 절 필터링 구성
             if let Some(where_clause) = query.where_clause {
@@ -43,37 +52,32 @@ impl Optimizer {
 
                 plan.list.push(FilterPlan { expression }.into());
             }
-        }
 
-        // JOIN 절 구성
-        if !query.join_clause.is_empty() {
-            // TODO
-        }
-
-        // GROUP BY 절 구성
-        if let Some(_group_by_clause) = query.group_by_clause {
-            // TODO
-
-            // HAVING 절 구성
-            if let Some(_having_clause) = query.having_clause {
+            // GROUP BY 절 구성
+            if let Some(_group_by_clause) = query.group_by_clause {
                 // TODO
-            }
-        }
 
-        // ORDER BY 절 구성
-        if let Some(_order_by_clause) = query.order_by_clause {
-            // TODO
-        }
-
-        // LIMIT OFFSET 절 구성
-        if query.limit.is_some() || query.offset.is_some() {
-            plan.list.push(
-                LimitOffsetPlan {
-                    limit: query.limit,
-                    offset: query.offset,
+                // HAVING 절 구성
+                if let Some(_having_clause) = query.having_clause {
+                    // TODO
                 }
-                .into(),
-            );
+            }
+
+            // ORDER BY 절 구성
+            if let Some(order_by_clause) = query.order_by_clause {
+                plan.list.push(order_by_clause.into());
+            }
+
+            // LIMIT OFFSET 절 구성
+            if query.limit.is_some() || query.offset.is_some() {
+                plan.list.push(
+                    LimitOffsetPlan {
+                        limit: query.limit,
+                        offset: query.offset,
+                    }
+                    .into(),
+                );
+            }
         }
 
         Ok(plan)

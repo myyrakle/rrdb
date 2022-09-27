@@ -11,10 +11,17 @@ pub struct OrderByClause {
 pub struct OrderByItem {
     pub item: SQLExpression,
     pub order_type: OrderByType,
+    pub nulls: OrderByNulls,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum OrderByType {
     Asc,
     Desc,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+pub enum OrderByNulls {
+    First,
+    Last,
 }
