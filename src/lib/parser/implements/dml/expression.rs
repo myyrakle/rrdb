@@ -1,10 +1,10 @@
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 
 use crate::lib::ast::predule::{
-    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression, ListExpression,
-    NotBetweenExpression, ParenthesesExpression, SQLExpression, SelectColumn, UnaryOperator,
-    UnaryOperatorExpression,
+    BetweenExpression, BinaryOperator, BinaryOperatorExpression, BuiltInFunction, CallExpression,
+    ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, SelectColumn,
+    UnaryOperator, UnaryOperatorExpression, UserDefinedFunction,
 };
 use crate::lib::errors::predule::ParsingError;
 use crate::lib::lexer::predule::Token;
@@ -397,11 +397,25 @@ impl Parser {
         function_name: String,
         context: ParserContext,
     ) -> Result<SQLExpression, Box<dyn Error + Send>> {
-        let mut call_expression = CallExpression {
-            function_name: FunctionName {
+        let function = if database_name.is_some() {
+            UserDefinedFunction {
                 database_name,
                 function_name,
-            },
+            }
+            .into()
+        } else {
+            match BuiltInFunction::try_from(function_name.clone()) {
+                Ok(builtin) => builtin.into(),
+                Err(_) => UserDefinedFunction {
+                    database_name,
+                    function_name,
+                }
+                .into(),
+            }
+        };
+
+        let mut call_expression = CallExpression {
+            function,
             arguments: vec![],
         };
 

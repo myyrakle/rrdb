@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
@@ -41,6 +43,28 @@ impl From<AggregateFunction> for BuiltInFunction {
 impl From<AggregateFunction> for Function {
     fn from(value: AggregateFunction) -> Function {
         BuiltInFunction::Aggregate(value).into()
+    }
+}
+
+impl TryFrom<String> for BuiltInFunction {
+    type Error = ();
+
+    fn try_from(function_name: String) -> Result<BuiltInFunction, Self::Error> {
+        match function_name.to_uppercase().as_str() {
+            "SUM" => Ok(AggregateFunction::Sum.into()),
+            "COUNT" => Ok(AggregateFunction::Count.into()),
+            "MAX" => Ok(AggregateFunction::Max.into()),
+            "MIN" => Ok(AggregateFunction::Min.into()),
+            "AVG" => Ok(AggregateFunction::Avg.into()),
+            "EVERY" => Ok(AggregateFunction::Every.into()),
+            "ARRAYAGG" => Ok(AggregateFunction::ArrayAgg.into()),
+            "STRINGAGG" => Ok(AggregateFunction::StringAgg.into()),
+            "NULLIF" => Ok(ConditionalFunction::NullIf.into()),
+            "COALESCE" => Ok(ConditionalFunction::Coalesce.into()),
+            "GREATEST" => Ok(ConditionalFunction::Greatest.into()),
+            "LEAST" => Ok(ConditionalFunction::Least.into()),
+            _ => Err(()),
+        }
     }
 }
 
