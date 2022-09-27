@@ -18,10 +18,10 @@ impl Executor {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
-        let mut database_path = base_path;
-        database_path.push(query.database);
+        let database_path = base_path.clone().join(query.database);
+        let tables_path = database_path.join("tables");
 
-        match std::fs::read_dir(&database_path) {
+        match std::fs::read_dir(&tables_path) {
             Ok(read_dir_result) => {
                 let futures = read_dir_result.map(|e| async {
                     match e {
