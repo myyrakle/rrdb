@@ -13,27 +13,25 @@ impl Executor {
         query: DropTableQuery,
     ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let base_path = self.get_base_path();
-        let mut table_path = base_path.clone();
 
         let TableName {
             database_name,
             table_name,
         } = query.table.unwrap();
 
-        table_path.push(&database_name.unwrap());
-        table_path.push(&table_name);
+        let table_path = base_path
+            .clone()
+            .join(&database_name.unwrap())
+            .join("tables")
+            .join(&table_name);
 
-        #[allow(clippy::single_match)]
-        match tokio::fs::remove_dir_all(table_path).await {
-            Ok(()) => {
-                // 성공
-            }
-            Err(error) => match error.kind() {
+        if let Err(error) = tokio::fs::remove_dir_all(table_path).await {
+            match error.kind() {
                 ErrorKind::NotFound => return Err(ExecuteError::boxed("table not found")),
                 _ => {
                     return Err(ExecuteError::boxed("table drop failed"));
                 }
-            },
+            }
         }
 
         Ok(ExecuteResult {
