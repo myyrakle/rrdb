@@ -82,6 +82,24 @@ impl SQLExpression {
             SQLExpression::Subquery(_subquery) => unimplemented!(),
         }
     }
+
+    pub fn has_aggregate(&self) -> bool {
+        Self::has_aggregate_recursion(self)
+    }
+
+    fn has_aggregate_recursion(this: &Self) -> bool {
+        match this {
+            Self::Unary(unary) => Self::has_aggregate_recursion(&unary.operand),
+            Self::Binary(binary) => {}
+            Self::Between(between) => {}
+            Self::NotBetween(not_between) => {}
+            Self::Parentheses(paren) => {}
+            Self::FunctionCall(call) => {
+                call.
+            }
+            _ => false,
+        }
+    }
 }
 
 impl From<SQLExpression> for WhereClause {

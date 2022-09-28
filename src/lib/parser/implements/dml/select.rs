@@ -1,6 +1,7 @@
+use std::collections::HashSet;
 use std::error::Error;
 
-use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
+use crate::lib::ast::dml::{OrderByNulls, SelectKind, SelectWildCard};
 use crate::lib::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
     SelectQuery, WhereClause,
@@ -108,44 +109,6 @@ impl Parser {
             query_builder = query_builder.set_where(where_clause);
         }
 
-        // Order By 절 파싱
-        if self.next_token_is_order_by() {
-            // ORDER BY 삼킴
-            self.get_next_token();
-            self.get_next_token();
-
-            loop {
-                if !self.has_next_token() {
-                    break;
-                }
-
-                let current_token = self.get_next_token();
-
-                match current_token {
-                    Token::SemiColon => {
-                        return Ok(query_builder.build());
-                    }
-                    Token::Comma => continue,
-                    Token::Group | Token::Limit | Token::Offset => {
-                        self.unget_next_token(current_token);
-                        break;
-                    }
-                    _ => {
-                        if current_token.is_expression() {
-                            self.unget_next_token(current_token);
-                            let order_by_item = self.parse_order_by_item(context.clone())?;
-                            query_builder = query_builder.add_order_by(order_by_item);
-                        } else {
-                            return Err(ParsingError::boxed(format!(
-                                "E0318 unexpected token '{:?}'",
-                                current_token
-                            )));
-                        }
-                    }
-                }
-            }
-        }
-
         // Group By 절 파싱
         if self.next_token_is_group_by() {
             // GROUP BY 삼킴
@@ -184,6 +147,32 @@ impl Parser {
             }
         }
 
+        if query_builder.select_items.len() > 0 {
+            // 집계 함수 <> GROUP BY 불일치 검증
+            let group_by_columns = match query_builder.group_by_clause {
+                Some(ref clause) => clause.group_by_items.clone(),
+                None => vec![],
+            };
+
+            let mut has_aggregate = false;
+            let ungrouped_columns = HashSet::new();
+
+            for item in &query_builder.select_items {
+                match item {
+                    SelectKind::SelectItem(item) => {
+                        let item = item.item.as_ref().unwrap();
+                    }
+                    SelectKind::WildCard(_) => {
+                        if !group_by_columns.is_empty() {
+                            return Err(ParsingError::boxed(
+                                "E0331: The wildcard pattern (*) cannot be used in a group by statement.",
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
         // Having 절 파싱
         if self.next_token_is_having() {
             if query_builder.has_group_by() {
@@ -193,6 +182,44 @@ impl Parser {
                 return Err(ParsingError::boxed(
                     "E0315 Having without group by is invalid.",
                 ));
+            }
+        }
+
+        // Order By 절 파싱
+        if self.next_token_is_order_by() {
+            // ORDER BY 삼킴
+            self.get_next_token();
+            self.get_next_token();
+
+            loop {
+                if !self.has_next_token() {
+                    break;
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::Comma => continue,
+                    Token::Group | Token::Limit | Token::Offset => {
+                        self.unget_next_token(current_token);
+                        break;
+                    }
+                    _ => {
+                        if current_token.is_expression() {
+                            self.unget_next_token(current_token);
+                            let order_by_item = self.parse_order_by_item(context.clone())?;
+                            query_builder = query_builder.add_order_by(order_by_item);
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E0318 unexpected token '{:?}'",
+                                current_token
+                            )));
+                        }
+                    }
+                }
             }
         }
 

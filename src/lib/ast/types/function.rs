@@ -8,6 +8,18 @@ pub enum Function {
     UserDefined(UserDefinedFunction), // 사용자 정의 함수
 }
 
+impl Function {
+    pub fn is_aggregate(&self) -> bool {
+        match self {
+            Self::BuiltIn(built_in) => match built_in {
+                BuiltInFunction::Aggregate(_) => true,
+                BuiltInFunction::Conditional(_) => false,
+            },
+            Self::UserDefined(_) => false,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum BuiltInFunction {
     Aggregate(AggregateFunction),
