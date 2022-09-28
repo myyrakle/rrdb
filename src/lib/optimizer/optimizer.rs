@@ -54,12 +54,17 @@ impl Optimizer {
             }
 
             // GROUP BY 절 구성
-            if let Some(_group_by_clause) = query.group_by_clause {
-                // TODO
+            if let Some(group_by_clause) = query.group_by_clause {
+                plan.list.push(group_by_clause.into());
 
                 // HAVING 절 구성
-                if let Some(_having_clause) = query.having_clause {
-                    // TODO
+                if let Some(having_clause) = query.having_clause {
+                    plan.list.push(
+                        FilterPlan {
+                            expression: *having_clause.expression,
+                        }
+                        .into(),
+                    );
                 }
             }
 

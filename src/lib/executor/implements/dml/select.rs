@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::error::Error;
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -98,6 +98,37 @@ impl Executor {
                         .filter(|(_, boolean)| *boolean)
                         .map(|(e, _)| e)
                         .collect();
+                }
+                SelectPlanItem::Group(ref group_by_clause) => {
+                    let mut grouped_map = HashMap::new();
+
+                    for row in rows {
+                        let mut group_key = vec![];
+                        let mut group_value = vec![];
+
+                        for field in row.fields {
+                            // group by 절에 포함된 컬럼일 경우 키값으로 사용
+                            if let Some(_) = group_by_clause.group_by_items.iter().find(|e| {
+                                e.item.column_name == field.column_name
+                                    && e.item.table_name == Some(field.table_name.table_name)
+                            }) {
+                                group_key.push(field);
+                            }
+                            // 미포함된 컬럼일 경우 배열 형태로 값 중첩
+                            else {
+                                group_value.push(field);
+                            }
+                        }
+
+                        match grouped_map.get_mut(&group_key) {
+                            Some(value) => {
+                                for e in value {
+                                    e.data
+                                }
+                            }
+                            None => grouped_map.insert(group_key, group_value),
+                        }
+                    }
                 }
                 SelectPlanItem::LimitOffset(limit_offset) => {
                     let offset = limit_offset.offset.unwrap_or(0) as usize;
