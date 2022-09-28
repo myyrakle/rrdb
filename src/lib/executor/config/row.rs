@@ -26,6 +26,10 @@ impl TableDataFieldType {
         }
     }
 
+    pub fn to_array(self) -> Self {
+        Self::Array(vec![self])
+    }
+
     pub fn push(&mut self, value: Self) {
         match self {
             TableDataFieldType::Array(array) => array.push(value),
