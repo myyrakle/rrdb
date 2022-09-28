@@ -1,10 +1,10 @@
-use crate::lib::ast::predule::{FunctionName, SQLExpression};
+use crate::lib::ast::predule::{Function, SQLExpression};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct CallExpression {
-    pub function_name: FunctionName,
+    pub function: Function,
     pub arguments: Vec<SQLExpression>,
 }
 
