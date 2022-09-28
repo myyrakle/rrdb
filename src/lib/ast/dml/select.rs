@@ -135,6 +135,23 @@ impl SelectQuery {
         self
     }
 
+    pub fn has_aggregate(&self) -> bool {
+        for item in &self.select_items {
+            match item {
+                SelectKind::SelectItem(item) => {
+                    let item = item.item.as_ref().unwrap();
+
+                    if item.has_aggregate() {
+                        return true;
+                    }
+                }
+                SelectKind::WildCard(_) => return false,
+            }
+        }
+
+        false
+    }
+
     pub fn build(self) -> SelectQuery {
         self
     }
