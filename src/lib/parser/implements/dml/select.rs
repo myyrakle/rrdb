@@ -376,7 +376,7 @@ impl Parser {
 
     pub(crate) fn parse_group_by_item(
         &mut self,
-        context: ParserContext,
+        _context: ParserContext,
     ) -> Result<GroupByItem, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0314 need more tokens"));
