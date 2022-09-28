@@ -812,6 +812,23 @@ pub fn select_group_by_2() {
 }
 
 #[test]
+pub fn error_select_group_by_1() {
+    let text = r#"
+        SELECT 
+            COUNT(p.a),
+            p.b,
+            p.c
+        FROM post as p
+        GROUP BY p.b
+    "#
+    .to_owned();
+
+    let mut parser = Parser::new(text).unwrap();
+
+    assert!(parser.parse(ParserContext::default()).is_err());
+}
+
+#[test]
 pub fn select_group_by_having_1() {
     let text = r#"
         SELECT 
