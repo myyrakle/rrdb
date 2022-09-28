@@ -152,16 +152,24 @@ impl Parser {
             // 집계 함수 <> GROUP BY 불일치 검증
             if query_builder.has_aggregate() {
                 let group_by_columns = match query_builder.group_by_clause {
-                    Some(ref clause) => {
-                        HashSet::from_iter(clause.group_by_items.clone().into_iter())
-                    }
+                    Some(ref clause) => HashSet::from_iter(
+                        clause.group_by_items.clone().into_iter().map(|e| e.item),
+                    ),
                     None => HashSet::new(),
                 };
 
                 // 집계함수가 사용되지 않은 select column 목록
                 let non_aggregate_columns = query_builder.get_non_aggregate_column();
 
-                for non_aggregate_column in non_aggregate_columns {}
+                // 집계함수가 사용되지 않은 컬럼이 group by에 없다면 오류
+                for non_aggregate_column in non_aggregate_columns {
+                    if !group_by_columns.contains(&non_aggregate_column) {
+                        return Err(ParsingError::boxed(format!(
+                            "E0331: column '{:?}' must be in a GROUP BY clause or used within an aggregate function",
+                            non_aggregate_column
+                        )));
+                    }
+                }
             }
         }
 

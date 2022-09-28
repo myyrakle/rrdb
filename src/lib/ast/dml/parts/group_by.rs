@@ -7,7 +7,7 @@ pub struct GroupByClause {
     pub group_by_items: Vec<GroupByItem>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct GroupByItem {
     pub item: SelectColumn,
 }
