@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 use std::error::Error;
+use std::iter::FromIterator;
 
-use crate::lib::ast::dml::{OrderByNulls, SelectKind, SelectWildCard};
+use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
 use crate::lib::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
     SelectQuery, WhereClause,
@@ -151,26 +152,16 @@ impl Parser {
             // 집계 함수 <> GROUP BY 불일치 검증
             if query_builder.has_aggregate() {
                 let group_by_columns = match query_builder.group_by_clause {
-                    Some(ref clause) => clause.group_by_items.clone(),
-                    None => vec![],
+                    Some(ref clause) => {
+                        HashSet::from_iter(clause.group_by_items.clone().into_iter())
+                    }
+                    None => HashSet::new(),
                 };
 
-                let ungrouped_columns = HashSet::new();
+                // 집계함수가 사용되지 않은 select column 목록
+                let non_aggregate_columns = query_builder.get_non_aggregate_column();
 
-                for item in &query_builder.select_items {
-                    match item {
-                        SelectKind::SelectItem(item) => {
-                            let item = item.item.as_ref().unwrap();
-                        }
-                        SelectKind::WildCard(_) => {
-                            if !group_by_columns.is_empty() {
-                                return Err(ParsingError::boxed(
-                                    "E0331: The wildcard pattern (*) cannot be used in a group by statement.",
-                                ));
-                            }
-                        }
-                    }
-                }
+                for non_aggregate_column in non_aggregate_columns {}
             }
         }
 
@@ -384,7 +375,7 @@ impl Parser {
         }
 
         // 표현식 파싱
-        let item = self.parse_expression(context)?;
+        let item = self.parse_select_column()?;
 
         let order_by_item = GroupByItem { item };
 
