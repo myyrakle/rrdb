@@ -90,13 +90,22 @@ impl SQLExpression {
     fn has_aggregate_recursion(this: &Self) -> bool {
         match this {
             Self::Unary(unary) => Self::has_aggregate_recursion(&unary.operand),
-            Self::Binary(binary) => {}
-            Self::Between(between) => {}
-            Self::NotBetween(not_between) => {}
-            Self::Parentheses(paren) => {}
-            Self::FunctionCall(call) => {
-                call.
+            Self::Binary(binary) => {
+                Self::has_aggregate_recursion(&binary.lhs)
+                    | Self::has_aggregate_recursion(&binary.rhs)
             }
+            Self::Between(between) => {
+                Self::has_aggregate_recursion(&between.a)
+                    | Self::has_aggregate_recursion(&between.x)
+                    | Self::has_aggregate_recursion(&between.y)
+            }
+            Self::NotBetween(not_between) => {
+                Self::has_aggregate_recursion(&not_between.a)
+                    | Self::has_aggregate_recursion(&not_between.x)
+                    | Self::has_aggregate_recursion(&not_between.y)
+            }
+            Self::Parentheses(paren) => Self::has_aggregate_recursion(&paren.expression),
+            Self::FunctionCall(call) => call.function.is_aggregate(),
             _ => false,
         }
     }
