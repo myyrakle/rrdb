@@ -1,7 +1,7 @@
 use crate::lib::ast::predule::{
     DMLStatement, FromClause, FromTarget, GroupByClause, GroupByItem, HavingClause, JoinClause,
-    OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectItem, SubqueryExpression,
-    TableName, WhereClause,
+    OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectColumn, SelectItem,
+    SubqueryExpression, TableName, WhereClause,
 };
 
 use serde::{Deserialize, Serialize};
@@ -150,6 +150,23 @@ impl SelectQuery {
         }
 
         false
+    }
+
+    pub fn get_non_aggregate_column(&self) -> Vec<SelectColumn> {
+        let mut list = vec![];
+
+        for item in &self.select_items {
+            match item {
+                SelectKind::SelectItem(item) => {
+                    let item = item.item.as_ref().unwrap();
+                    let mut none_aggregate_columns = item.find_non_aggregate_columns();
+                    list.append(&mut none_aggregate_columns);
+                }
+                SelectKind::WildCard(_) => {}
+            }
+        }
+
+        list
     }
 
     pub fn build(self) -> SelectQuery {

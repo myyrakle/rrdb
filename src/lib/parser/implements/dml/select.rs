@@ -147,26 +147,27 @@ impl Parser {
             }
         }
 
-        if query_builder.select_items.len() > 0 {
+        if !query_builder.select_items.is_empty() {
             // 집계 함수 <> GROUP BY 불일치 검증
-            let group_by_columns = match query_builder.group_by_clause {
-                Some(ref clause) => clause.group_by_items.clone(),
-                None => vec![],
-            };
+            if query_builder.has_aggregate() {
+                let group_by_columns = match query_builder.group_by_clause {
+                    Some(ref clause) => clause.group_by_items.clone(),
+                    None => vec![],
+                };
 
-            let mut has_aggregate = false;
-            let ungrouped_columns = HashSet::new();
+                let ungrouped_columns = HashSet::new();
 
-            for item in &query_builder.select_items {
-                match item {
-                    SelectKind::SelectItem(item) => {
-                        let item = item.item.as_ref().unwrap();
-                    }
-                    SelectKind::WildCard(_) => {
-                        if !group_by_columns.is_empty() {
-                            return Err(ParsingError::boxed(
-                                "E0331: The wildcard pattern (*) cannot be used in a group by statement.",
-                            ));
+                for item in &query_builder.select_items {
+                    match item {
+                        SelectKind::SelectItem(item) => {
+                            let item = item.item.as_ref().unwrap();
+                        }
+                        SelectKind::WildCard(_) => {
+                            if !group_by_columns.is_empty() {
+                                return Err(ParsingError::boxed(
+                                    "E0331: The wildcard pattern (*) cannot be used in a group by statement.",
+                                ));
+                            }
                         }
                     }
                 }

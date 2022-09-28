@@ -109,6 +109,46 @@ impl SQLExpression {
             _ => false,
         }
     }
+
+    pub fn find_non_aggregate_columns(&self) -> Vec<SelectColumn> {
+        Self::find_non_aggregate_columns_recursion(self)
+    }
+
+    fn find_non_aggregate_columns_recursion(this: &Self) -> Vec<SelectColumn> {
+        match this {
+            Self::Unary(unary) => Self::find_non_aggregate_columns_recursion(&unary.operand),
+            Self::Binary(binary) => join_vec!(
+                Self::find_non_aggregate_columns_recursion(&binary.lhs),
+                Self::find_non_aggregate_columns_recursion(&binary.rhs)
+            ),
+            Self::Between(between) => join_vec!(
+                Self::find_non_aggregate_columns_recursion(&between.a),
+                Self::find_non_aggregate_columns_recursion(&between.x),
+                Self::find_non_aggregate_columns_recursion(&between.y)
+            ),
+            Self::NotBetween(not_between) => join_vec!(
+                Self::find_non_aggregate_columns_recursion(&not_between.a),
+                Self::find_non_aggregate_columns_recursion(&not_between.x),
+                Self::find_non_aggregate_columns_recursion(&not_between.y)
+            ),
+            Self::Parentheses(paren) => {
+                Self::find_non_aggregate_columns_recursion(&paren.expression)
+            }
+            Self::FunctionCall(call) => {
+                if call.function.is_aggregate() {
+                    return vec![];
+                } else {
+                    call.arguments
+                        .iter()
+                        .cloned()
+                        .flat_map(|e| Self::find_non_aggregate_columns_recursion(&e))
+                        .collect()
+                }
+            }
+            Self::SelectColumn(column) => vec![column.to_owned()],
+            _ => vec![],
+        }
+    }
 }
 
 impl From<SQLExpression> for WhereClause {
