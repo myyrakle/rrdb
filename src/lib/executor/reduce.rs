@@ -27,7 +27,7 @@ impl Executor {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),
-            SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value)),
+            SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value.to_string())),
             SQLExpression::String(value) => Ok(TableDataFieldType::String(value)),
             SQLExpression::Null => Ok(TableDataFieldType::Null),
             SQLExpression::List(list) =>  {
@@ -49,7 +49,8 @@ impl Executor {
                             Ok(TableDataFieldType::Integer(-value))
                         }
                         TableDataFieldType::Float(value) => {
-                            Ok(TableDataFieldType::Float(-value))
+                            let value = value.parse::<f64>().unwrap();
+                            Ok(TableDataFieldType::Float((-value).to_string()))
                         }
                         _ => Err(TypeError::dyn_boxed(
                             "unary '-' operator is valid only for integer and float types.",
@@ -100,7 +101,10 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Float(lhs_value + rhs_value));
+                                let lhs_value = lhs_value.parse::<f64>().unwrap();
+                                let rhs_value = rhs_value.parse::<f64>().unwrap();
+                                let result = lhs_value + rhs_value;
+                                return Ok(TableDataFieldType::Float(result.to_string()));
                             }
                             unreachable!()
                         }
@@ -125,7 +129,10 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Float(lhs_value - rhs_value));
+                                let lhs_value = lhs_value.parse::<f64>().unwrap();
+                                let rhs_value = rhs_value.parse::<f64>().unwrap();
+                                let result = lhs_value + rhs_value;
+                                return Ok(TableDataFieldType::Float(result.to_string()));
                             }
                             unreachable!()
                         }
@@ -142,7 +149,10 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Float(lhs_value * rhs_value));
+                                let lhs_value = lhs_value.parse::<f64>().unwrap();
+                                let rhs_value = rhs_value.parse::<f64>().unwrap();
+                                let result = lhs_value + rhs_value;
+                                return Ok(TableDataFieldType::Float(result.to_string()));
                             }
                             unreachable!()
                         }
@@ -159,7 +169,10 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Float(lhs_value / rhs_value));
+                                let lhs_value = lhs_value.parse::<f64>().unwrap();
+                                let rhs_value = rhs_value.parse::<f64>().unwrap();
+                                let result = lhs_value + rhs_value;
+                                return Ok(TableDataFieldType::Float(result.to_string()));
                             }
                             unreachable!()
                         }

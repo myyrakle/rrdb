@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ use crate::lib::ast::predule::{
 };
 use crate::lib::errors::predule::ExecuteError;
 use crate::lib::errors::type_error::TypeError;
-use crate::lib::executor::config::TableDataFieldType;
+use crate::lib::executor::config::{TableDataField, TableDataFieldType};
 use crate::lib::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
     StorageEncoder, TableDataRow,
@@ -100,7 +100,8 @@ impl Executor {
                         .collect();
                 }
                 SelectPlanItem::Group(ref group_by_clause) => {
-                    let mut grouped_map = HashMap::new();
+                    let mut grouped_map =
+                        HashMap::<Vec<TableDataField>, Vec<TableDataField>>::new();
 
                     for row in rows {
                         let mut group_key = vec![];
@@ -110,7 +111,8 @@ impl Executor {
                             // group by 절에 포함된 컬럼일 경우 키값으로 사용
                             if let Some(_) = group_by_clause.group_by_items.iter().find(|e| {
                                 e.item.column_name == field.column_name
-                                    && e.item.table_name == Some(field.table_name.table_name)
+                                    && e.item.table_name
+                                        == Some(field.table_name.table_name.clone())
                             }) {
                                 group_key.push(field);
                             }
@@ -122,13 +124,31 @@ impl Executor {
 
                         match grouped_map.get_mut(&group_key) {
                             Some(value) => {
-                                for e in value {
-                                    e.data
+                                for i in 0..value.len() {
+                                    value[i].push(group_value[i].data.clone());
                                 }
                             }
-                            None => grouped_map.insert(group_key, group_value),
+                            None => {
+                                grouped_map.insert(
+                                    group_key,
+                                    group_value
+                                        .into_iter()
+                                        .map(|e| e.to_array())
+                                        .collect::<Vec<_>>(),
+                                );
+
+                                ()
+                            }
                         }
                     }
+
+                    rows = grouped_map
+                        .into_iter()
+                        .map(|(mut key, mut value)| {
+                            key.append(&mut value);
+                            TableDataRow { fields: key }
+                        })
+                        .collect();
                 }
                 SelectPlanItem::LimitOffset(limit_offset) => {
                     let offset = limit_offset.offset.unwrap_or(0) as usize;

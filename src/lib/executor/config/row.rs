@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::lib::ast::predule::TableName;
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, PartialOrd, Hash)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, PartialOrd, Eq, Hash)]
 pub enum TableDataFieldType {
     // 끝단 Primitive 값
     Integer(i64),
@@ -63,11 +63,28 @@ impl ToString for TableDataFieldType {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TableDataField {
     pub table_name: TableName,
     pub column_name: String,
     pub data: TableDataFieldType,
+}
+
+impl TableDataField {
+    pub fn to_array(self) -> Self {
+        Self {
+            table_name: self.table_name,
+            column_name: self.column_name,
+            data: self.data.to_array(),
+        }
+    }
+
+    pub fn push(&mut self, value: TableDataFieldType) {
+        match &mut self.data {
+            TableDataFieldType::Array(array) => array.push(value),
+            _ => {}
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

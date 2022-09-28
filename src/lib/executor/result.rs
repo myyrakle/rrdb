@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::lib::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
 
 use crate::lib::executor::predule::TableDataFieldType;
@@ -65,8 +67,15 @@ impl From<TableDataFieldType> for ExecuteField {
         match value {
             TableDataFieldType::Boolean(value) => ExecuteField::Bool(value),
             TableDataFieldType::Integer(value) => ExecuteField::Integer(value),
-            TableDataFieldType::Float(value) => ExecuteField::Float(value),
+            TableDataFieldType::Float(value) => ExecuteField::Float(value.parse::<f64>().unwrap()),
             TableDataFieldType::String(value) => ExecuteField::String(value),
+            TableDataFieldType::Array(value) => ExecuteField::String(
+                value
+                    .iter()
+                    .map(|e| e.to_string())
+                    .intersperse(", ".to_owned())
+                    .collect(),
+            ),
             TableDataFieldType::Null => ExecuteField::Null,
         }
     }
