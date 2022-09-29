@@ -77,8 +77,6 @@ impl Executor {
                                 .reduce_expression(filter.expression.clone(), reduce_context)
                                 .await?;
 
-                            println!("condition {:?}", condition);
-
                             match condition {
                                 TableDataFieldType::Boolean(boolean) => Ok((e, boolean)),
                                 TableDataFieldType::Null => Ok((e, false)),
