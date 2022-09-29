@@ -397,6 +397,8 @@ impl Executor {
                                         }
 
                                         let argument = call.arguments[0].clone();
+
+                                        unimplemented!("미구현");
                                     }
                                     AggregateFunction::Sum => {
                                         if call.arguments.len() != 1 {
@@ -405,7 +407,37 @@ impl Executor {
                                             ));
                                         }
 
-                                        
+                                        let argument = call.arguments[0].clone();
+                                        let value = self.reduce_expression(argument, context.clone()).await?;
+
+                                        match value {
+                                            TableDataFieldType::Array(array) => {
+                                                let value = array.into_iter().fold(TableDataFieldType::Null, |acc, e|{
+                                                    match e {
+                                                        TableDataFieldType::Integer(integer) => {
+                                                            if let TableDataFieldType::Integer(acc_value) = acc  {
+                                                                TableDataFieldType::Integer(acc_value + integer)
+                                                            } else {
+                                                                TableDataFieldType::Integer(integer)
+                                                            }
+                                                        }, 
+                                                        TableDataFieldType::Float(integer) => {
+                                                            if let TableDataFieldType::Float(acc_value) = acc  {
+                                                                TableDataFieldType::Float(acc_value + integer)
+                                                            } else {
+                                                                TableDataFieldType::Float(integer)
+                                                            }
+                                                        }, 
+                                                        _ => acc,
+                                                    }
+                                                });
+
+                                                return Ok(value);
+                                            }
+                                            _ => {
+                                                unimplemented!("미구현");
+                                            }
+                                        } 
                                     }
                                     AggregateFunction::Max => {
                                         if call.arguments.len() != 1 {
@@ -413,6 +445,8 @@ impl Executor {
                                                 "Max function takes only one parameter.",
                                             ));
                                         }
+
+                                        unimplemented!("미구현");
                                     }
                                     AggregateFunction::Min => {
                                         if call.arguments.len() != 1 {
@@ -420,6 +454,8 @@ impl Executor {
                                                 "Min function takes only one parameter.",
                                             ));
                                         }
+                                        
+                                        unimplemented!("미구현");
                                     }
                                     _ => unimplemented!("미구현")
                                 }
