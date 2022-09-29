@@ -128,7 +128,7 @@ impl Parser {
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
-                    Token::Having | Token::Limit | Token::Offset => {
+                    Token::Having | Token::Limit | Token::Offset | Token::Order => {
                         self.unget_next_token(current_token);
                         break;
                     }
