@@ -67,7 +67,7 @@ impl From<TableDataFieldType> for ExecuteField {
         match value {
             TableDataFieldType::Boolean(value) => ExecuteField::Bool(value),
             TableDataFieldType::Integer(value) => ExecuteField::Integer(value),
-            TableDataFieldType::Float(value) => ExecuteField::Float(value.parse::<f64>().unwrap()),
+            TableDataFieldType::Float(value) => ExecuteField::Float(value.into()),
             TableDataFieldType::String(value) => ExecuteField::String(value),
             TableDataFieldType::Array(value) => ExecuteField::String(
                 value

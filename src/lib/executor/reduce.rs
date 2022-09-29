@@ -6,6 +6,7 @@ use std::error::Error;
 use futures::future::join_all;
 use itertools::Itertools;
 
+use crate::lib::ast::dml::BinaryOperatorExpression;
 use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column, BuiltInFunction, Function,  AggregateFunction};
 use crate::lib::errors::predule::{TypeError, ExecuteError};
 use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, ExecuteColumnType};
@@ -39,7 +40,7 @@ impl Executor {
                 let serialized: String = fields.into_iter().map(|e|e.to_string()).intersperse(", ".to_owned()).collect();
 
                 Ok(TableDataFieldType::String(format!("({})", serialized)))
-        }
+            }
             SQLExpression::Unary(unary) => match unary.operator {
                 UnaryOperator::Neg => {
                     let operand = self.reduce_expression(unary.operand, context).await?;
@@ -50,6 +51,22 @@ impl Executor {
                         }
                         TableDataFieldType::Float(value) => {
                             Ok(TableDataFieldType::Float(-value))
+                        }
+                        TableDataFieldType::Array(mut array) => {
+                            for e in &mut array {
+                                match e {
+                                    TableDataFieldType::Integer(value) => {
+                                        *e = TableDataFieldType::Integer(-*value);
+                                    }
+                                    TableDataFieldType::Float(value) => {
+                                        *e = TableDataFieldType::Float(-*value);
+                                    }
+                                    _ => return  Err(TypeError::dyn_boxed(
+                                        "unary '!' operator is valid only for integer and float types.",
+                                    )),
+                                }
+                            }
+                            Ok(TableDataFieldType::Array(array))
                         }
                         _ => Err(TypeError::dyn_boxed(
                             "unary '-' operator is valid only for integer and float types.",
@@ -81,13 +98,73 @@ impl Executor {
                 }
             },
             SQLExpression::Binary(binary) => {
-                let lhs = self.reduce_expression(binary.lhs, context.clone()).await?;
-                let rhs = self.reduce_expression(binary.rhs, context).await?;
+                let lhs = self.reduce_expression(binary.lhs.clone(), context.clone()).await?;
+                let rhs = self.reduce_expression(binary.rhs.clone(), context.clone()).await?;
 
                 if lhs.type_code() != rhs.type_code() {
                     return Err(TypeError::dyn_boxed(
                         "The types of lhs and rhs do not match.",
                     ));
+                }
+
+                if let TableDataFieldType::Array(ref left_array) = lhs {
+                    if let TableDataFieldType::Array(ref right_array) = rhs{
+                        let futures = (0..left_array.len()).into_iter().map(|i|
+                           {
+                            let binary = binary.clone(); 
+                            let context = context.clone(); 
+                       
+                            async move {
+                                let i = i.clone();
+
+                                let expression = BinaryOperatorExpression {
+                                    operator: binary.operator.clone(),
+                                    lhs: left_array[i].clone().into(), 
+                                    rhs: right_array[i].clone().into(),
+                                };
+                            
+                                match self.reduce_expression(expression.into(), context.clone()).await {
+                                    Ok(expression)=> Ok(expression), 
+                                    Err(error)=>Err(error),
+                                }
+                            }
+                        });
+    
+                        let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                        return Ok(TableDataFieldType::Array(result));
+                    } else {
+                        let futures = left_array.iter().map(|e|async {
+                            let expression = BinaryOperatorExpression {
+                                operator: binary.operator.clone(),
+                                lhs: e.clone().into(), 
+                                rhs: rhs.clone().into(),
+                            };
+                        
+                            match self.reduce_expression(expression.into(), context.clone()).await {
+                                Ok(expression)=> Ok(expression), 
+                                Err(error)=>Err(error),
+                            }
+                        });
+
+                        let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                        return Ok(TableDataFieldType::Array(result));
+                    }
+                } else if let TableDataFieldType::Array(ref right_array) = rhs{
+                    let futures = right_array.iter().map(|e|async {
+                        let expression = BinaryOperatorExpression {
+                            operator: binary.operator.clone(),
+                            lhs: lhs.clone().into(), 
+                            rhs: e.clone().into(),
+                        };
+                    
+                        match self.reduce_expression(expression.into(), context.clone()).await {
+                            Ok(expression)=> Ok(expression), 
+                            Err(error)=>Err(error),
+                        }
+                    });
+
+                    let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                    return Ok(TableDataFieldType::Array(result));
                 }
 
                 match binary.operator {

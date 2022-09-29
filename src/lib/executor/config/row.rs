@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::lib::{ast::predule::TableName, utils::float::Float64};
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, PartialOrd, Eq, Hash)]
 pub enum TableDataFieldType {
     // 끝단 Primitive 값
     Integer(i64),

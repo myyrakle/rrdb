@@ -3,6 +3,7 @@ use crate::lib::ast::predule::{
     NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
     UnaryOperatorExpression, WhereClause,
 };
+use crate::lib::executor::config::TableDataFieldType;
 use crate::lib::utils::collection::join_vec;
 
 use serde::{Deserialize, Serialize};
@@ -160,5 +161,24 @@ impl From<SQLExpression> for WhereClause {
 impl From<SQLExpression> for Option<Box<SQLExpression>> {
     fn from(value: SQLExpression) -> Option<Box<SQLExpression>> {
         Some(Box::new(value))
+    }
+}
+
+impl From<TableDataFieldType> for SQLExpression {
+    fn from(value: TableDataFieldType) -> SQLExpression {
+        match value {
+            TableDataFieldType::Integer(value) => SQLExpression::Integer(value),
+            TableDataFieldType::Float(value) => SQLExpression::Float(value.into()),
+            TableDataFieldType::Boolean(value) => SQLExpression::Boolean(value),
+            TableDataFieldType::String(value) => SQLExpression::String(value),
+            TableDataFieldType::Null => SQLExpression::Null,
+            TableDataFieldType::Array(value) => SQLExpression::List(
+                value
+                    .into_iter()
+                    .map(|e| e.into())
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
+        }
     }
 }

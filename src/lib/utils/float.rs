@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Float64 {
     pub value: f64,
 }
