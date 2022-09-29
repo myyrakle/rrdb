@@ -172,10 +172,12 @@ impl Executor {
                     let mut fields = vec![];
 
                     for row in rows {
-                        for (i, field) in row.fields.into_iter().enumerate() {
-                            if fields.is_empty() {
+                        if fields.is_empty() {
+                            for field in row.fields {
                                 fields.push(field.to_array());
-                            } else {
+                            }
+                        } else {
+                            for (i, field) in row.fields.into_iter().enumerate() {
                                 fields[i].push(field.data)
                             }
                         }
