@@ -414,8 +414,24 @@ impl Executor {
 
                                                 return Ok(TableDataFieldType::Integer(value as i64));
                                             }
+                                            TableDataFieldType::Null=> {
+                                                return Ok(TableDataFieldType::Integer(0));
+                                            }
                                             _ => {
-                                                unimplemented!("미구현");
+                                                match context.row {
+                                                    Some(row) => {
+                                                        if let TableDataFieldType::Array(array) = &row.fields[0].data {
+                                                            return Ok(TableDataFieldType::Integer(array.len() as i64));
+                                                        }
+                                                        else {
+                                                            return Ok(TableDataFieldType::Integer(0));
+                                                        }
+                                                    }
+                                                    None=> {
+                                                        return Ok(TableDataFieldType::Integer(0));
+                                                    }
+                                                }
+                                                
                                             }
                                         }
                                     }

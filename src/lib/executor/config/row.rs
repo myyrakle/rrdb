@@ -48,6 +48,7 @@ impl TableDataFieldType {
 
 impl ToString for TableDataFieldType {
     fn to_string(&self) -> String {
+        #[allow(unstable_name_collisions)]
         match self {
             TableDataFieldType::Integer(value) => value.to_string(),
             TableDataFieldType::Float(value) => value.to_string(),

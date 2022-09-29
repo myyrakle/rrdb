@@ -64,6 +64,7 @@ pub enum ExecuteField {
 
 impl From<TableDataFieldType> for ExecuteField {
     fn from(value: TableDataFieldType) -> ExecuteField {
+        #[allow(unstable_name_collisions)]
         match value {
             TableDataFieldType::Boolean(value) => ExecuteField::Bool(value),
             TableDataFieldType::Integer(value) => ExecuteField::Integer(value),
