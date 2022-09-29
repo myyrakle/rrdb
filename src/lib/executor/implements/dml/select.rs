@@ -42,7 +42,7 @@ impl Executor {
 
                     if let Some(alias) = from.alias {
                         table_alias_map.insert(alias.clone(), table_name.clone());
-                        table_alias_reverse_map.insert(table_name.clone(), alias);
+                        table_alias_reverse_map.insert(table_name.clone().table_name, alias);
                     }
 
                     match from.scan {
@@ -108,9 +108,28 @@ impl Executor {
                         for field in row.fields {
                             // group by 절에 포함된 컬럼일 경우 키값으로 사용
                             if let Some(_) = group_by_clause.group_by_items.iter().find(|e| {
-                                e.item.column_name == field.column_name
-                                // && e.item.table_name
-                                //     == Some(field.table_name.table_name.clone())
+                                let mut table_name_matched = false;
+
+                                if let Some(table_name) = &e.item.table_name {
+                                    if table_name == &field.table_name.table_name {
+                                        table_name_matched = true;
+                                    } else if let Some(table_name) = table_alias_map.get(table_name)
+                                    {
+                                        if &table_name.table_name == &field.table_name.table_name {
+                                            table_name_matched = true;
+                                        }
+                                    } else if let Some(table_name) =
+                                        table_alias_reverse_map.get(table_name)
+                                    {
+                                        if table_name == &field.table_name.table_name {
+                                            table_name_matched = true;
+                                        }
+                                    }
+                                } else {
+                                    table_name_matched = true;
+                                }
+
+                                e.item.column_name == field.column_name && table_name_matched
                             }) {
                                 group_key.push(field);
                             }
