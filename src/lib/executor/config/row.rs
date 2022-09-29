@@ -1,13 +1,13 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::lib::ast::predule::TableName;
+use crate::lib::{ast::predule::TableName, utils::float::Float64};
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, PartialOrd, Eq, Hash)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TableDataFieldType {
     // 끝단 Primitive 값
     Integer(i64),
-    Float(String),
+    Float(Float64),
     Boolean(bool),
     String(String),
     Array(Vec<TableDataFieldType>),

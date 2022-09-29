@@ -6,7 +6,7 @@ use std::error::Error;
 use futures::future::join_all;
 use itertools::Itertools;
 
-use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column, BuiltInFunction, Function, ConditionalFunction, AggregateFunction};
+use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column, BuiltInFunction, Function,  AggregateFunction};
 use crate::lib::errors::predule::{TypeError, ExecuteError};
 use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, ExecuteColumnType};
 
@@ -27,7 +27,7 @@ impl Executor {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),
-            SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value.to_string())),
+            SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value.into())),
             SQLExpression::String(value) => Ok(TableDataFieldType::String(value)),
             SQLExpression::Null => Ok(TableDataFieldType::Null),
             SQLExpression::List(list) =>  {
