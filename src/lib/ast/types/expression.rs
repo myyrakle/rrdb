@@ -152,39 +152,51 @@ impl SQLExpression {
     }
 
     pub fn find_aggregate_columns(&self) -> Vec<SelectColumn> {
-        Self::find_aggregate_columns_recursion(self)
+        Self::find_aggregate_columns_recursion(self, Default::default())
     }
 
-    fn find_aggregate_columns_recursion(this: &Self) -> Vec<SelectColumn> {
+    fn find_aggregate_columns_recursion(
+        this: &Self,
+        mut context: RecursionContext,
+    ) -> Vec<SelectColumn> {
         match this {
-            Self::Unary(unary) => Self::find_aggregate_columns_recursion(&unary.operand),
+            Self::Unary(unary) => Self::find_aggregate_columns_recursion(&unary.operand, context),
             Self::Binary(binary) => join_vec!(
-                Self::find_aggregate_columns_recursion(&binary.lhs),
-                Self::find_aggregate_columns_recursion(&binary.rhs)
+                Self::find_aggregate_columns_recursion(&binary.lhs, context),
+                Self::find_aggregate_columns_recursion(&binary.rhs, context)
             ),
             Self::Between(between) => join_vec!(
-                Self::find_aggregate_columns_recursion(&between.a),
-                Self::find_aggregate_columns_recursion(&between.x),
-                Self::find_aggregate_columns_recursion(&between.y)
+                Self::find_aggregate_columns_recursion(&between.a, context),
+                Self::find_aggregate_columns_recursion(&between.x, context),
+                Self::find_aggregate_columns_recursion(&between.y, context)
             ),
             Self::NotBetween(not_between) => join_vec!(
-                Self::find_aggregate_columns_recursion(&not_between.a),
-                Self::find_aggregate_columns_recursion(&not_between.x),
-                Self::find_aggregate_columns_recursion(&not_between.y)
+                Self::find_aggregate_columns_recursion(&not_between.a, context),
+                Self::find_aggregate_columns_recursion(&not_between.x, context),
+                Self::find_aggregate_columns_recursion(&not_between.y, context)
             ),
-            Self::Parentheses(paren) => Self::find_aggregate_columns_recursion(&paren.expression),
+            Self::Parentheses(paren) => {
+                Self::find_aggregate_columns_recursion(&paren.expression, context)
+            }
             Self::FunctionCall(call) => {
                 if call.function.is_aggregate() {
+                    context.in_aggregate = true;
                     call.arguments
                         .iter()
                         .cloned()
-                        .flat_map(|e| Self::find_aggregate_columns_recursion(&e))
+                        .flat_map(|e| Self::find_aggregate_columns_recursion(&e, context))
                         .collect()
                 } else {
                     vec![]
                 }
             }
-            Self::SelectColumn(column) => vec![column.to_owned()],
+            Self::SelectColumn(column) => {
+                if context.in_aggregate {
+                    vec![column.to_owned()]
+                } else {
+                    vec![]
+                }
+            }
             _ => vec![],
         }
     }
@@ -219,4 +231,9 @@ impl From<TableDataFieldType> for SQLExpression {
             ),
         }
     }
+}
+
+#[derive(Debug, Clone, Default, Copy)]
+struct RecursionContext {
+    pub in_aggregate: bool,
 }
