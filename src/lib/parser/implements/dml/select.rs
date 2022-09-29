@@ -1,4 +1,6 @@
+use std::collections::HashSet;
 use std::error::Error;
+use std::iter::FromIterator;
 
 use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
 use crate::lib::ast::predule::{
@@ -108,6 +110,96 @@ impl Parser {
             query_builder = query_builder.set_where(where_clause);
         }
 
+        // Group By 절 파싱
+        if self.next_token_is_group_by() {
+            // GROUP BY 삼킴
+            self.get_next_token();
+            self.get_next_token();
+
+            loop {
+                if !self.has_next_token() {
+                    break;
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::Comma => continue,
+                    Token::Having | Token::Limit | Token::Offset | Token::Order => {
+                        self.unget_next_token(current_token);
+                        break;
+                    }
+                    _ => {
+                        if current_token.is_expression() {
+                            self.unget_next_token(current_token);
+                            let group_by_item = self.parse_group_by_item(context.clone())?;
+                            query_builder = query_builder.add_group_by(group_by_item);
+                        } else {
+                            return Err(ParsingError::boxed(format!(
+                                "E0319 unexpected token '{:?}'",
+                                current_token
+                            )));
+                        }
+                    }
+                }
+            }
+        }
+
+        if !query_builder.select_items.is_empty() {
+            // 집계 함수 <> GROUP BY 불일치 검증
+            if query_builder.has_aggregate() {
+                query_builder = query_builder.set_has_aggregate(true);
+
+                let group_by_columns = match query_builder.group_by_clause {
+                    Some(ref clause) => HashSet::from_iter(
+                        clause.group_by_items.clone().into_iter().map(|e| e.item),
+                    ),
+                    None => HashSet::new(),
+                };
+
+                // 집계함수가 사용되지 않은 select column 목록
+                let non_aggregate_columns = query_builder.get_non_aggregate_column();
+
+                // 집계함수가 사용되지 않은 컬럼이 group by에 없다면 오류
+                for non_aggregate_column in non_aggregate_columns {
+                    if !group_by_columns.contains(&non_aggregate_column) {
+                        return Err(ParsingError::boxed(format!(
+                            "E0331: column '{:?}' must be in a GROUP BY clause or used within an aggregate function",
+                            non_aggregate_column
+                        )));
+                    }
+                }
+
+                // 집계함수가 사용된 select column 목록
+                let aggregate_columns = query_builder.get_aggregate_column();
+
+                // 집계함수가 사용된 컬럼이 group by에 있다면 오류
+                for aggregate_column in aggregate_columns {
+                    if group_by_columns.contains(&aggregate_column) {
+                        return Err(ParsingError::boxed(format!(
+                            "E0332: column '{:?}' cannot be in a GROUP BY clause",
+                            group_by_columns
+                        )));
+                    }
+                }
+            }
+        }
+
+        // Having 절 파싱
+        if self.next_token_is_having() {
+            if query_builder.has_group_by() {
+                let having_clause = self.parse_having(context.clone())?;
+                query_builder = query_builder.set_having(having_clause);
+            } else {
+                return Err(ParsingError::boxed(
+                    "E0315 Having without group by is invalid.",
+                ));
+            }
+        }
+
         // Order By 절 파싱
         if self.next_token_is_order_by() {
             // ORDER BY 삼킴
@@ -143,56 +235,6 @@ impl Parser {
                         }
                     }
                 }
-            }
-        }
-
-        // Group By 절 파싱
-        if self.next_token_is_group_by() {
-            // GROUP BY 삼킴
-            self.get_next_token();
-            self.get_next_token();
-
-            loop {
-                if !self.has_next_token() {
-                    break;
-                }
-
-                let current_token = self.get_next_token();
-
-                match current_token {
-                    Token::SemiColon => {
-                        return Ok(query_builder.build());
-                    }
-                    Token::Comma => continue,
-                    Token::Having | Token::Limit | Token::Offset => {
-                        self.unget_next_token(current_token);
-                        break;
-                    }
-                    _ => {
-                        if current_token.is_expression() {
-                            self.unget_next_token(current_token);
-                            let group_by_item = self.parse_group_by_item(context.clone())?;
-                            query_builder = query_builder.add_group_by(group_by_item);
-                        } else {
-                            return Err(ParsingError::boxed(format!(
-                                "E0319 unexpected token '{:?}'",
-                                current_token
-                            )));
-                        }
-                    }
-                }
-            }
-        }
-
-        // Having 절 파싱
-        if self.next_token_is_having() {
-            if query_builder.has_group_by() {
-                let having_clause = self.parse_having(context.clone())?;
-                query_builder = query_builder.set_having(having_clause);
-            } else {
-                return Err(ParsingError::boxed(
-                    "E0315 Having without group by is invalid.",
-                ));
             }
         }
 
@@ -349,14 +391,14 @@ impl Parser {
 
     pub(crate) fn parse_group_by_item(
         &mut self,
-        context: ParserContext,
+        _context: ParserContext,
     ) -> Result<GroupByItem, Box<dyn Error + Send>> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0314 need more tokens"));
         }
 
         // 표현식 파싱
-        let item = self.parse_expression(context)?;
+        let item = self.parse_select_column()?;
 
         let order_by_item = GroupByItem { item };
 

@@ -68,6 +68,7 @@ impl Executor {
                                 row: Some(row.to_owned()),
                                 table_alias_map,
                                 config_columns: vec![],
+                                total_count: 0,
                             };
 
                             let condition = self
@@ -116,6 +117,7 @@ impl Executor {
                 row: None,
                 table_alias_map: table_alias_map.clone(),
                 config_columns: config_columns.clone(),
+                total_count: 0,
             };
 
             for update_item in &update_items {

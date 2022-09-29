@@ -24,7 +24,7 @@ impl Executor {
 
         let database_path = base_path.clone().join(&database_name);
 
-        let table_path = database_path.clone().join(&table_name);
+        let table_path = database_path.clone().join("tables").join(&table_name);
 
         // 데이터 행 파일 경로
         let rows_path = table_path.clone().join("rows");
@@ -189,7 +189,6 @@ impl Executor {
                         });
                     }
 
-                    println!("! {:?}", fields);
                     let row = TableDataRow { fields };
                     rows.push(row);
                 }

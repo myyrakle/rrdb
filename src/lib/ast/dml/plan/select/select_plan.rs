@@ -15,6 +15,7 @@ pub enum SelectPlanItem {
     Join(JoinPlan),
     Order(OrderByClause),
     Group(GroupByClause),
+    GroupAll,
     LimitOffset(LimitOffsetPlan),
     Filter(FilterPlan),
 }

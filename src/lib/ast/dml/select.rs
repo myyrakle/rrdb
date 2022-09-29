@@ -1,7 +1,7 @@
 use crate::lib::ast::predule::{
     DMLStatement, FromClause, FromTarget, GroupByClause, GroupByItem, HavingClause, JoinClause,
-    OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectItem, SubqueryExpression,
-    TableName, WhereClause,
+    OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectColumn, SelectItem,
+    SubqueryExpression, TableName, WhereClause,
 };
 
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use super::{SelectKind, SelectWildCard};
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectKind>,
+    pub has_aggregate: bool,
     pub from_table: Option<FromClause>,
     pub join_clause: Vec<JoinClause>,
     pub where_clause: Option<WhereClause>,
@@ -33,6 +34,7 @@ impl SelectQuery {
             order_by_clause: None,
             limit: None,
             offset: None,
+            has_aggregate: false,
         }
     }
 
@@ -133,6 +135,62 @@ impl SelectQuery {
     pub fn set_limit(mut self, limit: u32) -> Self {
         self.limit = Some(limit);
         self
+    }
+
+    pub fn set_has_aggregate(mut self, has_aggregate: bool) -> Self {
+        self.has_aggregate = has_aggregate;
+        self
+    }
+
+    pub fn has_aggregate(&self) -> bool {
+        for item in &self.select_items {
+            match item {
+                SelectKind::SelectItem(item) => {
+                    let item = item.item.as_ref().unwrap();
+
+                    if item.has_aggregate() {
+                        return true;
+                    }
+                }
+                SelectKind::WildCard(_) => return false,
+            }
+        }
+
+        false
+    }
+
+    pub fn get_non_aggregate_column(&self) -> Vec<SelectColumn> {
+        let mut list = vec![];
+
+        for item in &self.select_items {
+            match item {
+                SelectKind::SelectItem(item) => {
+                    let item = item.item.as_ref().unwrap();
+                    let mut none_aggregate_columns = item.find_non_aggregate_columns();
+                    list.append(&mut none_aggregate_columns);
+                }
+                SelectKind::WildCard(_) => {}
+            }
+        }
+
+        list
+    }
+
+    pub fn get_aggregate_column(&self) -> Vec<SelectColumn> {
+        let mut list = vec![];
+
+        for item in &self.select_items {
+            match item {
+                SelectKind::SelectItem(item) => {
+                    let item = item.item.as_ref().unwrap();
+                    let mut aggregate_columns = item.find_aggregate_columns();
+                    list.append(&mut aggregate_columns);
+                }
+                SelectKind::WildCard(_) => {}
+            }
+        }
+
+        list
     }
 
     pub fn build(self) -> SelectQuery {

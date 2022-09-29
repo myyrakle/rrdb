@@ -56,6 +56,7 @@ impl Executor {
                 }
                 // 필터링 처리
                 DeletePlanItem::Filter(filter) => {
+                    let total_count = rows.len();
                     let futures = rows.iter().cloned().map(|(path, row)| {
                         let table_alias_map = table_alias_map.clone();
                         let filter = filter.clone();
@@ -64,6 +65,7 @@ impl Executor {
                                 row: Some(row.to_owned()),
                                 table_alias_map,
                                 config_columns: vec![],
+                                total_count,
                             };
 
                             let condition = self

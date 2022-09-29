@@ -24,7 +24,7 @@ impl Executor {
         let database_name = database_name.unwrap();
 
         let database_path = base_path.clone().join(&database_name);
-        let table_path = database_path.clone().join(&table_name);
+        let table_path = database_path.clone().join("tables").join(&table_name);
 
         // config data 파일 내용 변경
         let config_path = table_path.clone().join("table.config");

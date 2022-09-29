@@ -6,7 +6,8 @@ use std::error::Error;
 use futures::future::join_all;
 use itertools::Itertools;
 
-use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column};
+use crate::lib::ast::dml::BinaryOperatorExpression;
+use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column, BuiltInFunction, Function,  AggregateFunction};
 use crate::lib::errors::predule::{TypeError, ExecuteError};
 use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, ExecuteColumnType};
 
@@ -14,7 +15,8 @@ use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, 
 pub struct ReduceContext {
     pub table_alias_map: HashMap<String, TableName>,
     pub row: Option<TableDataRow>,
-    pub config_columns: Vec<(TableName, Column)>
+    pub config_columns: Vec<(TableName, Column)>,
+    pub total_count: usize,
 }
 
 impl Executor {
@@ -27,7 +29,7 @@ impl Executor {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),
-            SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value)),
+            SQLExpression::Float(value) => Ok(TableDataFieldType::Float(value.into())),
             SQLExpression::String(value) => Ok(TableDataFieldType::String(value)),
             SQLExpression::Null => Ok(TableDataFieldType::Null),
             SQLExpression::List(list) =>  {
@@ -39,7 +41,7 @@ impl Executor {
                 let serialized: String = fields.into_iter().map(|e|e.to_string()).intersperse(", ".to_owned()).collect();
 
                 Ok(TableDataFieldType::String(format!("({})", serialized)))
-        }
+            }
             SQLExpression::Unary(unary) => match unary.operator {
                 UnaryOperator::Neg => {
                     let operand = self.reduce_expression(unary.operand, context).await?;
@@ -50,6 +52,22 @@ impl Executor {
                         }
                         TableDataFieldType::Float(value) => {
                             Ok(TableDataFieldType::Float(-value))
+                        }
+                        TableDataFieldType::Array(mut array) => {
+                            for e in &mut array {
+                                match e {
+                                    TableDataFieldType::Integer(value) => {
+                                        *e = TableDataFieldType::Integer(-*value);
+                                    }
+                                    TableDataFieldType::Float(value) => {
+                                        *e = TableDataFieldType::Float(-*value);
+                                    }
+                                    _ => return  Err(TypeError::dyn_boxed(
+                                        "unary '!' operator is valid only for integer and float types.",
+                                    )),
+                                }
+                            }
+                            Ok(TableDataFieldType::Array(array))
                         }
                         _ => Err(TypeError::dyn_boxed(
                             "unary '-' operator is valid only for integer and float types.",
@@ -81,13 +99,71 @@ impl Executor {
                 }
             },
             SQLExpression::Binary(binary) => {
-                let lhs = self.reduce_expression(binary.lhs, context.clone()).await?;
-                let rhs = self.reduce_expression(binary.rhs, context).await?;
+                let lhs = self.reduce_expression(binary.lhs.clone(), context.clone()).await?;
+                let rhs = self.reduce_expression(binary.rhs.clone(), context.clone()).await?;
 
                 if lhs.type_code() != rhs.type_code() {
                     return Err(TypeError::dyn_boxed(
                         "The types of lhs and rhs do not match.",
                     ));
+                }
+
+                if let TableDataFieldType::Array(ref left_array) = lhs {
+                    if let TableDataFieldType::Array(ref right_array) = rhs{
+                        let futures = (0..left_array.len()).into_iter().map(|i|
+                           {
+                            let binary = binary.clone(); 
+                            let context = context.clone(); 
+                       
+                            async move {
+                                let expression = BinaryOperatorExpression {
+                                    operator: binary.operator.clone(),
+                                    lhs: left_array[i].clone().into(), 
+                                    rhs: right_array[i].clone().into(),
+                                };
+                            
+                                match self.reduce_expression(expression.into(), context.clone()).await {
+                                    Ok(expression)=> Ok(expression), 
+                                    Err(error)=>Err(error),
+                                }
+                            }
+                        });
+    
+                        let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                        return Ok(TableDataFieldType::Array(result));
+                    } else {
+                        let futures = left_array.iter().map(|e|async {
+                            let expression = BinaryOperatorExpression {
+                                operator: binary.operator.clone(),
+                                lhs: e.clone().into(), 
+                                rhs: rhs.clone().into(),
+                            };
+                        
+                            match self.reduce_expression(expression.into(), context.clone()).await {
+                                Ok(expression)=> Ok(expression), 
+                                Err(error)=>Err(error),
+                            }
+                        });
+
+                        let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                        return Ok(TableDataFieldType::Array(result));
+                    }
+                } else if let TableDataFieldType::Array(ref right_array) = rhs{
+                    let futures = right_array.iter().map(|e|async {
+                        let expression = BinaryOperatorExpression {
+                            operator: binary.operator.clone(),
+                            lhs: lhs.clone().into(), 
+                            rhs: e.clone().into(),
+                        };
+                    
+                        match self.reduce_expression(expression.into(), context.clone()).await {
+                            Ok(expression)=> Ok(expression), 
+                            Err(error)=>Err(error),
+                        }
+                    });
+
+                    let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                    return Ok(TableDataFieldType::Array(result));
                 }
 
                 match binary.operator {
@@ -125,7 +201,7 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Float(lhs_value - rhs_value));
+                                return Ok(TableDataFieldType::Float(lhs_value + rhs_value));
                             }
                             unreachable!()
                         }
@@ -306,7 +382,126 @@ impl Executor {
             SQLExpression::Parentheses(paren) => {
                  self.reduce_expression(paren.expression, context).await
             }
-            SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
+            SQLExpression::FunctionCall(call) => {
+                match call.function {
+                    Function::BuiltIn(builtin)=>{
+                        match builtin {
+                            BuiltInFunction::Aggregate(aggregate)=>{
+                                match aggregate {
+                                    AggregateFunction::Count => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Count function takes only one parameter.",
+                                            ));
+                                        }
+
+                                        let argument = call.arguments[0].clone();
+                                        let value = self.reduce_expression(argument, context.clone()).await?;
+
+                                        match value {
+                                            TableDataFieldType::Array(array) => {
+                                                
+                                                let value = array.into_iter().filter(|e|{
+                                                    #[allow(clippy::match_like_matches_macro)]
+                                                    match e {
+                                                        TableDataFieldType::Null => {
+                                                            false
+                                                        }, 
+                                                        _ => true,
+                                                    }
+                                                }).count();
+
+                                                Ok(TableDataFieldType::Integer(value as i64))
+                                            }
+                                            TableDataFieldType::Null=> {
+                                                Ok(TableDataFieldType::Integer(0))
+                                            }
+                                            _ => {
+                                                match context.row {
+                                                    Some(row) => {
+                                                        if let TableDataFieldType::Array(array) = &row.fields[0].data {
+                                                            Ok(TableDataFieldType::Integer(array.len() as i64))
+                                                        }
+                                                        else {
+                                                            Ok(TableDataFieldType::Integer(0))
+                                                        }
+                                                    }
+                                                    None=> {
+                                                        Ok(TableDataFieldType::Integer(0))
+                                                    }
+                                                }
+                                                
+                                            }
+                                        }
+                                    }
+                                    AggregateFunction::Sum => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Sum function takes only one parameter.",
+                                            ));
+                                        }
+
+                                        let argument = call.arguments[0].clone();
+                                        let value = self.reduce_expression(argument, context.clone()).await?;
+
+                                        match value {
+                                            TableDataFieldType::Array(array) => {
+                                                let value = array.into_iter().fold(TableDataFieldType::Null, |acc, e|{
+                                                    match e {
+                                                        TableDataFieldType::Integer(integer) => {
+                                                            if let TableDataFieldType::Integer(acc_value) = acc  {
+                                                                TableDataFieldType::Integer(acc_value + integer)
+                                                            } else {
+                                                                TableDataFieldType::Integer(integer)
+                                                            }
+                                                        }, 
+                                                        TableDataFieldType::Float(integer) => {
+                                                            if let TableDataFieldType::Float(acc_value) = acc  {
+                                                                TableDataFieldType::Float(acc_value + integer)
+                                                            } else {
+                                                                TableDataFieldType::Float(integer)
+                                                            }
+                                                        }, 
+                                                        _ => acc,
+                                                    }
+                                                });
+
+                                                Ok(value)
+                                            }
+                                            _ => {
+                                                unimplemented!("미구현");
+                                            }
+                                        } 
+                                    }
+                                    AggregateFunction::Max => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Max function takes only one parameter.",
+                                            ));
+                                        }
+
+                                        unimplemented!("미구현");
+                                    }
+                                    AggregateFunction::Min => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Min function takes only one parameter.",
+                                            ));
+                                        }
+                                        
+                                        unimplemented!("미구현");
+                                    }
+                                    _ => unimplemented!("미구현")
+                                }
+                            }
+                            BuiltInFunction::Conditional(_)=>{
+                                unimplemented!("미구현")
+                            }
+                        }
+                    }
+                    Function::UserDefined(_)=>unimplemented!("미구현"),
+                }
+            },
             SQLExpression::Subquery(_) => unimplemented!("미구현"),
             SQLExpression::SelectColumn(select_column) => {
                 let column_name  = select_column.column_name.clone();
@@ -317,8 +512,6 @@ impl Executor {
 
                         // 없으면 오류
                         if same_name_datas.is_empty() {
-                            println!("{:?}", row.fields);
-                            println!("{:?}", column_name);
                             return Err(ExecuteError::dyn_boxed(
                                 format!("1 column select '{:?}' not exists", select_column),
                             ));
@@ -427,7 +620,33 @@ impl Executor {
             SQLExpression::Parentheses(paren) => {
                  self.reduce_type(paren.expression, context)
             }
-            SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
+            SQLExpression::FunctionCall(call) => match call.function {
+                Function::BuiltIn(builtin) => {
+                    match builtin  {
+                        BuiltInFunction::Aggregate(aggregate)=> {
+                            match aggregate {
+                                AggregateFunction::Sum => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                AggregateFunction::Count => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                AggregateFunction::Max => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                AggregateFunction::Min => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                _ => unimplemented!("미구현"),
+                            }
+                        }
+                        BuiltInFunction::Conditional(_)=>unimplemented!("미구현"),
+                    }
+                }
+                Function::UserDefined(_)=>{
+                    unimplemented!("미구현")
+                }
+            },
             SQLExpression::Subquery(_) => unimplemented!("미구현"),
             SQLExpression::SelectColumn(select_column) => {
                 let column_name  = select_column.column_name.clone();

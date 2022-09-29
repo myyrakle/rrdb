@@ -1,21 +1,17 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
-use std::io::ErrorKind;
-use std::path::PathBuf;
 
 use futures::future::join_all;
 
 use crate::lib::ast::dml::{OrderByNulls, OrderByType, SelectItem, SelectKind};
 use crate::lib::ast::predule::{
-    SQLExpression, ScanType, SelectColumn, SelectPlanItem, SelectQuery, TableName,
+    SQLExpression, ScanType, SelectColumn, SelectPlanItem, SelectQuery,
 };
-use crate::lib::errors::predule::ExecuteError;
 use crate::lib::errors::type_error::TypeError;
-use crate::lib::executor::config::TableDataFieldType;
+use crate::lib::executor::config::{TableDataField, TableDataFieldType};
 use crate::lib::executor::predule::{
-    ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
-    StorageEncoder, TableDataRow,
+    ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext, TableDataRow,
 };
 use crate::lib::optimizer::predule::Optimizer;
 
@@ -29,6 +25,7 @@ impl Executor {
         let plan = optimizer.optimize_select(query).await?;
 
         let mut table_alias_map = HashMap::new();
+        let mut table_alias_reverse_map = HashMap::new();
         let mut table_infos = vec![];
 
         let mut rows = vec![];
@@ -44,7 +41,8 @@ impl Executor {
                     table_infos.push(table_config);
 
                     if let Some(alias) = from.alias {
-                        table_alias_map.insert(alias, table_name.clone());
+                        table_alias_map.insert(alias.clone(), table_name.clone());
+                        table_alias_reverse_map.insert(table_name.clone().table_name, alias);
                     }
 
                     match from.scan {
@@ -72,6 +70,7 @@ impl Executor {
                                 row: Some(e.to_owned()),
                                 table_alias_map,
                                 config_columns: vec![],
+                                total_count: 0,
                             };
 
                             let condition = self
@@ -99,6 +98,91 @@ impl Executor {
                         .map(|(e, _)| e)
                         .collect();
                 }
+                SelectPlanItem::Group(ref group_by_clause) => {
+                    let mut grouped_map =
+                        HashMap::<Vec<TableDataField>, Vec<TableDataField>>::new();
+
+                    for row in rows {
+                        let mut group_key = vec![];
+                        let mut group_value = vec![];
+
+                        for field in row.fields {
+                            // group by 절에 포함된 컬럼일 경우 키값으로 사용
+                            if let Some(_found) = group_by_clause.group_by_items.iter().find(|e| {
+                                let mut table_name_matched = false;
+
+                                if let Some(table_name) = &e.item.table_name {
+                                    if table_name == &field.table_name.table_name {
+                                        table_name_matched = true;
+                                    } else if let Some(table_name) = table_alias_map.get(table_name)
+                                    {
+                                        if table_name.table_name == field.table_name.table_name {
+                                            table_name_matched = true;
+                                        }
+                                    } else if let Some(table_name) =
+                                        table_alias_reverse_map.get(table_name)
+                                    {
+                                        if table_name == &field.table_name.table_name {
+                                            table_name_matched = true;
+                                        }
+                                    }
+                                } else {
+                                    table_name_matched = true;
+                                }
+
+                                e.item.column_name == field.column_name && table_name_matched
+                            }) {
+                                group_key.push(field);
+                            }
+                            // 미포함된 컬럼일 경우 배열 형태로 값 중첩
+                            else {
+                                group_value.push(field);
+                            }
+                        }
+
+                        match grouped_map.get_mut(&group_key) {
+                            Some(value) => {
+                                for i in 0..value.len() {
+                                    value[i].push(group_value[i].data.clone());
+                                }
+                            }
+                            None => {
+                                grouped_map.insert(
+                                    group_key,
+                                    group_value
+                                        .into_iter()
+                                        .map(|e| e.to_array())
+                                        .collect::<Vec<_>>(),
+                                );
+                            }
+                        }
+                    }
+
+                    rows = grouped_map
+                        .into_iter()
+                        .map(|(mut key, mut value)| {
+                            key.append(&mut value);
+                            TableDataRow { fields: key }
+                        })
+                        .collect();
+                }
+                SelectPlanItem::GroupAll => {
+                    let mut fields = vec![];
+
+                    for row in rows {
+                        if fields.is_empty() {
+                            for field in row.fields {
+                                fields.push(field.to_array());
+                            }
+                        } else {
+                            for (i, field) in row.fields.into_iter().enumerate() {
+                                fields[i].push(field.data)
+                            }
+                        }
+                    }
+
+                    rows = vec![TableDataRow { fields }];
+                }
                 SelectPlanItem::LimitOffset(limit_offset) => {
                     let offset = limit_offset.offset.unwrap_or(0) as usize;
 
@@ -120,6 +204,7 @@ impl Executor {
                                 row: Some(e.to_owned()),
                                 table_alias_map,
                                 config_columns: vec![],
+                                total_count: 0,
                             };
 
                             for order_by_item in &order_by_clause.order_by_items {
@@ -281,6 +366,7 @@ impl Executor {
             .collect::<Vec<_>>();
 
         // 필요한 SELECT Item만 최종 계산
+        let total_count = rows.len();
         let rows = rows.into_iter().map(|row| {
             let table_alias_map = table_alias_map.clone();
             let select_items = select_items.clone();
@@ -293,6 +379,7 @@ impl Executor {
                             row: Some(row.clone()),
                             table_alias_map: table_alias_map.clone(),
                             config_columns: vec![],
+                            total_count,
                         };
 
                         let value = self
@@ -330,6 +417,7 @@ impl Executor {
             row: None,
             table_alias_map,
             config_columns,
+            total_count: 0,
         };
 
         let columns = select_items
@@ -356,83 +444,7 @@ impl Executor {
         }
     }
 
-    pub async fn full_scan(
-        &self,
-        table_name: TableName,
-    ) -> Result<Vec<(PathBuf, TableDataRow)>, Box<dyn Error + Send>> {
-        let encoder = StorageEncoder::new();
-
-        let database_name = table_name.database_name.unwrap();
-        let table_name = table_name.table_name;
-
-        let base_path = self.get_base_path();
-
-        let database_path = base_path.clone().join(&database_name);
-
-        let table_path = database_path.clone().join(&table_name);
-
-        // 데이터 행 파일 경로
-        let rows_path = table_path.clone().join("rows");
-
-        match std::fs::read_dir(&rows_path) {
-            Ok(read_dir_result) => {
-                let futures = read_dir_result.map(|e| async {
-                    match e {
-                        Ok(entry) => match entry.file_type() {
-                            Ok(file_type) => {
-                                if file_type.is_file() {
-                                    let path = entry.path();
-
-                                    match tokio::fs::read(&path).await {
-                                        Ok(result) => {
-                                            match encoder.decode::<TableDataRow>(result.as_slice())
-                                            {
-                                                Some(decoded) => Ok((path.to_path_buf(), decoded)),
-                                                None => Err(ExecuteError::boxed(format!(
-                                                    "full scan failed {:?}",
-                                                    path
-                                                ))),
-                                            }
-                                        }
-                                        Err(error) => Err(ExecuteError::boxed(format!(
-                                            "full scan failed {}",
-                                            error
-                                        ))),
-                                    }
-                                } else {
-                                    Err(ExecuteError::boxed("full scan failed"))
-                                }
-                            }
-                            Err(error) => {
-                                Err(ExecuteError::boxed(format!("full scan failed {}", error)))
-                            }
-                        },
-                        Err(error) => {
-                            Err(ExecuteError::boxed(format!("full scan failed {}", error)))
-                        }
-                    }
-                });
-
-                let rows = join_all(futures)
-                    .await
-                    .into_iter()
-                    .collect::<Result<Vec<_>, _>>();
-
-                match rows {
-                    Ok(rows) => Ok(rows),
-                    Err(error) => Err(ExecuteError::boxed(error.to_string())),
-                }
-            }
-            Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
-                _ => Err(ExecuteError::boxed("full scan failed")),
-            },
-        }
-    }
-
     pub async fn filter(&self) {}
-
-    pub async fn index_scan(&self, _table_name: TableName) {}
 
     pub async fn order_by(&self) {}
 

@@ -12,3 +12,9 @@ impl From<ListExpression> for SQLExpression {
         SQLExpression::List(value)
     }
 }
+
+impl From<Vec<SQLExpression>> for ListExpression {
+    fn from(value: Vec<SQLExpression>) -> ListExpression {
+        ListExpression { value }
+    }
+}

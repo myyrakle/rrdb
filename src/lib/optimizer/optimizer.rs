@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::lib::ast::{
     dml::{
         DeleteFromPlan, DeletePlan, DeleteQuery, FilterPlan, FromTarget, LimitOffsetPlan, ScanType,
-        SelectFromPlan, UpdateFromPlan, UpdatePlan, UpdateQuery,
+        SelectFromPlan, SelectPlanItem, UpdateFromPlan, UpdatePlan, UpdateQuery,
     },
     predule::{SelectPlan, SelectQuery},
 };
@@ -54,13 +54,20 @@ impl Optimizer {
             }
 
             // GROUP BY 절 구성
-            if let Some(_group_by_clause) = query.group_by_clause {
-                // TODO
+            if let Some(group_by_clause) = query.group_by_clause {
+                plan.list.push(group_by_clause.into());
 
                 // HAVING 절 구성
-                if let Some(_having_clause) = query.having_clause {
-                    // TODO
+                if let Some(having_clause) = query.having_clause {
+                    plan.list.push(
+                        FilterPlan {
+                            expression: *having_clause.expression,
+                        }
+                        .into(),
+                    );
                 }
+            } else if query.has_aggregate {
+                plan.list.push(SelectPlanItem::GroupAll);
             }
 
             // ORDER BY 절 구성
