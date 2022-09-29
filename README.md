@@ -146,6 +146,8 @@ SELECT
     [ * | expression [ [ AS ] output_name ] [, ...] ]
 [ FROM from_item [, ...] ]
 [ WHERE condition ]
+[ GROUP BY grouping_element [, ...] ]
+[ HAVING condition ]
 [ ORDER BY expression [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...] ]
 [ LIMIT limit_number ]
 [ OFFSET offset_number ]
