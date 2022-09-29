@@ -1,11 +1,12 @@
 use std::{
+    cmp::Ordering,
     hash::{Hash, Hasher},
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Float64 {
     pub value: f64,
 }
@@ -77,5 +78,21 @@ impl Div for Float64 {
     fn div(self, other: Self) -> Self {
         let result = self.value / other.value;
         result.into()
+    }
+}
+
+impl Ord for Float64 {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self == other {
+            Ordering::Equal
+        } else {
+            let lhs = self.value;
+            let rhs = other.value;
+
+            match lhs.partial_cmp(&rhs) {
+                Some(order) => order,
+                None => Ordering::Less,
+            }
+        }
     }
 }

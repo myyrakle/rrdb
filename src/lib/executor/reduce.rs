@@ -49,8 +49,7 @@ impl Executor {
                             Ok(TableDataFieldType::Integer(-value))
                         }
                         TableDataFieldType::Float(value) => {
-                            let value = value.parse::<f64>().unwrap();
-                            Ok(TableDataFieldType::Float((-value).to_string()))
+                            Ok(TableDataFieldType::Float(-value))
                         }
                         _ => Err(TypeError::dyn_boxed(
                             "unary '-' operator is valid only for integer and float types.",
@@ -101,10 +100,7 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                let lhs_value = lhs_value.parse::<f64>().unwrap();
-                                let rhs_value = rhs_value.parse::<f64>().unwrap();
-                                let result = lhs_value + rhs_value;
-                                return Ok(TableDataFieldType::Float(result.to_string()));
+                                return Ok(TableDataFieldType::Float(lhs_value + rhs_value));
                             }
                             unreachable!()
                         }
@@ -129,10 +125,7 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                let lhs_value = lhs_value.parse::<f64>().unwrap();
-                                let rhs_value = rhs_value.parse::<f64>().unwrap();
-                                let result = lhs_value + rhs_value;
-                                return Ok(TableDataFieldType::Float(result.to_string()));
+                                return Ok(TableDataFieldType::Float(lhs_value + rhs_value));
                             }
                             unreachable!()
                         }
@@ -149,10 +142,7 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                let lhs_value = lhs_value.parse::<f64>().unwrap();
-                                let rhs_value = rhs_value.parse::<f64>().unwrap();
-                                let result = lhs_value + rhs_value;
-                                return Ok(TableDataFieldType::Float(result.to_string()));
+                                return Ok(TableDataFieldType::Float(lhs_value * rhs_value));
                             }
                             unreachable!()
                         }
@@ -169,10 +159,7 @@ impl Executor {
                         }
                         TableDataFieldType::Float(lhs_value) => {
                             if let TableDataFieldType::Float(rhs_value) = rhs {
-                                let lhs_value = lhs_value.parse::<f64>().unwrap();
-                                let rhs_value = rhs_value.parse::<f64>().unwrap();
-                                let result = lhs_value + rhs_value;
-                                return Ok(TableDataFieldType::Float(result.to_string()));
+                                return Ok(TableDataFieldType::Float(lhs_value / rhs_value));
                             }
                             unreachable!()
                         }
