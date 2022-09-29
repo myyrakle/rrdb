@@ -6,7 +6,7 @@ use std::error::Error;
 use futures::future::join_all;
 use itertools::Itertools;
 
-use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column};
+use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column, BuiltInFunction, Function, ConditionalFunction, AggregateFunction};
 use crate::lib::errors::predule::{TypeError, ExecuteError};
 use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, ExecuteColumnType};
 
@@ -319,7 +319,56 @@ impl Executor {
             SQLExpression::Parentheses(paren) => {
                  self.reduce_expression(paren.expression, context).await
             }
-            SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
+            SQLExpression::FunctionCall(call) => {
+                match call.function {
+                    Function::BuiltIn(builtin)=>{
+                        match builtin {
+                            BuiltInFunction::Aggregate(aggregate)=>{
+                                match aggregate {
+                                    AggregateFunction::Count => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Count function takes only one parameter.",
+                                            ));
+                                        }
+
+                                        let argument = call.arguments[0].clone();
+                                    }
+                                    AggregateFunction::Sum => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Sum function takes only one parameter.",
+                                            ));
+                                        }
+
+                                        
+                                    }
+                                    AggregateFunction::Max => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Max function takes only one parameter.",
+                                            ));
+                                        }
+                                    }
+                                    AggregateFunction::Min => {
+                                        if call.arguments.len() != 1 {
+                                            return Err(ExecuteError::dyn_boxed(
+                                                "Min function takes only one parameter.",
+                                            ));
+                                        }
+                                    }
+                                    _ => unimplemented!("미구현")
+                                }
+                                unimplemented!("미구현")
+                            }
+                            BuiltInFunction::Conditional(_)=>{
+                                unimplemented!("미구현")
+                            }
+                        }
+                    }
+                    Function::UserDefined(_)=>unimplemented!("미구현"),
+                }
+            },
             SQLExpression::Subquery(_) => unimplemented!("미구현"),
             SQLExpression::SelectColumn(select_column) => {
                 let column_name  = select_column.column_name.clone();
