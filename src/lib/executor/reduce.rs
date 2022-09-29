@@ -469,6 +469,8 @@ impl Executor {
                                                 Ok(value)
                                             }
                                             _ => {
+
+                                                println!("{:?}", value);
                                                 unimplemented!("미구현");
                                             }
                                         } 

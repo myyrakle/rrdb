@@ -172,6 +172,19 @@ impl Parser {
                         )));
                     }
                 }
+
+                // 집계함수가 사용된 select column 목록
+                let ggregate_columns = query_builder.get_aggregate_column();
+
+                // 집계함수가 사용된 컬럼이 group by에 있다면 오류
+                for aggregate_column in ggregate_columns {
+                    if !group_by_columns.contains(&aggregate_column) {
+                        return Err(ParsingError::boxed(format!(
+                            "E0332: column '{:?}' cannot be in a GROUP BY clause",
+                            group_by_columns
+                        )));
+                    }
+                }
             }
         }
 

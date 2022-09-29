@@ -176,6 +176,23 @@ impl SelectQuery {
         list
     }
 
+    pub fn get_aggregate_column(&self) -> Vec<SelectColumn> {
+        let mut list = vec![];
+
+        for item in &self.select_items {
+            match item {
+                SelectKind::SelectItem(item) => {
+                    let item = item.item.as_ref().unwrap();
+                    let mut aggregate_columns = item.find_aggregate_columns();
+                    list.append(&mut aggregate_columns);
+                }
+                SelectKind::WildCard(_) => {}
+            }
+        }
+
+        list
+    }
+
     pub fn build(self) -> SelectQuery {
         self
     }
