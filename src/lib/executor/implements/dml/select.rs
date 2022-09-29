@@ -168,6 +168,21 @@ impl Executor {
                         })
                         .collect();
                 }
+                SelectPlanItem::GroupAll => {
+                    let mut fields = vec![];
+
+                    for row in rows {
+                        for (i, field) in row.fields.into_iter().enumerate() {
+                            if fields.is_empty() {
+                                fields.push(field.to_array());
+                            } else {
+                                fields[i].push(field.data)
+                            }
+                        }
+                    }
+
+                    rows = vec![TableDataRow { fields }];
+                }
                 SelectPlanItem::LimitOffset(limit_offset) => {
                     let offset = limit_offset.offset.unwrap_or(0) as usize;
 
