@@ -414,8 +414,9 @@ impl Executor {
 
                                                 return Ok(TableDataFieldType::Integer(value as i64));
                                             }
-                                            TableDataFieldType::Null => return Ok(TableDataFieldType::Integer(0)),
-                                            _ => return Ok(TableDataFieldType::Integer(context.total_count as i64))
+                                            _ => {
+                                                unimplemented!("미구현");
+                                            }
                                         }
                                     }
                                     AggregateFunction::Sum => {
