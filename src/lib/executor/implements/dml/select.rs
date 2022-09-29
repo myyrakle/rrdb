@@ -29,6 +29,7 @@ impl Executor {
         let plan = optimizer.optimize_select(query).await?;
 
         let mut table_alias_map = HashMap::new();
+        let mut table_alias_reverse_map = HashMap::new();
         let mut table_infos = vec![];
 
         let mut rows = vec![];
@@ -44,7 +45,8 @@ impl Executor {
                     table_infos.push(table_config);
 
                     if let Some(alias) = from.alias {
-                        table_alias_map.insert(alias, table_name.clone());
+                        table_alias_map.insert(alias.clone(), table_name.clone());
+                        table_alias_reverse_map.insert(table_name.clone(), alias);
                     }
 
                     match from.scan {
@@ -111,8 +113,8 @@ impl Executor {
                             // group by 절에 포함된 컬럼일 경우 키값으로 사용
                             if let Some(_) = group_by_clause.group_by_items.iter().find(|e| {
                                 e.item.column_name == field.column_name
-                                    && e.item.table_name
-                                        == Some(field.table_name.table_name.clone())
+                                // && e.item.table_name
+                                //     == Some(field.table_name.table_name.clone())
                             }) {
                                 group_key.push(field);
                             }
@@ -141,6 +143,8 @@ impl Executor {
                             }
                         }
                     }
+
+                    println!("{:?}", grouped_map);
 
                     rows = grouped_map
                         .into_iter()
