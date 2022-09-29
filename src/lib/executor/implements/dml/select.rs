@@ -108,7 +108,7 @@ impl Executor {
 
                         for field in row.fields {
                             // group by 절에 포함된 컬럼일 경우 키값으로 사용
-                            if let Some(_) = group_by_clause.group_by_items.iter().find(|e| {
+                            if let Some(_found) = group_by_clause.group_by_items.iter().find(|e| {
                                 let mut table_name_matched = false;
 
                                 if let Some(table_name) = &e.item.table_name {
@@ -116,7 +116,7 @@ impl Executor {
                                         table_name_matched = true;
                                     } else if let Some(table_name) = table_alias_map.get(table_name)
                                     {
-                                        if &table_name.table_name == &field.table_name.table_name {
+                                        if table_name.table_name == field.table_name.table_name {
                                             table_name_matched = true;
                                         }
                                     } else if let Some(table_name) =
@@ -154,8 +154,6 @@ impl Executor {
                                         .map(|e| e.to_array())
                                         .collect::<Vec<_>>(),
                                 );
-
-                                ()
                             }
                         }
                     }

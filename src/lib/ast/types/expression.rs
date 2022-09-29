@@ -137,7 +137,7 @@ impl SQLExpression {
             }
             Self::FunctionCall(call) => {
                 if call.function.is_aggregate() {
-                    return vec![];
+                    vec![]
                 } else {
                     call.arguments
                         .iter()

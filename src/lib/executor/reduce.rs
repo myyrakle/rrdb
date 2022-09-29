@@ -116,8 +116,6 @@ impl Executor {
                             let context = context.clone(); 
                        
                             async move {
-                                let i = i.clone();
-
                                 let expression = BinaryOperatorExpression {
                                     operator: binary.operator.clone(),
                                     lhs: left_array[i].clone().into(), 
@@ -404,6 +402,7 @@ impl Executor {
                                             TableDataFieldType::Array(array) => {
                                                 
                                                 let value = array.into_iter().filter(|e|{
+                                                    #[allow(clippy::match_like_matches_macro)]
                                                     match e {
                                                         TableDataFieldType::Null => {
                                                             false
@@ -412,23 +411,23 @@ impl Executor {
                                                     }
                                                 }).count();
 
-                                                return Ok(TableDataFieldType::Integer(value as i64));
+                                                Ok(TableDataFieldType::Integer(value as i64))
                                             }
                                             TableDataFieldType::Null=> {
-                                                return Ok(TableDataFieldType::Integer(0));
+                                                Ok(TableDataFieldType::Integer(0))
                                             }
                                             _ => {
                                                 match context.row {
                                                     Some(row) => {
                                                         if let TableDataFieldType::Array(array) = &row.fields[0].data {
-                                                            return Ok(TableDataFieldType::Integer(array.len() as i64));
+                                                            Ok(TableDataFieldType::Integer(array.len() as i64))
                                                         }
                                                         else {
-                                                            return Ok(TableDataFieldType::Integer(0));
+                                                            Ok(TableDataFieldType::Integer(0))
                                                         }
                                                     }
                                                     None=> {
-                                                        return Ok(TableDataFieldType::Integer(0));
+                                                        Ok(TableDataFieldType::Integer(0))
                                                     }
                                                 }
                                                 
@@ -467,7 +466,7 @@ impl Executor {
                                                     }
                                                 });
 
-                                                return Ok(value);
+                                                Ok(value)
                                             }
                                             _ => {
                                                 unimplemented!("미구현");

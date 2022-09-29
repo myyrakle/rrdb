@@ -31,6 +31,7 @@ impl TableDataFieldType {
     }
 
     pub fn push(&mut self, value: Self) {
+        #[allow(clippy::single_match)]
         match self {
             TableDataFieldType::Array(array) => array.push(value),
             _ => {}
@@ -81,6 +82,7 @@ impl TableDataField {
     }
 
     pub fn push(&mut self, value: TableDataFieldType) {
+        #[allow(clippy::single_match)]
         match &mut self.data {
             TableDataFieldType::Array(array) => array.push(value),
             _ => {}

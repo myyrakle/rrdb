@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub struct Float64 {
     pub value: f64,
 }
@@ -78,6 +78,18 @@ impl Div for Float64 {
     fn div(self, other: Self) -> Self {
         let result = self.value / other.value;
         result.into()
+    }
+}
+
+impl PartialEq for Float64 {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl PartialOrd for Float64 {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

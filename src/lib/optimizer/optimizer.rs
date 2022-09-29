@@ -66,10 +66,8 @@ impl Optimizer {
                         .into(),
                     );
                 }
-            } else {
-                if query.has_aggregate {
-                    plan.list.push(SelectPlanItem::GroupAll);
-                }
+            } else if query.has_aggregate {
+                plan.list.push(SelectPlanItem::GroupAll);
             }
 
             // ORDER BY 절 구성
