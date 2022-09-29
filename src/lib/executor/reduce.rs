@@ -479,8 +479,6 @@ impl Executor {
 
                         // 없으면 오류
                         if same_name_datas.is_empty() {
-                            println!("{:?}", row.fields);
-                            println!("{:?}", column_name);
                             return Err(ExecuteError::dyn_boxed(
                                 format!("1 column select '{:?}' not exists", select_column),
                             ));

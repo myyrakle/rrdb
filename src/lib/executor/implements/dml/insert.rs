@@ -189,7 +189,6 @@ impl Executor {
                         });
                     }
 
-                    println!("! {:?}", fields);
                     let row = TableDataRow { fields };
                     rows.push(row);
                 }

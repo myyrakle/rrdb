@@ -159,8 +159,6 @@ impl Executor {
                         }
                     }
 
-                    println!("{:?}", grouped_map);
-
                     rows = grouped_map
                         .into_iter()
                         .map(|(mut key, mut value)| {
