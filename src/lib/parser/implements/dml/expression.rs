@@ -170,9 +170,21 @@ impl Parser {
                         column_name,
                     } = select_column;
 
-                    let expression =
-                        self.parse_function_call_expression(table_name, column_name, context)?;
-                    Ok(expression)
+                    let lhs = self.parse_function_call_expression(
+                        table_name,
+                        column_name,
+                        context.clone(),
+                    )?;
+
+                    if self.next_token_is_binary_operator(context.clone()) {
+                        let expression = self.parse_binary_expression(lhs, context)?;
+                        Ok(expression)
+                    } else if self.next_token_is_between() {
+                        let expression = self.parse_between_expression(lhs, context)?;
+                        Ok(expression)
+                    } else {
+                        Ok(lhs)
+                    }
                 } else {
                     Ok(lhs)
                 }
