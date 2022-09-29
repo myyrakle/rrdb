@@ -15,7 +15,8 @@ use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, 
 pub struct ReduceContext {
     pub table_alias_map: HashMap<String, TableName>,
     pub row: Option<TableDataRow>,
-    pub config_columns: Vec<(TableName, Column)>
+    pub config_columns: Vec<(TableName, Column)>,
+    pub total_count: usize,
 }
 
 impl Executor {
@@ -397,8 +398,25 @@ impl Executor {
                                         }
 
                                         let argument = call.arguments[0].clone();
+                                        let value = self.reduce_expression(argument, context.clone()).await?;
 
-                                        unimplemented!("미구현");
+                                        match value {
+                                            TableDataFieldType::Array(array) => {
+                                                
+                                                let value = array.into_iter().filter(|e|{
+                                                    match e {
+                                                        TableDataFieldType::Null => {
+                                                            false
+                                                        }, 
+                                                        _ => true,
+                                                    }
+                                                }).count();
+
+                                                return Ok(TableDataFieldType::Integer(value as i64));
+                                            }
+                                            TableDataFieldType::Null => return Ok(TableDataFieldType::Integer(0)),
+                                            _ => return Ok(TableDataFieldType::Integer(context.total_count as i64))
+                                        }
                                     }
                                     AggregateFunction::Sum => {
                                         if call.arguments.len() != 1 {

@@ -70,6 +70,7 @@ impl Executor {
                                 row: Some(e.to_owned()),
                                 table_alias_map,
                                 config_columns: vec![],
+                                total_count: 0,
                             };
 
                             let condition = self
@@ -188,6 +189,7 @@ impl Executor {
                                 row: Some(e.to_owned()),
                                 table_alias_map,
                                 config_columns: vec![],
+                                total_count: 0,
                             };
 
                             for order_by_item in &order_by_clause.order_by_items {
@@ -349,6 +351,7 @@ impl Executor {
             .collect::<Vec<_>>();
 
         // 필요한 SELECT Item만 최종 계산
+        let total_count = rows.len();
         let rows = rows.into_iter().map(|row| {
             let table_alias_map = table_alias_map.clone();
             let select_items = select_items.clone();
@@ -361,6 +364,7 @@ impl Executor {
                             row: Some(row.clone()),
                             table_alias_map: table_alias_map.clone(),
                             config_columns: vec![],
+                            total_count,
                         };
 
                         let value = self
@@ -398,6 +402,7 @@ impl Executor {
             row: None,
             table_alias_map,
             config_columns,
+            total_count: 0,
         };
 
         let columns = select_items
