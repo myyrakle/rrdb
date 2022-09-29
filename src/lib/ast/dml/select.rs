@@ -11,6 +11,7 @@ use super::{SelectKind, SelectWildCard};
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectKind>,
+    pub has_aggregate: bool,
     pub from_table: Option<FromClause>,
     pub join_clause: Vec<JoinClause>,
     pub where_clause: Option<WhereClause>,
@@ -33,6 +34,7 @@ impl SelectQuery {
             order_by_clause: None,
             limit: None,
             offset: None,
+            has_aggregate: false,
         }
     }
 
@@ -132,6 +134,11 @@ impl SelectQuery {
 
     pub fn set_limit(mut self, limit: u32) -> Self {
         self.limit = Some(limit);
+        self
+    }
+
+    pub fn set_has_aggregate(mut self, has_aggregate: bool) -> Self {
+        self.has_aggregate = has_aggregate;
         self
     }
 

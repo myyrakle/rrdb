@@ -151,6 +151,8 @@ impl Parser {
         if !query_builder.select_items.is_empty() {
             // 집계 함수 <> GROUP BY 불일치 검증
             if query_builder.has_aggregate() {
+                query_builder = query_builder.set_has_aggregate(true);
+
                 let group_by_columns = match query_builder.group_by_clause {
                     Some(ref clause) => HashSet::from_iter(
                         clause.group_by_items.clone().into_iter().map(|e| e.item),

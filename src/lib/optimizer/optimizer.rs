@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::lib::ast::{
     dml::{
         DeleteFromPlan, DeletePlan, DeleteQuery, FilterPlan, FromTarget, LimitOffsetPlan, ScanType,
-        SelectFromPlan, UpdateFromPlan, UpdatePlan, UpdateQuery,
+        SelectFromPlan, SelectPlanItem, UpdateFromPlan, UpdatePlan, UpdateQuery,
     },
     predule::{SelectPlan, SelectQuery},
 };
@@ -65,6 +65,10 @@ impl Optimizer {
                         }
                         .into(),
                     );
+                }
+            } else {
+                if query.has_aggregate {
+                    plan.list.push(SelectPlanItem::GroupAll);
                 }
             }
 
