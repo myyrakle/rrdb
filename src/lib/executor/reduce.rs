@@ -589,7 +589,33 @@ impl Executor {
             SQLExpression::Parentheses(paren) => {
                  self.reduce_type(paren.expression, context)
             }
-            SQLExpression::FunctionCall(_function_call) => unimplemented!("미구현"),
+            SQLExpression::FunctionCall(call) => match call.function {
+                Function::BuiltIn(builtin) => {
+                    match builtin  {
+                        BuiltInFunction::Aggregate(aggregate)=> {
+                            match aggregate {
+                                AggregateFunction::Sum => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                AggregateFunction::Count => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                AggregateFunction::Max => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                AggregateFunction::Min => {
+                                    Ok(ExecuteColumnType::Integer)
+                                }
+                                _ => unimplemented!("미구현"),
+                            }
+                        }
+                        BuiltInFunction::Conditional(_)=>unimplemented!("미구현"),
+                    }
+                }
+                Function::UserDefined(_)=>{
+                    unimplemented!("미구현")
+                }
+            },
             SQLExpression::Subquery(_) => unimplemented!("미구현"),
             SQLExpression::SelectColumn(select_column) => {
                 let column_name  = select_column.column_name.clone();
