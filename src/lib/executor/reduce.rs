@@ -494,7 +494,6 @@ impl Executor {
                                     }
                                     _ => unimplemented!("미구현")
                                 }
-                                unimplemented!("미구현")
                             }
                             BuiltInFunction::Conditional(_)=>{
                                 unimplemented!("미구현")
