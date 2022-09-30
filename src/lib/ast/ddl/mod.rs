@@ -13,3 +13,6 @@ pub mod drop_database;
 pub use alter_database::*;
 pub use create_database::*;
 pub use drop_database::*;
+
+pub mod create_index;
+pub use create_index::*;

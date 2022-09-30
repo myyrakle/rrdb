@@ -48,6 +48,13 @@ impl Executor {
             return Err(ExecuteError::boxed(error.to_string()));
         }
 
+        let index_path = table_path.clone().join("index");
+
+        // 인덱스 경로 생성
+        if let Err(error) = tokio::fs::create_dir(&index_path).await {
+            return Err(ExecuteError::boxed(error.to_string()));
+        }
+
         // TODO: primary key 데이터 생성
         // TODO: unique key 데이터 생성
         // TODO: foreign key 데이터 생성
