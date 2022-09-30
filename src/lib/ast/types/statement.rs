@@ -1,6 +1,6 @@
 use crate::lib::ast::ddl::{
-    AlterDatabaseQuery, AlterTableQuery, CreateDatabaseQuery, CreateTableQuery, DropDatabaseQuery,
-    DropTableQuery,
+    AlterDatabaseQuery, AlterTableQuery, CreateDatabaseQuery, CreateIndexQuery, CreateTableQuery,
+    DropDatabaseQuery, DropTableQuery,
 };
 use crate::lib::ast::dml::{DeleteQuery, InsertQuery, SelectQuery, UpdateQuery};
 use crate::lib::ast::other::{
@@ -23,6 +23,7 @@ pub enum DDLStatement {
     CreateTableQuery(CreateTableQuery),
     AlterTableQuery(AlterTableQuery),
     DropTableQuery(DropTableQuery),
+    CreateIndexQuery(CreateIndexQuery),
 }
 
 #[derive(Clone, Debug, PartialEq)]

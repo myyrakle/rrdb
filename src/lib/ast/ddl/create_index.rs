@@ -51,6 +51,6 @@ impl CreateIndexQuery {
     }
 
     pub fn build(self) -> SQLStatement {
-        SQLStatement::DDL(DDLStatement::CreateTableQuery(self))
+        SQLStatement::DDL(DDLStatement::CreateIndexQuery(self))
     }
 }
