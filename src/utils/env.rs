@@ -17,17 +17,17 @@ pub fn get_system_env<S: std::string::ToString>(key: S) -> String {
 
     #[cfg(target_os = "linux")]
     {
-        use super::get_profile_path;
-        use std::process::Command;
-        use std::{fs, io::Write};
+        // use super::get_profile_path;
+        // use std::process::Command;
+        // use std::{fs, io::Write};
         "fo".to_string()
     }
 
     #[cfg(target_os = "macos")]
     {
-        use super::get_profile_path;
-        use std::process::Command;
-        use std::{fs, io::Write};
+        // use super::get_profile_path;
+        // use std::process::Command;
+        // use std::{fs, io::Write};
         std::env::var(key).unwrap()
     }
 }
@@ -47,9 +47,9 @@ pub fn set_system_env<S: std::string::ToString>(key: S, value: S) {
 
     #[cfg(target_os = "linux")]
     {
-        use super::get_profile_path;
-        use std::process::Command;
-        use std::{fs, io::Write};
+        // use super::get_profile_path;
+        // use std::process::Command;
+        // use std::{fs, io::Write};
     }
 
     #[cfg(target_os = "macos")]
