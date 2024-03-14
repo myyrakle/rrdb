@@ -1,6 +1,6 @@
 use bytes::{BufMut, BytesMut};
 
-use crate::lib::pgwire::protocol::{BackendMessage, FormatCode};
+use crate::pgwire::protocol::{BackendMessage, FormatCode};
 
 use super::field_description::FieldDescription;
 

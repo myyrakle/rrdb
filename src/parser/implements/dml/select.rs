@@ -2,14 +2,14 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FromIterator;
 
-use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
-use crate::lib::ast::predule::{
+use crate::ast::dml::{OrderByNulls, SelectWildCard};
+use crate::ast::predule::{
     GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
     SelectQuery, WhereClause,
 };
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::{OperatorToken, Token};
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::{OperatorToken, Token};
+use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn handle_select_query(

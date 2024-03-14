@@ -1,9 +1,9 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{InsertQuery, InsertValue};
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::ast::predule::{InsertQuery, InsertValue};
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::Token;
+use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn handle_insert_query(

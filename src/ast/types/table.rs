@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{FromClause, FromTarget};
+use crate::ast::predule::{FromClause, FromTarget};
 use serde::{Deserialize, Serialize};
 
 // [database_name.]table_name

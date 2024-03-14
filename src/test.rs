@@ -6,10 +6,10 @@ pub mod command;
 
 // use parser::context::ParserContext;
 
-// use crate::lib::ast::predule::{
+// use crate::ast::predule::{
 //     BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectItem, SelectQuery,
 // };
-// use crate::lib::parser::predule::Parser;
+// use crate::parser::predule::Parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

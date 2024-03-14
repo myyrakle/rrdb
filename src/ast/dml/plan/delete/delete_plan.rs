@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::FilterPlan;
+use crate::ast::predule::FilterPlan;
 
 use super::DeleteFromPlan;
 

@@ -1,5 +1,5 @@
-//use crate::lib::ast::enums::SQLStatement;
-use crate::lib::ast::predule::{Column, DataType, SQLExpression, SQLStatement, TableName};
+//use crate::ast::enums::SQLStatement;
+use crate::ast::predule::{Column, DataType, SQLExpression, SQLStatement, TableName};
 
 use super::DDLStatement;
 

@@ -1,11 +1,11 @@
 #![cfg(test)]
 
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, DeleteQuery, SQLExpression, SelectColumn, TableName,
     WhereClause,
 };
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn delete_from_1() {

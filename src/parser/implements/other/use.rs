@@ -1,10 +1,10 @@
 use std::error::Error;
 
-use crate::lib::ast::other::UseDatabaseQuery;
-use crate::lib::ast::predule::SQLStatement;
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::ast::other::UseDatabaseQuery;
+use crate::ast::predule::SQLStatement;
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::Token;
+use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn parse_use_query(

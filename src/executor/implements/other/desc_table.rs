@@ -1,9 +1,9 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::lib::ast::other::DescTableQuery;
-use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::predule::{
+use crate::ast::other::DescTableQuery;
+use crate::errors::predule::ExecuteError;
+use crate::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
     StorageEncoder, TableConfig,
 };

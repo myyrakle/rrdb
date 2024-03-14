@@ -1,11 +1,11 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     Column, DataType, JoinType, SelectColumn, SubqueryExpression, TableName,
 };
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::{OperatorToken, Token};
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::{OperatorToken, Token};
+use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     // 테이블 컬럼 정의 분석

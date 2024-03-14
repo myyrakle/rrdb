@@ -1,8 +1,8 @@
-use crate::lib::ast::predule::SQLStatement;
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::ast::predule::SQLStatement;
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::Token;
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 use std::error::Error;
 

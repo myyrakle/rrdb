@@ -1,11 +1,11 @@
 use std::error::Error;
 
-use crate::lib::errors::execute_error::ExecuteError;
-use crate::lib::executor::predule::Executor;
-use crate::lib::logger::predule::Logger;
-use crate::lib::pgwire::predule::Connection;
-use crate::lib::server::channel::ChannelResponse;
-use crate::lib::server::predule::{ChannelRequest, ServerOption, SharedState};
+use crate::errors::execute_error::ExecuteError;
+use crate::executor::predule::Executor;
+use crate::logger::predule::Logger;
+use crate::pgwire::predule::Connection;
+use crate::server::channel::ChannelResponse;
+use crate::server::predule::{ChannelRequest, ServerOption, SharedState};
 
 use futures::future::join_all;
 use tokio::net::TcpListener;

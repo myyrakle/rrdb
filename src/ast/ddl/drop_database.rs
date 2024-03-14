@@ -1,4 +1,4 @@
-pub use crate::lib::ast::predule::{Column, DDLStatement, SQLStatement};
+pub use crate::ast::predule::{Column, DDLStatement, SQLStatement};
 
 /*
 DROP DATABASE [IF EXISTS] database_name;

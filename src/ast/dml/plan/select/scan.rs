@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::Index;
+use crate::ast::predule::Index;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ScanType {

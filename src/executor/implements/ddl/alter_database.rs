@@ -1,11 +1,11 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::lib::ast::ddl::{AlterDatabaseAction, AlterDatabaseQuery};
-use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::encoder::StorageEncoder;
-use crate::lib::executor::predule::{DatabaseConfig, ExecuteResult, Executor};
-use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
+use crate::ast::ddl::{AlterDatabaseAction, AlterDatabaseQuery};
+use crate::errors::predule::ExecuteError;
+use crate::executor::encoder::StorageEncoder;
+use crate::executor::predule::{DatabaseConfig, ExecuteResult, Executor};
+use crate::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
 impl Executor {
     pub async fn alter_database(

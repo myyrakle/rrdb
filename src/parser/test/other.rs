@@ -1,9 +1,9 @@
 #![cfg(test)]
 
-use crate::lib::ast::other::{DescTableQuery, ShowTablesQuery, UseDatabaseQuery};
-use crate::lib::ast::predule::{ShowDatabasesQuery, TableName};
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::ast::other::{DescTableQuery, ShowTablesQuery, UseDatabaseQuery};
+use crate::ast::predule::{ShowDatabasesQuery, TableName};
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn show_databases_1() {

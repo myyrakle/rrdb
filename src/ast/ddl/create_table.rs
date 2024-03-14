@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     Column, DDLStatement, ForeignKey, SQLStatement, TableName, TableOptions, UniqueKey,
 };
 

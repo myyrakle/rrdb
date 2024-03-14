@@ -1,7 +1,7 @@
 #![cfg(test)]
-use crate::lib::ast::ddl::CreateDatabaseQuery;
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::ast::ddl::CreateDatabaseQuery;
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn create_database_1() {

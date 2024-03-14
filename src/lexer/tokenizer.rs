@@ -1,6 +1,6 @@
-use crate::lib::errors::predule::LexingError;
-use crate::lib::lexer::predule::{OperatorToken, Token};
-use crate::lib::logger::predule::Logger;
+use crate::errors::predule::LexingError;
+use crate::lexer::predule::{OperatorToken, Token};
+use crate::logger::predule::Logger;
 use std::error::Error;
 
 #[derive(Debug)]

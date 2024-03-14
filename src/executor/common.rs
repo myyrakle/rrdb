@@ -4,8 +4,8 @@ use std::io::ErrorKind;
 use super::config::TableConfig;
 use super::encoder::StorageEncoder;
 use super::predule::Executor;
-use crate::lib::ast::predule::TableName;
-use crate::lib::errors::execute_error::ExecuteError;
+use crate::ast::predule::TableName;
+use crate::errors::execute_error::ExecuteError;
 
 impl Executor {
     pub async fn get_table_config(

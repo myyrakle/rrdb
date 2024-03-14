@@ -1,9 +1,9 @@
 use std::error::Error;
 
-use crate::lib::ast::other::DescTableQuery;
-use crate::lib::ast::predule::SQLStatement;
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::ast::other::DescTableQuery;
+use crate::ast::predule::SQLStatement;
+use crate::errors::predule::ParsingError;
+use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn parse_desc_query(

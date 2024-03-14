@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{BinaryOperator, SQLExpression};
+use crate::ast::predule::{BinaryOperator, SQLExpression};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]

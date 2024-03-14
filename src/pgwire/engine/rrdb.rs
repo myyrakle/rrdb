@@ -1,12 +1,12 @@
 use async_trait::async_trait;
 use tokio::sync::oneshot;
 
-use crate::lib::ast::predule::SQLStatement;
-use crate::lib::executor::predule::ExecuteResult;
-use crate::lib::executor::result::ExecuteField;
-use crate::lib::pgwire::engine::{Engine, Portal};
-use crate::lib::pgwire::protocol::{DataRowBatch, ErrorResponse, FieldDescription, SqlState};
-use crate::lib::server::predule::{ChannelRequest, ChannelResponse, SharedState};
+use crate::ast::predule::SQLStatement;
+use crate::executor::predule::ExecuteResult;
+use crate::executor::result::ExecuteField;
+use crate::pgwire::engine::{Engine, Portal};
+use crate::pgwire::protocol::{DataRowBatch, ErrorResponse, FieldDescription, SqlState};
+use crate::server::predule::{ChannelRequest, ChannelResponse, SharedState};
 
 #[derive(Debug, Clone)]
 pub struct RRDBPortal {

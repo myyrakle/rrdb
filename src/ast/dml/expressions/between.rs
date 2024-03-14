@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use crate::lib::ast::predule::SQLExpression;
+use crate::ast::predule::SQLExpression;
 use serde::{Deserialize, Serialize};
 
 use super::not_between::NotBetweenExpression;

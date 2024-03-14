@@ -1,7 +1,7 @@
 use std::error::Error;
 
-use crate::lib::ast::other::UseDatabaseQuery;
-use crate::lib::executor::predule::{
+use crate::ast::other::UseDatabaseQuery;
+use crate::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
 };
 

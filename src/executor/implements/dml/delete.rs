@@ -3,16 +3,16 @@ use std::error::Error;
 
 use futures::future::join_all;
 
-use crate::lib::ast::dml::{DeletePlanItem, DeleteQuery};
-use crate::lib::ast::predule::ScanType;
-use crate::lib::errors::predule::ExecuteError;
-use crate::lib::errors::type_error::TypeError;
-use crate::lib::executor::config::TableDataFieldType;
-use crate::lib::executor::predule::{
+use crate::ast::dml::{DeletePlanItem, DeleteQuery};
+use crate::ast::predule::ScanType;
+use crate::errors::predule::ExecuteError;
+use crate::errors::type_error::TypeError;
+use crate::executor::config::TableDataFieldType;
+use crate::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
 };
-use crate::lib::executor::result::ExecuteColumnType;
-use crate::lib::optimizer::predule::Optimizer;
+use crate::executor::result::ExecuteColumnType;
+use crate::optimizer::predule::Optimizer;
 
 impl Executor {
     pub async fn delete(&self, query: DeleteQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {

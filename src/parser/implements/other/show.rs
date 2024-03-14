@@ -1,10 +1,10 @@
 use std::error::Error;
 
-use crate::lib::ast::other::ShowTablesQuery;
-use crate::lib::ast::predule::{SQLStatement, ShowDatabasesQuery};
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::ast::other::ShowTablesQuery;
+use crate::ast::predule::{SQLStatement, ShowDatabasesQuery};
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::Token;
+use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn parse_show_query(

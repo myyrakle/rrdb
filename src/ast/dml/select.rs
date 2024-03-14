@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     DMLStatement, FromClause, FromTarget, GroupByClause, GroupByItem, HavingClause, JoinClause,
     OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectColumn, SelectItem,
     SubqueryExpression, TableName, WhereClause,

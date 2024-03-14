@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::lib::ast::{
+use crate::ast::{
     dml::{
         DeleteFromPlan, DeletePlan, DeleteQuery, FilterPlan, FromTarget, LimitOffsetPlan, ScanType,
         SelectFromPlan, SelectPlanItem, UpdateFromPlan, UpdatePlan, UpdateQuery,

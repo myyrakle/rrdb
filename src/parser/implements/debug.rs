@@ -1,4 +1,4 @@
-use crate::lib::parser::predule::Parser;
+use crate::parser::predule::Parser;
 
 impl Parser {
     #[allow(dead_code)]

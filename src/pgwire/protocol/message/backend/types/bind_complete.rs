@@ -1,6 +1,6 @@
 use bytes::BytesMut;
 
-use crate::lib::pgwire::protocol::BackendMessage;
+use crate::pgwire::protocol::BackendMessage;
 
 #[derive(Debug)]
 pub struct BindComplete;

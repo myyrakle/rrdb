@@ -1,7 +1,7 @@
 #![cfg(test)]
-use crate::lib::ast::ddl::DropDatabaseQuery;
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::ast::ddl::DropDatabaseQuery;
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn drop_database() {

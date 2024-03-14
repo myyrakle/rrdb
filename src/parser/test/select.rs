@@ -1,13 +1,13 @@
 #![cfg(test)]
 
-use crate::lib::ast::dml::{OrderByNulls, SelectWildCard};
-use crate::lib::ast::predule::{
+use crate::ast::dml::{OrderByNulls, SelectWildCard};
+use crate::ast::predule::{
     BinaryOperator, BinaryOperatorExpression, GroupByItem, HavingClause, JoinClause, JoinType,
     OrderByItem, OrderByType, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
     WhereClause,
 };
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn select_from_1() {

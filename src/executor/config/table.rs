@@ -2,7 +2,7 @@ use std::{collections::HashMap, iter::FromIterator};
 
 use serde::{Deserialize, Serialize};
 
-use crate::lib::ast::{
+use crate::ast::{
     ddl::{Column, CreateTableQuery},
     predule::{ForeignKey, TableName, UniqueKey},
 };

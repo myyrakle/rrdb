@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{Index, JoinType, SQLExpression, TableName};
+use crate::ast::predule::{Index, JoinType, SQLExpression, TableName};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JoinPlan {

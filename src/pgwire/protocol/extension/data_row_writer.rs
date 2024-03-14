@@ -1,7 +1,7 @@
 use bytes::BufMut;
 use chrono::{NaiveDate, NaiveDateTime};
 
-use crate::lib::pgwire::protocol::FormatCode;
+use crate::pgwire::protocol::FormatCode;
 
 use super::DataRowBatch;
 

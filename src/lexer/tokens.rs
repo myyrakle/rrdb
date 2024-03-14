@@ -2,8 +2,8 @@ use std::convert::TryInto;
 use std::error::Error;
 
 use super::predule::OperatorToken;
-use crate::lib::ast::predule::BinaryOperator;
-use crate::lib::errors::predule::IntoError;
+use crate::ast::predule::BinaryOperator;
+use crate::errors::predule::IntoError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {

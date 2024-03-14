@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use tokio_util::codec::{Decoder, Encoder};
 
-use crate::lib::pgwire::protocol::ProtocolError;
+use crate::pgwire::protocol::ProtocolError;
 
 use super::{
     BackendMessage, Bind, BindFormat, ClientMessage, Describe, Execute, FormatCode, Parse, Startup,

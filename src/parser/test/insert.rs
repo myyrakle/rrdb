@@ -1,10 +1,10 @@
 #![cfg(test)]
 
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     InsertQuery, InsertValue, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
 };
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn insert_into_values_1() {

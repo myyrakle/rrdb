@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::TableName;
+use crate::ast::predule::TableName;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]

@@ -3,10 +3,10 @@ use std::error::Error;
 use std::io::ErrorKind;
 use std::iter::FromIterator;
 
-use crate::lib::ast::dml::InsertData;
-use crate::lib::ast::predule::{InsertQuery, SQLExpression};
-use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::predule::{
+use crate::ast::dml::InsertData;
+use crate::ast::predule::{InsertQuery, SQLExpression};
+use crate::errors::predule::ExecuteError;
+use crate::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
     StorageEncoder, TableConfig, TableDataField, TableDataRow,
 };

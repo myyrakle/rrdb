@@ -6,10 +6,10 @@ use std::error::Error;
 use futures::future::join_all;
 use itertools::Itertools;
 
-use crate::lib::ast::dml::BinaryOperatorExpression;
-use crate::lib::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column, BuiltInFunction, Function,  AggregateFunction};
-use crate::lib::errors::predule::{TypeError, ExecuteError};
-use crate::lib::executor::predule::{TableDataFieldType, TableDataRow, Executor, ExecuteColumnType};
+use crate::ast::dml::BinaryOperatorExpression;
+use crate::ast::predule::{SQLExpression, TableName, BinaryOperator, UnaryOperator, Column, BuiltInFunction, Function,  AggregateFunction};
+use crate::errors::predule::{TypeError, ExecuteError};
+use crate::executor::predule::{TableDataFieldType, TableDataRow, Executor, ExecuteColumnType};
 
 #[derive(Debug, Default, Clone)]
 pub struct ReduceContext {

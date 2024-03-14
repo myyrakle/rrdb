@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{DMLStatement, InsertValue, SQLStatement, SelectQuery, TableName};
+use crate::ast::predule::{DMLStatement, InsertValue, SQLStatement, SelectQuery, TableName};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InsertQuery {

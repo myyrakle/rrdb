@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 use futures::future::join_all;
 
-use crate::lib::ast::predule::TableName;
-use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::predule::{Executor, StorageEncoder, TableDataRow};
+use crate::ast::predule::TableName;
+use crate::errors::predule::ExecuteError;
+use crate::executor::predule::{Executor, StorageEncoder, TableDataRow};
 
 impl Executor {
     pub async fn full_scan(

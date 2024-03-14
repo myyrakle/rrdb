@@ -1,8 +1,8 @@
 use itertools::Itertools;
 
-use crate::lib::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
+use crate::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
 
-use crate::lib::executor::predule::TableDataFieldType;
+use crate::executor::predule::TableDataFieldType;
 
 #[derive(Debug, Clone)]
 pub struct ExecuteResult {

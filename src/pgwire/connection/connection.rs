@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
-use crate::lib::{
+use crate::{
     ast::predule::{OtherStatement, SQLStatement},
     executor::executor::Executor,
     logger::predule::Logger,

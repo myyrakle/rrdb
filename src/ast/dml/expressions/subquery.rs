@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{SQLExpression, SelectQuery};
+use crate::ast::predule::{SQLExpression, SelectQuery};
 
 use serde::{Deserialize, Serialize};
 

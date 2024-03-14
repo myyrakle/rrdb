@@ -1,4 +1,4 @@
-use crate::lib::pgwire::protocol::DataTypeOid;
+use crate::pgwire::protocol::DataTypeOid;
 
 #[derive(Debug)]
 pub struct Parse {

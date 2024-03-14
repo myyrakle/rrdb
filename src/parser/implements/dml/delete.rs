@@ -1,10 +1,10 @@
 use std::error::Error;
 
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::parser::predule::{Parser, ParserContext};
 
-use crate::lib::ast::predule::DeleteQuery;
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
+use crate::ast::predule::DeleteQuery;
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::Token;
 
 impl Parser {
     pub(crate) fn handle_delete_query(

@@ -14,9 +14,9 @@ pub mod server;
 pub mod utils;
 
 use command::commands::{Command, SubCommand};
-use lib::constants::predule::{DEFAULT_HOST, DEFAULT_PORT};
-use lib::executor::predule::Executor;
-use lib::server::predule::{Server, ServerOption};
+use constants::predule::{DEFAULT_HOST, DEFAULT_PORT};
+use executor::predule::Executor;
+use server::predule::{Server, ServerOption};
 
 use clap::Parser;
 

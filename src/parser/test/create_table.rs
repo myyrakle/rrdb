@@ -1,9 +1,9 @@
 #![cfg(test)]
 
-use crate::lib::ast::ddl::CreateTableQuery;
-use crate::lib::ast::types::{Column, DataType, TableName};
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::ast::ddl::CreateTableQuery;
+use crate::ast::types::{Column, DataType, TableName};
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn create_table() {

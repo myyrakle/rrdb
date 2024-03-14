@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{ScanType, TableName};
+use crate::ast::predule::{ScanType, TableName};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UpdateFromPlan {

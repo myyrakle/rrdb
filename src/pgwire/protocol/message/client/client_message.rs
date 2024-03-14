@@ -1,4 +1,4 @@
-use crate::lib::pgwire::protocol::{Bind, Describe, Execute, Parse, Startup};
+use crate::pgwire::protocol::{Bind, Describe, Execute, Parse, Startup};
 
 #[derive(Debug)]
 pub enum ClientMessage {

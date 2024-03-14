@@ -1,5 +1,5 @@
-use crate::lib::ast::predule::SQLStatement;
-use crate::lib::pgwire::protocol::FieldDescription;
+use crate::ast::predule::SQLStatement;
+use crate::pgwire::protocol::FieldDescription;
 
 #[derive(Debug, Clone)]
 pub struct PreparedStatement {

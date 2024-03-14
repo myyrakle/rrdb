@@ -1,7 +1,7 @@
 use bytes::BytesMut;
 use tokio_util::codec::Encoder;
 
-use crate::lib::pgwire::protocol::{ConnectionCodec, FormatCode, ProtocolError, RowDescription};
+use crate::pgwire::protocol::{ConnectionCodec, FormatCode, ProtocolError, RowDescription};
 
 use super::data_row_writer::DataRowWriter;
 

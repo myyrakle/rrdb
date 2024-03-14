@@ -1,11 +1,11 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::lib::ast::ddl::DropTableQuery;
-use crate::lib::ast::predule::TableName;
-use crate::lib::errors::predule::ExecuteError;
-use crate::lib::executor::predule::{ExecuteResult, Executor};
-use crate::lib::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
+use crate::ast::ddl::DropTableQuery;
+use crate::ast::predule::TableName;
+use crate::errors::predule::ExecuteError;
+use crate::executor::predule::{ExecuteResult, Executor};
+use crate::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
 impl Executor {
     pub async fn drop_table(

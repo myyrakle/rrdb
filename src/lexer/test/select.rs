@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::lib::lexer::predule::{Token, Tokenizer};
+use crate::lexer::predule::{Token, Tokenizer};
 
 #[test]
 pub fn select_1() {

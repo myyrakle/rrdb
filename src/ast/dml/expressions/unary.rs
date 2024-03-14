@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{SQLExpression, UnaryOperator};
+use crate::ast::predule::{SQLExpression, UnaryOperator};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]

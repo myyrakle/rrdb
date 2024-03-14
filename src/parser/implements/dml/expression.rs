@@ -1,15 +1,15 @@
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, BuiltInFunction, CallExpression,
     ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, SelectColumn,
     UnaryOperator, UnaryOperatorExpression, UserDefinedFunction,
 };
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::Token;
-use crate::lib::parser::predule::Parser;
-use crate::lib::parser::predule::ParserContext;
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::Token;
+use crate::parser::predule::Parser;
+use crate::parser::predule::ParserContext;
 
 impl Parser {
     pub(crate) fn parse_expression(

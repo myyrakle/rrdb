@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::lib::pgwire::protocol::{DataRowBatch, ErrorResponse};
+use crate::pgwire::protocol::{DataRowBatch, ErrorResponse};
 
 /// A Postgres portal. Portals represent a prepared statement with all parameters specified.
 ///

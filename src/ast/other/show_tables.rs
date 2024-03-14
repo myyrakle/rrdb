@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{OtherStatement, SQLStatement};
+use crate::ast::predule::{OtherStatement, SQLStatement};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ShowTablesQuery {

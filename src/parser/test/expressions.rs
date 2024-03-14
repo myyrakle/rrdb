@@ -1,13 +1,13 @@
 #![cfg(test)]
 
-use crate::lib::ast::dml::ParenthesesExpression;
-use crate::lib::ast::predule::{
+use crate::ast::dml::ParenthesesExpression;
+use crate::ast::predule::{
     BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression,
     ConditionalFunction, ListExpression, NotBetweenExpression, SQLExpression, SelectItem,
     SelectQuery, UnaryOperator, UnaryOperatorExpression, UserDefinedFunction,
 };
-use crate::lib::parser::context::ParserContext;
-use crate::lib::parser::predule::Parser;
+use crate::parser::context::ParserContext;
+use crate::parser::predule::Parser;
 
 #[test]
 pub fn unary_expression_1() {

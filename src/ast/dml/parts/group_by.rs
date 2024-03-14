@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::SelectColumn;
+use crate::ast::predule::SelectColumn;
 
 use serde::{Deserialize, Serialize};
 

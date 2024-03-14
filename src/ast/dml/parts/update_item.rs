@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::SQLExpression;
+use crate::ast::predule::SQLExpression;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpdateItem {

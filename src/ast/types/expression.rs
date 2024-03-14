@@ -1,10 +1,10 @@
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     BetweenExpression, BinaryOperatorExpression, CallExpression, ListExpression,
     NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
     UnaryOperatorExpression, WhereClause,
 };
-use crate::lib::executor::config::TableDataFieldType;
-use crate::lib::utils::collection::join_vec;
+use crate::executor::config::TableDataFieldType;
+use crate::utils::collection::join_vec;
 
 use serde::{Deserialize, Serialize};
 

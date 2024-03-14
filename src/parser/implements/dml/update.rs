@@ -1,9 +1,9 @@
 use std::error::Error;
 
-use crate::lib::ast::predule::{UpdateItem, UpdateQuery, WhereClause};
-use crate::lib::errors::predule::ParsingError;
-use crate::lib::lexer::predule::{OperatorToken, Token};
-use crate::lib::parser::predule::{Parser, ParserContext};
+use crate::ast::predule::{UpdateItem, UpdateQuery, WhereClause};
+use crate::errors::predule::ParsingError;
+use crate::lexer::predule::{OperatorToken, Token};
+use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     pub(crate) fn handle_update_query(

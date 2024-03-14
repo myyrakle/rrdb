@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use bytes::{BufMut, BytesMut};
 
-use crate::lib::pgwire::protocol::{BackendMessage, Severity, SqlState};
+use crate::pgwire::protocol::{BackendMessage, Severity, SqlState};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub struct ErrorResponse {

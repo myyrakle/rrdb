@@ -1,4 +1,4 @@
-use crate::lib::ast::predule::{
+use crate::ast::predule::{
     FilterPlan, GroupByClause, JoinPlan, LimitOffsetPlan, OrderByClause, SelectFromPlan,
     SelectSubqueryPlan,
 };
