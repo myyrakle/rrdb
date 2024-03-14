@@ -1,9 +1,16 @@
-use crate::ast::ddl::{
-    AlterDatabaseQuery, AlterTableQuery, CreateDatabaseQuery, CreateIndexQuery, CreateTableQuery,
-    DropDatabaseQuery, DropTableQuery,
+use crate::ast::{
+    ddl::{
+        alter_database::AlterDatabaseQuery, alter_table::AlterTableQuery,
+        create_database::CreateDatabaseQuery, create_index::CreateIndexQuery,
+        create_table::CreateTableQuery, drop_database::DropDatabaseQuery,
+        drop_table::DropTableQuery,
+    },
+    dml::{delete::DeleteQuery, insert::InsertQuery, select::SelectQuery, update::UpdateQuery},
+    other::{
+        desc_table::DescTableQuery, show_databases::ShowDatabasesQuery,
+        show_tables::ShowTablesQuery, use_database::UseDatabaseQuery,
+    },
 };
-use crate::ast::dml::{DeleteQuery, InsertQuery, SelectQuery, UpdateQuery};
-use crate::ast::other::{DescTableQuery, ShowDatabasesQuery, ShowTablesQuery, UseDatabaseQuery};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SQLStatement {

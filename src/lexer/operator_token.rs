@@ -1,7 +1,9 @@
 use std::{convert::TryInto, error::Error};
 
-use crate::ast::predule::{BinaryOperator, UnaryOperator};
-use crate::errors::predule::IntoError;
+use crate::{
+    ast::dml::expressions::operators::{BinaryOperator, UnaryOperator},
+    errors::predule::IntoError,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OperatorToken {

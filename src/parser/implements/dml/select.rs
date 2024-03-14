@@ -2,11 +2,13 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FromIterator;
 
-use crate::ast::dml::{OrderByNulls, SelectWildCard};
-use crate::ast::predule::{
-    GroupByItem, HavingClause, JoinClause, JoinType, OrderByItem, OrderByType, SelectItem,
-    SelectQuery, WhereClause,
-};
+use crate::ast::dml::parts::_where::WhereClause;
+use crate::ast::dml::parts::group_by::GroupByItem;
+use crate::ast::dml::parts::having::HavingClause;
+use crate::ast::dml::parts::join::{JoinClause, JoinType};
+use crate::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
+use crate::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
+use crate::ast::dml::select::SelectQuery;
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::{OperatorToken, Token};
 use crate::parser::predule::{Parser, ParserContext};

@@ -1,6 +1,8 @@
-use crate::ast::predule::{
-    FilterPlan, GroupByClause, JoinPlan, LimitOffsetPlan, OrderByClause, SelectFromPlan,
-    SelectSubqueryPlan,
+use crate::ast::dml::parts::{group_by::GroupByClause, order_by::OrderByClause};
+
+use super::{
+    filter::FilterPlan, from::SelectFromPlan, join::JoinPlan, limit_offset::LimitOffsetPlan,
+    subquery::SelectSubqueryPlan,
 };
 
 #[derive(Clone, Debug, PartialEq)]

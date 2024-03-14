@@ -1,9 +1,11 @@
-use crate::ast::ddl::{
+use crate::ast::ddl::alter_table::{
     AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault, AlterColumnSetNotNull,
     AlterColumnSetType, AlterTableAddColumn, AlterTableAlterColumn, AlterTableDropColumn,
     AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
 };
-use crate::ast::predule::{CreateTableQuery, DropTableQuery, SQLStatement};
+use crate::ast::ddl::create_table::CreateTableQuery;
+use crate::ast::ddl::drop_database::SQLStatement;
+use crate::ast::ddl::drop_table::DropTableQuery;
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
 use crate::parser::context::ParserContext;

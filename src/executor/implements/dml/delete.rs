@@ -3,11 +3,12 @@ use std::error::Error;
 
 use futures::future::join_all;
 
-use crate::ast::dml::{DeletePlanItem, DeleteQuery};
-use crate::ast::predule::ScanType;
+use crate::ast::dml::delete::DeleteQuery;
+use crate::ast::dml::plan::delete::delete_plan::DeletePlanItem;
+use crate::ast::dml::plan::select::scan::ScanType;
 use crate::errors::predule::ExecuteError;
 use crate::errors::type_error::TypeError;
-use crate::executor::config::TableDataFieldType;
+use crate::executor::config::row::TableDataFieldType;
 use crate::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
 };

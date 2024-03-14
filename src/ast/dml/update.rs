@@ -1,6 +1,6 @@
-use crate::ast::predule::{DMLStatement, SQLStatement, TableName, UpdateItem, WhereClause};
+use crate::ast::predule::{DMLStatement, SQLStatement, TableName};
 
-use super::UpdateTarget;
+use super::parts::{_where::WhereClause, target::UpdateTarget, update_item::UpdateItem};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpdateQuery {

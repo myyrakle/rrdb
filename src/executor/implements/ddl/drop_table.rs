@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::ast::ddl::DropTableQuery;
+use crate::ast::ddl::drop_table::DropTableQuery;
 use crate::ast::predule::TableName;
 use crate::errors::predule::ExecuteError;
 use crate::executor::predule::{ExecuteResult, Executor};

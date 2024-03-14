@@ -2,13 +2,14 @@ use path_absolutize::*;
 use std::error::Error;
 use std::path::PathBuf;
 
-use crate::ast::predule::{
-    CreateDatabaseQuery, DDLStatement, DMLStatement, OtherStatement, SQLStatement,
-};
+use crate::ast::ddl::create_database::CreateDatabaseQuery;
+use crate::ast::predule::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::errors::execute_error::ExecuteError;
-use crate::executor::predule::{ExecuteResult, GlobalConfig};
+use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
 use crate::utils::predule::set_system_env;
+
+use super::config::global::GlobalConfig;
 
 pub struct Executor {}
 

@@ -1,11 +1,21 @@
 use std::error::Error;
 
-use crate::ast::{
-    dml::{
-        DeleteFromPlan, DeletePlan, DeleteQuery, FilterPlan, FromTarget, LimitOffsetPlan, ScanType,
-        SelectFromPlan, SelectPlanItem, UpdateFromPlan, UpdatePlan, UpdateQuery,
+use crate::ast::dml::{
+    delete::DeleteQuery,
+    parts::from::FromTarget,
+    plan::{
+        delete::{delete_plan::DeletePlan, from::DeleteFromPlan},
+        select::{
+            filter::FilterPlan,
+            from::SelectFromPlan,
+            limit_offset::LimitOffsetPlan,
+            scan::ScanType,
+            select_plan::{SelectPlan, SelectPlanItem},
+        },
+        update::{from::UpdateFromPlan, update_plan::UpdatePlan},
     },
-    predule::{SelectPlan, SelectQuery},
+    select::SelectQuery,
+    update::UpdateQuery,
 };
 
 pub struct Optimizer {}

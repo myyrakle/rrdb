@@ -1,7 +1,7 @@
 //use crate::ast::enums::SQLStatement;
 use crate::ast::predule::{Column, DataType, SQLExpression, SQLStatement, TableName};
 
-use super::DDLStatement;
+use super::drop_database::DDLStatement;
 
 /*
 ALTER TABLE [database_name.]table_name

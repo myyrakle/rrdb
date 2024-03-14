@@ -1,8 +1,10 @@
 use std::error::Error;
 
-use crate::ast::other::UseDatabaseQuery;
-use crate::executor::predule::{
-    ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
+use crate::{
+    ast::other::use_database::UseDatabaseQuery,
+    executor::predule::{
+        ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
+    },
 };
 
 impl Executor {

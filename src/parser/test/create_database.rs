@@ -1,5 +1,5 @@
 #![cfg(test)]
-use crate::ast::ddl::CreateDatabaseQuery;
+use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

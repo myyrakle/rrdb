@@ -1,6 +1,7 @@
 use std::error::Error;
 
-use crate::ast::predule::{InsertQuery, InsertValue};
+use crate::ast::dml::insert::InsertQuery;
+use crate::ast::dml::parts::insert_values::InsertValue;
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::{Parser, ParserContext};

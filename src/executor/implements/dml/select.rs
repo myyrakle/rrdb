@@ -4,12 +4,16 @@ use std::error::Error;
 
 use futures::future::join_all;
 
-use crate::ast::dml::{OrderByNulls, OrderByType, SelectItem, SelectKind};
-use crate::ast::predule::{SQLExpression, ScanType, SelectColumn, SelectPlanItem, SelectQuery};
+use crate::ast::dml::parts::order_by::{OrderByNulls, OrderByType};
+use crate::ast::dml::parts::select_item::{SelectItem, SelectKind};
+use crate::ast::dml::plan::select::scan::ScanType;
+use crate::ast::dml::plan::select::select_plan::SelectPlanItem;
+use crate::ast::dml::select::SelectQuery;
+use crate::ast::predule::{SQLExpression, SelectColumn};
 use crate::errors::type_error::TypeError;
-use crate::executor::config::{TableDataField, TableDataFieldType};
+use crate::executor::config::row::{TableDataField, TableDataFieldType, TableDataRow};
 use crate::executor::predule::{
-    ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext, TableDataRow,
+    ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
 };
 use crate::optimizer::predule::Optimizer;
 

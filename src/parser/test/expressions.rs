@@ -1,11 +1,16 @@
 #![cfg(test)]
 
-use crate::ast::dml::ParenthesesExpression;
-use crate::ast::predule::{
-    BetweenExpression, BinaryOperator, BinaryOperatorExpression, CallExpression,
-    ConditionalFunction, ListExpression, NotBetweenExpression, SQLExpression, SelectItem,
-    SelectQuery, UnaryOperator, UnaryOperatorExpression, UserDefinedFunction,
-};
+use crate::ast::dml::expressions::between::BetweenExpression;
+use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
+use crate::ast::dml::expressions::call::CallExpression;
+use crate::ast::dml::expressions::list::ListExpression;
+use crate::ast::dml::expressions::not_between::NotBetweenExpression;
+use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
+use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
+use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
+use crate::ast::dml::parts::select_item::SelectItem;
+use crate::ast::dml::select::SelectQuery;
+use crate::ast::predule::{ConditionalFunction, SQLExpression, UserDefinedFunction};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

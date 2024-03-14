@@ -3,12 +3,14 @@ use std::error::Error;
 use std::io::ErrorKind;
 use std::iter::FromIterator;
 
-use crate::ast::dml::InsertData;
-use crate::ast::predule::{InsertQuery, SQLExpression};
+use crate::ast::dml::insert::{InsertData, InsertQuery};
+use crate::ast::predule::SQLExpression;
 use crate::errors::predule::ExecuteError;
+use crate::executor::config::row::{TableDataField, TableDataRow};
+use crate::executor::config::table::TableConfig;
+use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
-    StorageEncoder, TableConfig, TableDataField, TableDataRow,
 };
 
 impl Executor {

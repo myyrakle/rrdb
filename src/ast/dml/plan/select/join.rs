@@ -1,4 +1,7 @@
-use crate::ast::predule::{Index, JoinType, SQLExpression, TableName};
+use crate::ast::{
+    dml::parts::join::JoinType,
+    predule::{Index, SQLExpression, TableName},
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct JoinPlan {

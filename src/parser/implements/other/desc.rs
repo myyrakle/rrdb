@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::ast::other::DescTableQuery;
+use crate::ast::other::desc_table::DescTableQuery;
 use crate::ast::predule::SQLStatement;
 use crate::errors::predule::ParsingError;
 use crate::parser::predule::{Parser, ParserContext};

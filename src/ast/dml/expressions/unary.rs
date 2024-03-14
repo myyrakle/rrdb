@@ -1,5 +1,7 @@
-use crate::ast::predule::{SQLExpression, UnaryOperator};
+use crate::ast::predule::SQLExpression;
 use serde::{Deserialize, Serialize};
+
+use super::operators::UnaryOperator;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct UnaryOperatorExpression {

@@ -1,5 +1,6 @@
-use crate::ast::predule::{FromClause, FromTarget};
 use serde::{Deserialize, Serialize};
+
+use crate::ast::dml::parts::from::{FromClause, FromTarget};
 
 // [database_name.]table_name
 // 테이블명을 가리키는 값입니다.

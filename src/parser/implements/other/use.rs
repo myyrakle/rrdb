@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::ast::other::UseDatabaseQuery;
+use crate::ast::other::use_database::UseDatabaseQuery;
 use crate::ast::predule::SQLStatement;
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;

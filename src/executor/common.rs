@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use super::config::TableConfig;
-use super::encoder::StorageEncoder;
+use super::config::table::TableConfig;
+use super::encoder::storage::StorageEncoder;
 use super::predule::Executor;
 use crate::ast::predule::TableName;
 use crate::errors::execute_error::ExecuteError;

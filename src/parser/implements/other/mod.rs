@@ -1,12 +1,5 @@
-pub mod show;
-pub use show::*;
-
 pub mod backslash_command;
-pub use backslash_command::*;
-
+pub mod desc;
+pub mod show;
 #[path = "./use.rs"]
 pub mod use_;
-pub use use_::*;
-
-pub mod desc;
-pub use desc::*;

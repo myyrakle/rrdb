@@ -1,11 +1,15 @@
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 
-use crate::ast::predule::{
-    BetweenExpression, BinaryOperator, BinaryOperatorExpression, BuiltInFunction, CallExpression,
-    ListExpression, NotBetweenExpression, ParenthesesExpression, SQLExpression, SelectColumn,
-    UnaryOperator, UnaryOperatorExpression, UserDefinedFunction,
-};
+use crate::ast::dml::expressions::between::BetweenExpression;
+use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
+use crate::ast::dml::expressions::call::CallExpression;
+use crate::ast::dml::expressions::list::ListExpression;
+use crate::ast::dml::expressions::not_between::NotBetweenExpression;
+use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
+use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
+use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
+use crate::ast::predule::{BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction};
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::Parser;

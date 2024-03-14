@@ -1,7 +1,10 @@
 #![cfg(test)]
 
-use crate::ast::other::{DescTableQuery, ShowTablesQuery, UseDatabaseQuery};
-use crate::ast::predule::{ShowDatabasesQuery, TableName};
+use crate::ast::other::desc_table::DescTableQuery;
+use crate::ast::other::show_databases::ShowDatabasesQuery;
+use crate::ast::other::show_tables::ShowTablesQuery;
+use crate::ast::other::use_database::UseDatabaseQuery;
+use crate::ast::predule::TableName;
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

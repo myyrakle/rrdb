@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::ast::ddl::DropTableQuery;
+use crate::ast::ddl::drop_table::DropTableQuery;
 use crate::ast::types::TableName;
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;

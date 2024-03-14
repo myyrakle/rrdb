@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::ast::ddl::CreateTableQuery;
+use crate::ast::ddl::create_table::CreateTableQuery;
 use crate::ast::types::{Column, DataType, TableName};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;

@@ -1,9 +1,11 @@
 #![cfg(test)]
 
-use crate::ast::predule::{
-    BinaryOperator, BinaryOperatorExpression, SQLExpression, SelectColumn, TableName, UpdateItem,
-    UpdateQuery, WhereClause,
-};
+use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
+use crate::ast::dml::expressions::operators::BinaryOperator;
+use crate::ast::dml::parts::_where::WhereClause;
+use crate::ast::dml::parts::update_item::UpdateItem;
+use crate::ast::dml::update::UpdateQuery;
+use crate::ast::predule::{SQLExpression, SelectColumn, TableName};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

@@ -1,8 +1,8 @@
 use std::error::Error;
 
+use crate::ast::dml::delete::DeleteQuery;
 use crate::parser::predule::{Parser, ParserContext};
 
-use crate::ast::predule::DeleteQuery;
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
 

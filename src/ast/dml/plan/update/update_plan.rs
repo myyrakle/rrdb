@@ -1,6 +1,6 @@
-use crate::ast::predule::FilterPlan;
+use crate::ast::dml::plan::select::filter::FilterPlan;
 
-use super::UpdateFromPlan;
+use super::from::UpdateFromPlan;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UpdatePlan {

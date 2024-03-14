@@ -3,12 +3,13 @@ use std::error::Error;
 
 use futures::future::join_all;
 
-use crate::ast::dml::{UpdatePlanItem, UpdateQuery};
-use crate::ast::predule::ScanType;
+use crate::ast::dml::plan::select::scan::ScanType;
+use crate::ast::dml::plan::update::update_plan::UpdatePlanItem;
+use crate::ast::dml::update::UpdateQuery;
 use crate::errors::predule::ExecuteError;
 use crate::errors::type_error::TypeError;
-use crate::executor::config::TableDataFieldType;
-use crate::executor::encoder::StorageEncoder;
+use crate::executor::config::row::TableDataFieldType;
+use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
 };

@@ -1,4 +1,4 @@
-use crate::ast::predule::{SubqueryExpression, TableName};
+use crate::ast::{dml::expressions::subquery::SubqueryExpression, predule::TableName};
 
 use serde::{Deserialize, Serialize};
 

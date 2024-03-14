@@ -6,7 +6,9 @@ use futures::future::join_all;
 
 use crate::ast::predule::TableName;
 use crate::errors::predule::ExecuteError;
-use crate::executor::predule::{Executor, StorageEncoder, TableDataRow};
+use crate::executor::config::row::TableDataRow;
+use crate::executor::encoder::storage::StorageEncoder;
+use crate::executor::predule::Executor;
 
 impl Executor {
     pub async fn full_scan(

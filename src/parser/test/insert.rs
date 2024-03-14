@@ -1,8 +1,10 @@
 #![cfg(test)]
 
-use crate::ast::predule::{
-    InsertQuery, InsertValue, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
-};
+use crate::ast::dml::insert::InsertQuery;
+use crate::ast::dml::parts::insert_values::InsertValue;
+use crate::ast::dml::parts::select_item::SelectItem;
+use crate::ast::dml::select::SelectQuery;
+use crate::ast::predule::{SQLExpression, SelectColumn, TableName};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

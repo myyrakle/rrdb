@@ -1,12 +1,13 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::ast::ddl::AlterColumnAction;
-use crate::ast::predule::{AlterTableAction, AlterTableQuery, TableName};
+use crate::ast::ddl::alter_table::{AlterColumnAction, AlterTableAction, AlterTableQuery};
+use crate::ast::predule::TableName;
 use crate::errors::predule::ExecuteError;
+use crate::executor::config::table::TableConfig;
+use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
-    StorageEncoder, TableConfig,
 };
 
 impl Executor {

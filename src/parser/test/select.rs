@@ -1,11 +1,15 @@
 #![cfg(test)]
 
-use crate::ast::dml::{OrderByNulls, SelectWildCard};
-use crate::ast::predule::{
-    BinaryOperator, BinaryOperatorExpression, GroupByItem, HavingClause, JoinClause, JoinType,
-    OrderByItem, OrderByType, SQLExpression, SelectColumn, SelectItem, SelectQuery, TableName,
-    WhereClause,
-};
+use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
+use crate::ast::dml::expressions::operators::BinaryOperator;
+use crate::ast::dml::parts::_where::WhereClause;
+use crate::ast::dml::parts::group_by::GroupByItem;
+use crate::ast::dml::parts::having::HavingClause;
+use crate::ast::dml::parts::join::{JoinClause, JoinType};
+use crate::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
+use crate::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
+use crate::ast::dml::select::SelectQuery;
+use crate::ast::predule::{SQLExpression, SelectColumn, TableName};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

@@ -3,11 +3,12 @@ use std::io::ErrorKind;
 
 use futures::future::join_all;
 
-use crate::ast::predule::ShowDatabasesQuery;
+use crate::ast::other::show_databases::ShowDatabasesQuery;
 use crate::errors::predule::ExecuteError;
+use crate::executor::config::database::DatabaseConfig;
+use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
-    DatabaseConfig, ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
-    Executor, StorageEncoder,
+    ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
 };
 
 impl Executor {

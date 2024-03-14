@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
 
-use crate::executor::predule::TableDataFieldType;
+use super::config::row::TableDataFieldType;
 
 #[derive(Debug, Clone)]
 pub struct ExecuteResult {

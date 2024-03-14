@@ -1,9 +1,11 @@
-use crate::ast::ddl::{AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo};
-use crate::parser::predule::Parser;
-
-use crate::ast::predule::{CreateDatabaseQuery, DropDatabaseQuery, SQLStatement};
+use crate::ast::ddl::alter_database::{
+    AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo,
+};
+use crate::ast::ddl::create_database::CreateDatabaseQuery;
+use crate::ast::ddl::drop_database::{DropDatabaseQuery, SQLStatement};
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
+use crate::parser::predule::Parser;
 use std::error::Error;
 
 impl Parser {

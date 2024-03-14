@@ -1,11 +1,12 @@
 use std::error::Error;
 use std::io::ErrorKind;
 
-use crate::ast::other::DescTableQuery;
+use crate::ast::other::desc_table::DescTableQuery;
 use crate::errors::predule::ExecuteError;
+use crate::executor::config::table::TableConfig;
+use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
-    StorageEncoder, TableConfig,
 };
 
 impl Executor {

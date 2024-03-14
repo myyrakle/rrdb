@@ -1,13 +1,20 @@
 #![cfg(test)]
-use crate::ast::ddl::{
-    AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault, AlterColumnSetNotNull,
-    AlterColumnSetType, AlterTableAlterColumn, AlterTableDropColumn, AlterTableRenameColumn,
+
+use crate::{
+    ast::{
+        ddl::{
+            alter_table::{
+                AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault,
+                AlterColumnSetNotNull, AlterColumnSetType, AlterTableAddColumn,
+                AlterTableAlterColumn, AlterTableDropColumn, AlterTableQuery,
+                AlterTableRenameColumn, AlterTableRenameTo,
+            },
+            drop_database::Column,
+        },
+        predule::{DataType, SQLExpression, TableName},
+    },
+    parser::predule::{Parser, ParserContext},
 };
-use crate::ast::predule::{
-    AlterTableAddColumn, AlterTableQuery, AlterTableRenameTo, Column, DataType, SQLExpression,
-    TableName,
-};
-use crate::parser::predule::{Parser, ParserContext};
 
 #[test]
 pub fn alter_table_rename_1() {

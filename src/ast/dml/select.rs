@@ -1,12 +1,22 @@
-use crate::ast::predule::{
-    DMLStatement, FromClause, FromTarget, GroupByClause, GroupByItem, HavingClause, JoinClause,
-    OrderByClause, OrderByItem, SQLExpression, SQLStatement, SelectColumn, SelectItem,
-    SubqueryExpression, TableName, WhereClause,
-};
-
 use serde::{Deserialize, Serialize};
 
-use super::{SelectKind, SelectWildCard};
+use crate::ast::{
+    ddl::drop_database::SQLStatement,
+    predule::{DMLStatement, SQLExpression, SelectColumn, TableName},
+};
+
+use super::{
+    expressions::subquery::SubqueryExpression,
+    parts::{
+        _where::WhereClause,
+        from::{FromClause, FromTarget},
+        group_by::{GroupByClause, GroupByItem},
+        having::HavingClause,
+        join::JoinClause,
+        order_by::{OrderByClause, OrderByItem},
+        select_item::{SelectItem, SelectKind, SelectWildCard},
+    },
+};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct SelectQuery {

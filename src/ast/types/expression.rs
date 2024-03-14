@@ -1,12 +1,20 @@
-use crate::ast::predule::{
-    BetweenExpression, BinaryOperatorExpression, CallExpression, ListExpression,
-    NotBetweenExpression, ParenthesesExpression, SelectColumn, SubqueryExpression,
-    UnaryOperatorExpression, WhereClause,
+use crate::{
+    ast::dml::{
+        expressions::{
+            between::BetweenExpression, binary::BinaryOperatorExpression, call::CallExpression,
+            list::ListExpression, not_between::NotBetweenExpression,
+            parentheses::ParenthesesExpression, subquery::SubqueryExpression,
+            unary::UnaryOperatorExpression,
+        },
+        parts::_where::WhereClause,
+    },
+    executor::config::row::TableDataFieldType,
+    utils::collection::join_vec,
 };
-use crate::executor::config::TableDataFieldType;
-use crate::utils::collection::join_vec;
 
 use serde::{Deserialize, Serialize};
+
+use super::select_column::SelectColumn;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub enum SQLExpression {

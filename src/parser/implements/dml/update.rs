@@ -1,6 +1,8 @@
 use std::error::Error;
 
-use crate::ast::predule::{UpdateItem, UpdateQuery, WhereClause};
+use crate::ast::dml::parts::_where::WhereClause;
+use crate::ast::dml::parts::update_item::UpdateItem;
+use crate::ast::dml::update::UpdateQuery;
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::{OperatorToken, Token};
 use crate::parser::predule::{Parser, ParserContext};

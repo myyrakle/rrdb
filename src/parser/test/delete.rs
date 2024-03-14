@@ -1,9 +1,10 @@
 #![cfg(test)]
 
-use crate::ast::predule::{
-    BinaryOperator, BinaryOperatorExpression, DeleteQuery, SQLExpression, SelectColumn, TableName,
-    WhereClause,
-};
+use crate::ast::dml::delete::DeleteQuery;
+use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
+use crate::ast::dml::expressions::operators::BinaryOperator;
+use crate::ast::dml::parts::_where::WhereClause;
+use crate::ast::predule::{SQLExpression, SelectColumn, TableName};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 
