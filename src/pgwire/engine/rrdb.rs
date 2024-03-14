@@ -5,7 +5,8 @@ use crate::ast::predule::SQLStatement;
 use crate::executor::predule::ExecuteResult;
 use crate::executor::result::ExecuteField;
 use crate::pgwire::engine::{Engine, Portal};
-use crate::pgwire::protocol::{DataRowBatch, ErrorResponse, FieldDescription, SqlState};
+use crate::pgwire::protocol::backend::{ErrorResponse, FieldDescription};
+use crate::pgwire::protocol::{DataRowBatch, SqlState};
 use crate::server::predule::{ChannelRequest, ChannelResponse, SharedState};
 
 #[derive(Debug, Clone)]

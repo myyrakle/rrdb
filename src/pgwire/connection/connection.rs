@@ -14,10 +14,13 @@ use crate::{
         connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
         engine::{Engine, Portal, RRDBEngine},
         protocol::{
-            AuthenticationOk, BindComplete, BindFormat, ClientMessage, CommandComplete,
-            ConnectionCodec, DataRowBatch, Describe, EmptyQueryResponse, ErrorResponse, FormatCode,
-            NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
-            RowDescription, Severity, SqlState,
+            backend::{
+                AuthenticationOk, BindComplete, CommandComplete, EmptyQueryResponse, ErrorResponse,
+                NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
+                RowDescription,
+            },
+            client::{BindFormat, ClientMessage, Describe},
+            ConnectionCodec, DataRowBatch, FormatCode, Severity, SqlState,
         },
     },
     server::predule::SharedState,

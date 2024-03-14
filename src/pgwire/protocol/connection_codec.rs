@@ -6,8 +6,9 @@ use tokio_util::codec::{Decoder, Encoder};
 use crate::pgwire::protocol::ProtocolError;
 
 use super::{
-    BackendMessage, Bind, BindFormat, ClientMessage, Describe, Execute, FormatCode, Parse, Startup,
-    MESSAGE_HEADER_SIZE, STARTUP_HEADER_SIZE,
+    backend::BackendMessage,
+    client::{Bind, BindFormat, ClientMessage, Describe, Execute, Parse, Startup},
+    FormatCode, MESSAGE_HEADER_SIZE, STARTUP_HEADER_SIZE,
 };
 
 #[derive(Default, Debug)]

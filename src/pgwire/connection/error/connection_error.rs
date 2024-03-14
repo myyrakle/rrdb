@@ -1,4 +1,4 @@
-use crate::pgwire::protocol::{ErrorResponse, ProtocolError};
+use crate::pgwire::protocol::{backend::ErrorResponse, ProtocolError};
 
 /// Describes an error that may or may not result in the termination of a connection.
 #[derive(thiserror::Error, Debug)]
