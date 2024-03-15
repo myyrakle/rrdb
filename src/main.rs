@@ -1,12 +1,22 @@
 use std::error::Error;
 
+pub mod ast;
 pub mod command;
-pub mod lib;
+pub mod constants;
+pub mod errors;
+pub mod executor;
+pub mod lexer;
+pub mod logger;
+pub mod optimizer;
+pub mod parser;
+pub mod pgwire;
+pub mod server;
+pub mod utils;
 
 use command::commands::{Command, SubCommand};
-use lib::constants::predule::{DEFAULT_HOST, DEFAULT_PORT};
-use lib::executor::predule::Executor;
-use lib::server::predule::{Server, ServerOption};
+use constants::predule::{DEFAULT_HOST, DEFAULT_PORT};
+use executor::predule::Executor;
+use server::predule::{Server, ServerOption};
 
 use clap::Parser;
 
