@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::ast::{
     ddl::drop_database::SQLStatement,
-    predule::{DMLStatement, SQLExpression, SelectColumn, TableName},
+    types::{SQLExpression, SelectColumn, TableName},
+    DMLStatement,
 };
 
 use super::{

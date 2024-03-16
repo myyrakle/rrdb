@@ -2,7 +2,7 @@ use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::alter_table::{AlterColumnAction, AlterTableAction, AlterTableQuery};
-use crate::ast::predule::TableName;
+use crate::ast::types::TableName;
 use crate::errors::predule::ExecuteError;
 use crate::executor::config::table::TableConfig;
 use crate::executor::encoder::storage::StorageEncoder;

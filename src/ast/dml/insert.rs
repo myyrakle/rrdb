@@ -1,4 +1,4 @@
-use crate::ast::predule::{DMLStatement, SQLStatement, TableName};
+use crate::ast::{types::TableName, DMLStatement, SQLStatement};
 
 use super::{parts::insert_values::InsertValue, select::SelectQuery};
 

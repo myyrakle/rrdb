@@ -8,7 +8,7 @@ use itertools::Itertools;
 
 use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
 use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
-use crate::ast::predule::{SQLExpression, TableName,  Column, BuiltInFunction, Function,  AggregateFunction};
+use crate::ast::types::{ AggregateFunction, BuiltInFunction, Column, Function, SQLExpression, TableName};
 use crate::errors::predule::{TypeError, ExecuteError};
 use crate::executor::predule::{ Executor, ExecuteColumnType};
 

@@ -1,4 +1,4 @@
-use crate::ast::{dml::select::SelectQuery, predule::SQLExpression};
+use crate::ast::{dml::select::SelectQuery, types::SQLExpression};
 
 use serde::{Deserialize, Serialize};
 

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use futures::future::join_all;
 
-use crate::ast::predule::TableName;
+use crate::ast::types::TableName;
 use crate::errors::predule::ExecuteError;
 use crate::executor::config::row::TableDataRow;
 use crate::executor::encoder::storage::StorageEncoder;

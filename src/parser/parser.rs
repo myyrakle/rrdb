@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, error::Error};
 
-use crate::ast::predule::SQLStatement;
+use crate::ast::SQLStatement;
 use crate::lexer::predule::{Token, Tokenizer};
 use crate::parser::predule::ParserContext;
 

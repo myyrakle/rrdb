@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use super::config::table::TableConfig;
 use super::encoder::storage::StorageEncoder;
 use super::predule::Executor;
-use crate::ast::predule::TableName;
+use crate::ast::types::TableName;
 use crate::errors::execute_error::ExecuteError;
 
 impl Executor {

@@ -1,6 +1,6 @@
 use crate::ast::{
     dml::parts::join::JoinType,
-    predule::{Index, SQLExpression, TableName},
+    types::{Index, SQLExpression, TableName},
 };
 
 #[derive(Clone, Debug, PartialEq)]

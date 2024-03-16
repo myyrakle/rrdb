@@ -1,5 +1,6 @@
-use crate::ast::predule::{
-    Column, DDLStatement, ForeignKey, SQLStatement, TableName, TableOptions, UniqueKey,
+use crate::ast::{
+    types::{Column, ForeignKey, TableName, TableOptions, UniqueKey},
+    DDLStatement, SQLStatement,
 };
 
 /*

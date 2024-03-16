@@ -1,4 +1,7 @@
-use crate::ast::predule::{Column, DDLStatement, SQLStatement, TableName};
+use crate::ast::{
+    types::{Column, TableName},
+    DDLStatement, SQLStatement,
+};
 
 /*
 CREATE [ UNIQUE ] INDEX [ IF NOT EXISTS ] name ON table_name

@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::{ast::predule::DataType, pgwire::protocol::DataTypeOid};
+use crate::{ast::types::DataType, pgwire::protocol::DataTypeOid};
 
 use super::config::row::TableDataFieldType;
 

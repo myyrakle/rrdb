@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use std::iter::FromIterator;
 
 use crate::ast::dml::insert::{InsertData, InsertQuery};
-use crate::ast::predule::SQLExpression;
+use crate::ast::types::SQLExpression;
 use crate::errors::predule::ExecuteError;
 use crate::executor::config::row::{TableDataField, TableDataRow};
 use crate::executor::config::table::TableConfig;

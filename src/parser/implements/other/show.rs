@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::ast::other::show_databases::ShowDatabasesQuery;
 use crate::ast::other::show_tables::ShowTablesQuery;
-use crate::ast::predule::SQLStatement;
+use crate::ast::SQLStatement;
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::{Parser, ParserContext};

@@ -3,7 +3,7 @@ use std::error::Error;
 use std::path::PathBuf;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::ast::predule::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
+use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;

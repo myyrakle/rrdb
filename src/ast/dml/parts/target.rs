@@ -1,4 +1,4 @@
-use crate::ast::predule::TableName;
+use crate::ast::types::TableName;
 
 use serde::{Deserialize, Serialize};
 
