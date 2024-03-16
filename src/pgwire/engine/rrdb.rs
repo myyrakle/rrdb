@@ -70,6 +70,7 @@ impl Engine for RRDBEngine {
             .send(ChannelRequest {
                 statement: statement.to_owned(),
                 response_sender,
+                connection_id: self.shared_state.client_info.connection_id.clone(),
             })
             .await
         {

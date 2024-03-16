@@ -7,6 +7,7 @@ use crate::{ast::SQLStatement, executor::result::ExecuteResult};
 #[derive(Debug)]
 pub struct ChannelRequest {
     pub statement: SQLStatement,
+    pub connection_id: String,
     pub response_sender: Sender<ChannelResponse>,
 }
 
