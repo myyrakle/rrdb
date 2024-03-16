@@ -3,6 +3,7 @@ pub mod dcl;
 pub mod ddl;
 pub mod dml;
 pub mod other;
+pub mod tcl;
 pub mod types;
 
 use crate::ast::{
@@ -19,11 +20,14 @@ use crate::ast::{
     },
 };
 
+use self::tcl::{BeginTransactionQuery, CommitQuery, RollbackQuery};
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum SQLStatement {
     DDL(DDLStatement),
     DML(DMLStatement),
     DCL(DCLStatement),
+    TCL(TCLStatement),
     Other(OtherStatement),
 }
 
@@ -55,4 +59,11 @@ pub enum OtherStatement {
     UseDatabase(UseDatabaseQuery),
     ShowTables(ShowTablesQuery),
     DescTable(DescTableQuery),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TCLStatement {
+    BeginTransaction(BeginTransactionQuery),
+    Commit(CommitQuery),
+    Rollback(RollbackQuery),
 }
