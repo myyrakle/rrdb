@@ -79,7 +79,7 @@ impl Executor {
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
+                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists (3)")),
                 _ => Err(ExecuteError::boxed("full scan failed")),
             },
         }

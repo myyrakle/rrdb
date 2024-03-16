@@ -69,6 +69,7 @@ impl Executor {
     pub async fn process_query(
         &self,
         statement: SQLStatement,
+        _connection_id: String,
     ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         Logger::info(format!("AST echo: {:?}", statement));
 

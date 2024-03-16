@@ -35,7 +35,9 @@ impl Server {
             while let Some(request) = request_receiver.recv().await {
                 tokio::spawn(async move {
                     let executor = Executor::new();
-                    let result = executor.process_query(request.statement).await;
+                    let result = executor
+                        .process_query(request.statement, request.connection_id)
+                        .await;
 
                     match result {
                         Ok(result) => {
