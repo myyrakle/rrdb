@@ -1,4 +1,4 @@
-use crate::ast::predule::{Index, SQLExpression, TableName};
+use crate::ast::types::{Index, SQLExpression, TableName};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectSubqueryPlan {

@@ -2,7 +2,7 @@ use std::error::Error;
 
 use tokio::sync::oneshot::Sender;
 
-use crate::{ast::predule::SQLStatement, executor::result::ExecuteResult};
+use crate::{ast::SQLStatement, executor::result::ExecuteResult};
 
 #[derive(Debug)]
 pub struct ChannelRequest {

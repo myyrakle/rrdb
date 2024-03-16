@@ -1,5 +1,8 @@
 //use crate::ast::enums::SQLStatement;
-use crate::ast::predule::{Column, DataType, SQLExpression, SQLStatement, TableName};
+use crate::ast::{
+    types::{Column, DataType, SQLExpression, TableName},
+    SQLStatement,
+};
 
 use super::drop_database::DDLStatement;
 

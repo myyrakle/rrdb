@@ -1,4 +1,4 @@
-use crate::ast::predule::{DDLStatement, SQLStatement};
+use crate::ast::{DDLStatement, SQLStatement};
 
 /*
 ALTER DATABASE database_name

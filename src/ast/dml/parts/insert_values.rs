@@ -1,4 +1,4 @@
-use crate::ast::predule::SQLExpression;
+use crate::ast::types::SQLExpression;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InsertValue {

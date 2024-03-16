@@ -4,7 +4,7 @@ use crate::ast::dml::insert::InsertQuery;
 use crate::ast::dml::parts::insert_values::InsertValue;
 use crate::ast::dml::parts::select_item::SelectItem;
 use crate::ast::dml::select::SelectQuery;
-use crate::ast::predule::{SQLExpression, SelectColumn, TableName};
+use crate::ast::types::{SQLExpression, SelectColumn, TableName};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

@@ -1,4 +1,4 @@
-use crate::ast::predule::DataType;
+use crate::ast::types::DataType;
 use serde::{Deserialize, Serialize};
 
 use super::expression::SQLExpression;

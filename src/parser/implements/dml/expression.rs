@@ -9,7 +9,7 @@ use crate::ast::dml::expressions::not_between::NotBetweenExpression;
 use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
 use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
-use crate::ast::predule::{BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction};
+use crate::ast::types::{BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction};
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::Parser;
