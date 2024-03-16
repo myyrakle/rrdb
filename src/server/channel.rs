@@ -2,11 +2,12 @@ use std::error::Error;
 
 use tokio::sync::oneshot::Sender;
 
-use crate::{ast::predule::SQLStatement, executor::result::ExecuteResult};
+use crate::{ast::SQLStatement, executor::result::ExecuteResult};
 
 #[derive(Debug)]
 pub struct ChannelRequest {
     pub statement: SQLStatement,
+    pub connection_id: String,
     pub response_sender: Sender<ChannelResponse>,
 }
 

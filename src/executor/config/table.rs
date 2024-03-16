@@ -3,8 +3,8 @@ use std::{collections::HashMap, iter::FromIterator};
 use serde::{Deserialize, Serialize};
 
 use crate::ast::{
-    ddl::{create_table::CreateTableQuery, drop_database::Column},
-    predule::{ForeignKey, TableName, UniqueKey},
+    ddl::create_table::CreateTableQuery,
+    types::{Column, ForeignKey, TableName, UniqueKey},
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

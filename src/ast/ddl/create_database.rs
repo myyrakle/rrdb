@@ -1,4 +1,4 @@
-pub use crate::ast::predule::{Column, DDLStatement, SQLStatement};
+pub use crate::ast::{DDLStatement, SQLStatement};
 
 /*
 CREATE DATABASE [IF NOT EXISTS] database_name;

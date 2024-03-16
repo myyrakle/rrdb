@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use tokio::sync::oneshot;
 
-use crate::ast::predule::SQLStatement;
+use crate::ast::SQLStatement;
 use crate::executor::predule::ExecuteResult;
 use crate::executor::result::ExecuteField;
 use crate::pgwire::engine::{Engine, Portal};
@@ -70,6 +70,7 @@ impl Engine for RRDBEngine {
             .send(ChannelRequest {
                 statement: statement.to_owned(),
                 response_sender,
+                connection_id: self.shared_state.client_info.connection_id.clone(),
             })
             .await
         {

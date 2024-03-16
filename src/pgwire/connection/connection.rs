@@ -6,7 +6,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
 use crate::{
-    ast::predule::{OtherStatement, SQLStatement},
+    ast::{OtherStatement, SQLStatement},
     executor::executor::Executor,
     logger::predule::Logger,
     parser::{context::ParserContext, predule::Parser},

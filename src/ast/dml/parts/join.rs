@@ -1,4 +1,4 @@
-use crate::ast::predule::{SQLExpression, TableName};
+use crate::ast::types::{SQLExpression, TableName};
 
 use serde::{Deserialize, Serialize};
 

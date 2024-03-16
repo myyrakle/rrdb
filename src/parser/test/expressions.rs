@@ -10,7 +10,7 @@ use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
 use crate::ast::dml::parts::select_item::SelectItem;
 use crate::ast::dml::select::SelectQuery;
-use crate::ast::predule::{ConditionalFunction, SQLExpression, UserDefinedFunction};
+use crate::ast::types::{ConditionalFunction, SQLExpression, UserDefinedFunction};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

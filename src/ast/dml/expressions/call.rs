@@ -1,4 +1,4 @@
-use crate::ast::predule::{Function, SQLExpression};
+use crate::ast::types::{Function, SQLExpression};
 
 use serde::{Deserialize, Serialize};
 

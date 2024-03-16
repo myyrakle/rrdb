@@ -1,4 +1,4 @@
-use crate::ast::{dml::plan::select::scan::ScanType, predule::TableName};
+use crate::ast::{dml::plan::select::scan::ScanType, types::TableName};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeleteFromPlan {

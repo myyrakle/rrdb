@@ -2,16 +2,12 @@
 
 use crate::{
     ast::{
-        ddl::{
-            alter_table::{
-                AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault,
-                AlterColumnSetNotNull, AlterColumnSetType, AlterTableAddColumn,
-                AlterTableAlterColumn, AlterTableDropColumn, AlterTableQuery,
-                AlterTableRenameColumn, AlterTableRenameTo,
-            },
-            drop_database::Column,
+        ddl::alter_table::{
+            AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault,
+            AlterColumnSetNotNull, AlterColumnSetType, AlterTableAddColumn, AlterTableAlterColumn,
+            AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
         },
-        predule::{DataType, SQLExpression, TableName},
+        types::{Column, DataType, SQLExpression, TableName},
     },
     parser::predule::{Parser, ParserContext},
 };

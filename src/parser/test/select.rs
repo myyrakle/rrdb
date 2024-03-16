@@ -9,7 +9,7 @@ use crate::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
 use crate::ast::dml::select::SelectQuery;
-use crate::ast::predule::{SQLExpression, SelectColumn, TableName};
+use crate::ast::types::{SQLExpression, SelectColumn, TableName};
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 

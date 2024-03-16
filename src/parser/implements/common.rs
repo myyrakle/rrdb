@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::ast::dml::expressions::subquery::SubqueryExpression;
 use crate::ast::dml::parts::join::JoinType;
-use crate::ast::predule::{Column, DataType, SelectColumn, TableName};
+use crate::ast::types::{Column, DataType, SelectColumn, TableName};
 use crate::errors::predule::ParsingError;
 use crate::lexer::predule::{OperatorToken, Token};
 use crate::parser::predule::{Parser, ParserContext};

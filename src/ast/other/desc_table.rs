@@ -1,4 +1,4 @@
-use crate::ast::predule::{OtherStatement, SQLStatement, TableName};
+use crate::ast::{types::TableName, OtherStatement, SQLStatement};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DescTableQuery {

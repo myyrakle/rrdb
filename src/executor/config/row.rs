@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{ast::predule::TableName, utils::float::Float64};
+use crate::{ast::types::TableName, utils::float::Float64};
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, PartialOrd, Eq, Hash)]
 pub enum TableDataFieldType {

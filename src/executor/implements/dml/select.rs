@@ -9,7 +9,7 @@ use crate::ast::dml::parts::select_item::{SelectItem, SelectKind};
 use crate::ast::dml::plan::select::scan::ScanType;
 use crate::ast::dml::plan::select::select_plan::SelectPlanItem;
 use crate::ast::dml::select::SelectQuery;
-use crate::ast::predule::{SQLExpression, SelectColumn};
+use crate::ast::types::{SQLExpression, SelectColumn};
 use crate::errors::type_error::TypeError;
 use crate::executor::config::row::{TableDataField, TableDataFieldType, TableDataRow};
 use crate::executor::predule::{
