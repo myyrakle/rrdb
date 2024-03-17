@@ -5,13 +5,22 @@ use clap::Args;
 /// Config options for the build system.
 #[derive(Clone, Debug, Default, Deserialize, Args)]
 pub struct ConfigOptions {
-    /// 포트
-    #[clap(name = "port", long)]
-    pub port: Option<u32>,
+    #[clap(
+        name = "port",
+        default_value = "55555",
+        long,
+        short,
+        help = "Port to listen on"
+    )]
+    pub port: u32,
 
-    /// 호스트
-    #[clap(name = "host", long)]
-    pub host: Option<String>,
+    #[clap(
+        name = "host",
+        default_value = "0.0.0.0",
+        long,
+        help = "Hostname to listen on (IP or domain)"
+    )]
+    pub host: String,
 }
 
 #[derive(Clone, Debug, Args)]
