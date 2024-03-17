@@ -1,5 +1,5 @@
 pub mod collection;
-pub mod env;
+pub mod path;
 pub mod float;
 pub mod macos;
 pub mod predule;
