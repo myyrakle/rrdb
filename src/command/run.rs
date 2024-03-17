@@ -4,7 +4,7 @@ use clap::Args;
 
 /// Config options for the build system.
 #[derive(Clone, Debug, Default, Deserialize, Args)]
-pub struct ConfigOptionsRun {
+pub struct ConfigOptions {
     /// 포트
     #[clap(name = "port", long)]
     pub port: Option<u32>,
@@ -16,7 +16,7 @@ pub struct ConfigOptionsRun {
 
 #[derive(Clone, Debug, Args)]
 #[clap(name = "run")]
-pub struct RunCommand {
+pub struct Command {
     #[clap(flatten)]
-    pub value: ConfigOptionsRun,
+    pub value: ConfigOptions,
 }

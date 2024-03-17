@@ -13,7 +13,7 @@ pub mod pgwire;
 pub mod server;
 pub mod utils;
 
-use command::commands::{Command, SubCommand};
+use command::{Command, SubCommand};
 use constants::predule::{DEFAULT_HOST, DEFAULT_PORT};
 use executor::predule::Executor;
 use server::predule::{Server, ServerOption};
