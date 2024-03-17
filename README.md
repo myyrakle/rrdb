@@ -16,6 +16,12 @@ cargo를 사용한다.
 cargo install rrdb
 ```
 
+- 플랫폼별 처리 (Linux)
+
+```
+sudo ln -s /home/$USER/.cargo/bin/rrdb /usr/bin/rrdb
+```
+
 ---
 
 ### 기본 사용법
