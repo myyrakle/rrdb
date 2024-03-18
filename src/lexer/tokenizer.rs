@@ -173,6 +173,10 @@ impl Tokenizer {
                 "NULLS" => Token::Nulls,
                 "FIRST" => Token::First,
                 "LAST" => Token::Last,
+                "BEGIN" => Token::Begin,
+                "TRANSACTION" => Token::Transaction,
+                "COMMIT" => Token::Commit,
+                "ROLLBACK" => Token::Rollback,
                 _ => Token::Identifier(identifier),
             };
 
