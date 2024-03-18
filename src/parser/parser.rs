@@ -94,6 +94,10 @@ impl Parser {
                         let query = self.parse_commit_query(context.clone())?;
                         statements.push(query);
                     }
+                    Token::Rollback => {
+                        let query = self.parse_rollback_query(context.clone())?;
+                        statements.push(query);
+                    }
                     _ => {
                         break;
                     }
