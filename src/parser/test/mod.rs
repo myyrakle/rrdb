@@ -13,3 +13,5 @@ pub(crate) mod select;
 pub(crate) mod update;
 
 pub(crate) mod other;
+
+pub(crate) mod begin_transaction;
