@@ -13,8 +13,7 @@ pub mod pgwire;
 pub mod server;
 pub mod utils;
 
-use command::commands::{Command, SubCommand};
-use constants::predule::{DEFAULT_HOST, DEFAULT_PORT};
+use command::{Command, SubCommand};
 use executor::predule::Executor;
 use server::predule::{Server, ServerOption};
 
@@ -34,8 +33,8 @@ async fn main() -> Result<(), Box<dyn Error + Send>> {
         }
         SubCommand::Run(run) => {
             let server_option = ServerOption {
-                port: run.value.port.unwrap_or(DEFAULT_PORT),
-                host: run.value.host.unwrap_or_else(|| DEFAULT_HOST.into()),
+                port: run.value.port,
+                host: run.value.host,
             };
             let server = Server::new(server_option);
 
