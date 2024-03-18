@@ -1,13 +1,11 @@
-use path_absolutize::*;
 use std::error::Error;
-use std::path::PathBuf;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
-use crate::utils::predule::set_system_env;
+use crate::utils::path::get_target_basepath;
 
 use super::config::global::GlobalConfig;
 
@@ -25,26 +23,15 @@ impl Executor {
     }
 
     // 기본 설정파일 세팅
-    pub async fn init(&self, path: String) -> Result<(), Box<dyn Error + Send>> {
-        let mut path_buf = PathBuf::new();
-        path_buf.push(path);
-        path_buf.push(".rrdb.config");
-
-        #[allow(non_snake_case)]
-        let RRDB_BASE_PATH = path_buf
-            .absolutize()
-            .map_err(|e| ExecuteError::dyn_boxed(e.to_string()))?
-            .to_str()
-            .unwrap()
-            .to_string();
-        set_system_env("RRDB_BASE_PATH", &RRDB_BASE_PATH);
-
-        // 루트 디렉터리 생성
-        let base_path = path_buf.clone();
+    pub async fn init(&self) -> Result<(), Box<dyn Error + Send>> {
+        // 루트 디렉터리 생성 (없다면)
+        let base_path = get_target_basepath();
         if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
                 // Do Nothing
             } else {
+                println!("path {:?}", base_path.clone());
+                println!("error: {:?}", error.to_string());
                 return Err(ExecuteError::boxed(error.to_string()));
             }
         }
