@@ -64,6 +64,12 @@ pub enum Token {
     Default,
     Data,
 
+    // TCL
+    Begin,
+    Transaction,
+    Commit,
+    Rollback,
+
     // ETC
     // Analyze,
     CodeComment(String),
