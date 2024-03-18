@@ -1,7 +1,10 @@
 #![cfg(test)]
 
 use crate::{
-    ast::{tcl::BeginTransactionQuery, SQLStatement},
+    ast::{
+        tcl::{BeginTransactionQuery, CommitQuery},
+        SQLStatement,
+    },
     parser::predule::{Parser, ParserContext},
 };
 
@@ -34,6 +37,41 @@ pub fn begin_transaction() {
             want_err: true,
         },
     ];
+
+    for tc in test_cases {
+        let mut parser = Parser::new(tc.input).unwrap();
+
+        let result = parser.parse(ParserContext::default());
+
+        if tc.want_err {
+            assert!(
+                result.is_err(),
+                "{} - expected error, got {:?}",
+                tc.name,
+                result
+            );
+            continue;
+        }
+
+        assert_eq!(result.unwrap(), vec![tc.expected], "{}", tc.name);
+    }
+}
+
+#[test]
+pub fn commit() {
+    struct TestCase {
+        name: String,
+        input: String,
+        expected: SQLStatement,
+        want_err: bool,
+    }
+
+    let test_cases = vec![TestCase {
+        name: "정상적인 Commit 명령".to_owned(),
+        input: "COMMIT;".to_owned(),
+        expected: CommitQuery {}.into(),
+        want_err: false,
+    }];
 
     for tc in test_cases {
         let mut parser = Parser::new(tc.input).unwrap();
