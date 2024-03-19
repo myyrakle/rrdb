@@ -1,2 +1,2 @@
-pub mod transaction;
+pub mod record;
 pub mod format;
