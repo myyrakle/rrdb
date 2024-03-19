@@ -115,10 +115,10 @@ impl BinaryParser {
 
 #[cfg(test)]
 mod format_test {
-    use crate::wal::record::TransactionState;
+    use crate::{ast::types::DataType, wal::record::TransactionState};
 
     use super::*;
-    use format_test::record::RecordType;
+    use format_test::record::{ColumnInfo, RecordType, RowData};
     use tokio::runtime::Runtime;
 
     #[test]
@@ -149,6 +149,7 @@ mod format_test {
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
             let mut buffer = vec![];
+
             let record = LogRecord {
                 record_length: 1024,
                 lsn: 123456789012345,
@@ -158,8 +159,53 @@ mod format_test {
                 timestamp: 98765432109876,
                 database_name: "test_db".to_string(),
                 table_name: "test_table".to_string(),
-                column_info: vec![1, 2, 3],
-                row_info: vec![4, 5, 6, 7],
+                column_info: vec![
+                    ColumnInfo {
+                        name: "col1".to_string(),
+                        column_type: DataType::Int,
+                        length: Some(4),
+                    },
+                    ColumnInfo {
+                        name: "col2".to_string(),
+                        column_type: DataType::Varchar(255),
+                        length: Some(10),
+                    },
+                    ColumnInfo {
+                        name: "col3".to_string(),
+                        column_type: DataType::Boolean,
+                        length: None,
+                    },
+                ],
+                row_info: RowData {
+                    columns: vec![
+                        ColumnInfo {
+                            name: "col1".to_string(),
+                            column_type: DataType::Int,
+                            length: Some(4),
+                        },
+                        ColumnInfo {
+                            name: "col2".to_string(),
+                            column_type: DataType::Varchar(255),
+                            length: Some(10),
+                        },
+                        ColumnInfo {
+                            name: "col3".to_string(),
+                            column_type: DataType::Boolean,
+                            length: None,
+                        },
+                        ColumnInfo {
+                            name: "col4".to_string(),
+                            column_type: DataType::Float,
+                            length: Some(8),
+                        },
+                    ],
+                    values: vec![
+                        vec![1, 2, 3, 4],
+                        b"hello".to_vec(),
+                        vec![1],
+                        vec![1, 2, 3, 4, 5, 6, 7, 8],
+                    ],
+                },
                 data_length: 4,
                 data: vec![8, 9, 10, 11],
                 checksum: 12345678,
