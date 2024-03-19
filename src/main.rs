@@ -12,6 +12,7 @@ pub mod parser;
 pub mod pgwire;
 pub mod server;
 pub mod utils;
+pub mod wal;
 
 use command::{Command, SubCommand};
 use executor::predule::Executor;
