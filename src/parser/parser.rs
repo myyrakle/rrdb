@@ -86,6 +86,18 @@ impl Parser {
                         let query = self.parse_desc_query(context.clone())?;
                         statements.push(query);
                     }
+                    Token::Begin => {
+                        let query = self.parse_begin_query(context.clone())?;
+                        statements.push(query);
+                    }
+                    Token::Commit => {
+                        let query = self.parse_commit_query(context.clone())?;
+                        statements.push(query);
+                    }
+                    Token::Rollback => {
+                        let query = self.parse_rollback_query(context.clone())?;
+                        statements.push(query);
+                    }
                     _ => {
                         break;
                     }

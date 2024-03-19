@@ -29,6 +29,13 @@ pub enum SQLStatement {
     DCL(DCLStatement),
     TCL(TCLStatement),
     Other(OtherStatement),
+    None,
+}
+
+impl Default for SQLStatement {
+    fn default() -> Self {
+        SQLStatement::None
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
