@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::sync::Arc;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
@@ -6,6 +7,7 @@ use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
 use crate::utils::path::get_target_basepath;
+use crate::wal::wal::Wal;
 
 use super::config::global::GlobalConfig;
 
@@ -55,9 +57,12 @@ impl Executor {
     // 쿼리 최적화 및 실행, 결과 반환
     pub async fn process_query(
         &self,
+        wal: Arc<Wal>,
         statement: SQLStatement,
         _connection_id: String,
     ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+        
+
         Logger::info(format!("AST echo: {:?}", statement));
 
         // 쿼리 실행

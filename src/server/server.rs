@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::sync::Arc;
 
 use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::Executor;
@@ -12,6 +13,8 @@ use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
 use super::client::ClientInfo;
+
+use crate::wal::prelude::*;
 
 pub struct Server {
     pub option: ServerOption,
@@ -29,14 +32,22 @@ impl Server {
 
         let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
 
+        // shared WAL
+        // wal struct을 생성, Arc로 관리
+        let shared_wal = Arc::new(Wal::new().await);
+
         // background task
         // 쿼리 실행 요청을 전달받음
         let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
+                let wal_cloned = Arc::clone(&shared_wal);
                 tokio::spawn(async move {
                     let executor = Executor::new();
                     let result = executor
-                        .process_query(request.statement, request.connection_id)
+                        .process_query(
+                            Arc::clone(&wal_cloned),
+                            request.statement,
+                            request.connection_id)
                         .await;
 
                     match result {

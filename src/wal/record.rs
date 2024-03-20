@@ -1,13 +1,13 @@
 use crate::ast::types::DataType;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy)]
 pub enum TransactionState {
     Active = 0,
     Committed,
     RolledBack,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy)]
 pub enum RecordType {
     Insert = 0,
     Update,
@@ -30,6 +30,7 @@ pub struct RowData {
     pub values: Vec<Vec<u8>>, 
 }
 
+#[derive(Clone, Debug)]
 pub struct LogRecord {
     pub record_length: u32,
     pub lsn: u64,
