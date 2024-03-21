@@ -4,20 +4,22 @@ use crate::utils::path::get_target_basepath;
 
 use super::{format::{BinaryFormatterImpl, LogFileHeader, MAGIC_NUMBER, VERSION}, record::LogRecord};
 
+const WAL_METADATA: &str = "current_wal_index";
+
 #[derive(Clone, Debug, Default)]
-pub struct Wal {
+pub struct WalManager {
     logs: Vec<LogRecord>,
     last_file_index: u64,
     last_lsn: u64
 }
 
-impl Wal {
+impl WalManager {
     pub async fn new() -> Self {
         // wal 메타데이터 파일을 읽어서 index와 lsn을 결정함 
-        let mut wal = Wal::default();
+        let mut wal = WalManager::default();
 
         let mut wal_metadata = get_target_basepath();
-        wal_metadata.push("current_wal_index");
+        wal_metadata.push(WAL_METADATA);
 
         match wal_metadata.exists() {
             true => {
@@ -30,8 +32,7 @@ impl Wal {
             }
         }
 
-        // TODO
-        wal
+        todo!()
     }
 
     pub fn insert(&mut self, record: LogRecord) {

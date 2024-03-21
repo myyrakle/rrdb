@@ -7,7 +7,7 @@ use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
 use crate::utils::path::get_target_basepath;
-use crate::wal::wal::Wal;
+use crate::wal::wal::WalManager;
 
 use super::config::global::GlobalConfig;
 
@@ -57,7 +57,7 @@ impl Executor {
     // 쿼리 최적화 및 실행, 결과 반환
     pub async fn process_query(
         &self,
-        wal: Arc<Wal>,
+        wal: Arc<WalManager>,
         statement: SQLStatement,
         _connection_id: String,
     ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
