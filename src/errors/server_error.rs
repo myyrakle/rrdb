@@ -1,5 +1,3 @@
-use std::string::ToString;
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ServerError {
     pub message: String,

@@ -1,6 +1,5 @@
 use bytes::{Buf, BufMut, BytesMut};
 use std::collections::HashMap;
-use std::convert::TryInto;
 use tokio_util::codec::{Decoder, Encoder};
 
 use crate::pgwire::protocol::ProtocolError;

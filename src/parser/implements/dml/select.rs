@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::error::Error;
-use std::iter::FromIterator;
 
 use crate::ast::dml::parts::_where::WhereClause;
 use crate::ast::dml::parts::group_by::GroupByItem;

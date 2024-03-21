@@ -1,4 +1,4 @@
-use std::{convert::TryInto, error::Error};
+use std::error::Error;
 
 use crate::{
     ast::dml::expressions::operators::{BinaryOperator, UnaryOperator},

@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::string::ToString;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecuteError {

@@ -1,4 +1,4 @@
-use std::{error::Error, string::ToString};
+use std::error::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeError {

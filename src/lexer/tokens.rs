@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::error::Error;
 
 use super::predule::OperatorToken;

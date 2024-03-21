@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use crate::pgwire::protocol::ProtocolError;
 
 /// Describes how to format a given value or set of values.

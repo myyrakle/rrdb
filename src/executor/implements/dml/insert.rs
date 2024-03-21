@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::error::Error;
 use std::io::ErrorKind;
-use std::iter::FromIterator;
 
 use crate::ast::dml::insert::{InsertData, InsertQuery};
 use crate::ast::types::SQLExpression;
