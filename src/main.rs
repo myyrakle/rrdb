@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn Error + Send>> {
 
     match args.action {
         SubCommand::Init(init) => {
-            let init_option = init.init;
+            let _init_option = init.init;
 
             let executor = Executor::new();
 
