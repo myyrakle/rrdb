@@ -23,7 +23,6 @@ pub struct ReduceContext {
 }
 
 impl Executor {
-    #[async_recursion::async_recursion]
     pub async fn reduce_expression(
         &self,
         expression: SQLExpression,
@@ -37,7 +36,7 @@ impl Executor {
             SQLExpression::Null => Ok(TableDataFieldType::Null),
             SQLExpression::List(list) =>  {
                 let futures = list.value.into_iter().map(|e|{self.reduce_expression(e, context.clone())});
-                let fields = join_all(futures).await.into_iter().collect::<Result<Vec<_>, 
+                let fields = Box::pin(join_all(futures)).await.into_iter().collect::<Result<Vec<_>, 
                 _>>()?;
 
                 #[allow(unstable_name_collisions)]
@@ -47,7 +46,7 @@ impl Executor {
             }
             SQLExpression::Unary(unary) => match unary.operator {
                 UnaryOperator::Neg => {
-                    let operand = self.reduce_expression(unary.operand, context).await?;
+                    let operand = Box::pin(self.reduce_expression(unary.operand, context)).await?;
 
                     match operand {
                         TableDataFieldType::Integer(value) => {
@@ -78,7 +77,7 @@ impl Executor {
                     }
                 }
                 UnaryOperator::Pos => {
-                    let operand = self.reduce_expression(unary.operand, context).await?;
+                    let operand = Box::pin(self.reduce_expression(unary.operand, context)).await?;
 
                     match operand {
                         TableDataFieldType::Integer(_) => Ok(operand),
@@ -89,7 +88,7 @@ impl Executor {
                     }
                 }
                 UnaryOperator::Not => {
-                    let operand = self.reduce_expression(unary.operand, context).await?;
+                    let operand = Box::pin(self.reduce_expression(unary.operand, context)).await?;
 
                     match operand {
                         TableDataFieldType::Boolean(value) => {
@@ -102,8 +101,8 @@ impl Executor {
                 }
             },
             SQLExpression::Binary(binary) => {
-                let lhs = self.reduce_expression(binary.lhs.clone(), context.clone()).await?;
-                let rhs = self.reduce_expression(binary.rhs.clone(), context.clone()).await?;
+                let lhs = Box::pin(self.reduce_expression(binary.lhs.clone(), context.clone())).await?;
+                let rhs = Box::pin(self.reduce_expression(binary.rhs.clone(), context.clone())).await?;
 
                 if lhs.type_code() != rhs.type_code() {
                     return Err(TypeError::dyn_boxed(
@@ -125,14 +124,14 @@ impl Executor {
                                     rhs: right_array[i].clone().into(),
                                 };
                             
-                                match self.reduce_expression(expression.into(), context.clone()).await {
+                                match Box::pin(self.reduce_expression(expression.into(), context.clone())).await {
                                     Ok(expression)=> Ok(expression), 
                                     Err(error)=>Err(error),
                                 }
                             }
                         });
     
-                        let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                        let result = Box::pin(join_all(futures)).await.into_iter().collect::<Result<Vec<_>, _>>()?;
                         return Ok(TableDataFieldType::Array(result));
                     } else {
                         let futures = left_array.iter().map(|e|async {
@@ -142,13 +141,13 @@ impl Executor {
                                 rhs: rhs.clone().into(),
                             };
                         
-                            match self.reduce_expression(expression.into(), context.clone()).await {
+                            match Box::pin(self.reduce_expression(expression.into(), context.clone())).await {
                                 Ok(expression)=> Ok(expression), 
                                 Err(error)=>Err(error),
                             }
                         });
 
-                        let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                        let result = Box::pin(join_all(futures)).await.into_iter().collect::<Result<Vec<_>, _>>()?;
                         return Ok(TableDataFieldType::Array(result));
                     }
                 } else if let TableDataFieldType::Array(ref right_array) = rhs{
@@ -159,13 +158,13 @@ impl Executor {
                             rhs: e.clone().into(),
                         };
                     
-                        match self.reduce_expression(expression.into(), context.clone()).await {
+                        match Box::pin(self.reduce_expression(expression.into(), context.clone())).await {
                             Ok(expression)=> Ok(expression), 
                             Err(error)=>Err(error),
                         }
                     });
 
-                    let result = join_all(futures).await.into_iter().collect::<Result<Vec<_>, _>>()?;
+                    let result = Box::pin(join_all(futures)).await.into_iter().collect::<Result<Vec<_>, _>>()?;
                     return Ok(TableDataFieldType::Array(result));
                 }
 
@@ -373,9 +372,9 @@ impl Executor {
                 }
             }
             SQLExpression::Between(between) => {
-                let _a =  self.reduce_expression(between.a, context.clone()).await?;
-                let _x =  self.reduce_expression(between.x, context.clone()).await?;
-                let _y =  self.reduce_expression(between.y, context).await?;
+                let _a =  Box::pin(self.reduce_expression(between.a, context.clone())).await?;
+                let _x =  Box::pin(self.reduce_expression(between.x, context.clone())).await?;
+                let _y =  Box::pin(self.reduce_expression(between.y, context)).await?;
            
                 //Ok(TableDataFieldType::Boolean(x <= a && a <= y ))
 
@@ -383,7 +382,7 @@ impl Executor {
             },
             SQLExpression::NotBetween(_between) => unimplemented!("미구현"),
             SQLExpression::Parentheses(paren) => {
-                 self.reduce_expression(paren.expression, context).await
+                Box::pin(self.reduce_expression(paren.expression, context)).await
             }
             SQLExpression::FunctionCall(call) => {
                 match call.function {
@@ -399,7 +398,7 @@ impl Executor {
                                         }
 
                                         let argument = call.arguments[0].clone();
-                                        let value = self.reduce_expression(argument, context.clone()).await?;
+                                        let value = Box::pin(self.reduce_expression(argument, context.clone())).await?;
 
                                         match value {
                                             TableDataFieldType::Array(array) => {
@@ -445,7 +444,7 @@ impl Executor {
                                         }
 
                                         let argument = call.arguments[0].clone();
-                                        let value = self.reduce_expression(argument, context.clone()).await?;
+                                        let value = Box::pin(self.reduce_expression(argument, context.clone())).await?;
 
                                         match value {
                                             TableDataFieldType::Array(array) => {
