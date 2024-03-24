@@ -51,7 +51,7 @@ impl Server {
                         Err(error) => {
                             let error = error.to_string();
                             if let Err(_response) = request.response_sender.send(ChannelResponse {
-                                result: Err(ExecuteError::boxed(ExecuteError::boxed(error))),
+                                result: Err(ExecuteError::new(ExecuteError::new(error))),
                             }) {
                                 Logger::error("channel send failed");
                             }
@@ -65,7 +65,7 @@ impl Server {
         // client와의 커넥션 처리 루프
         let listener = TcpListener::bind((self.option.host.to_owned(), self.option.port as u16))
             .await
-            .map_err(|error| ExecuteError::dyn_boxed(error.to_string()))?;
+            .map_err(|error| ExecuteError::new(error.to_string()))?;
 
         let connection_task = tokio::spawn(async move {
             loop {

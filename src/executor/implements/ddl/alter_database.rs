@@ -1,8 +1,8 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::alter_database::{AlterDatabaseAction, AlterDatabaseQuery};
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::database::DatabaseConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{ExecuteResult, Executor};
@@ -12,7 +12,7 @@ impl Executor {
     pub async fn alter_database(
         &self,
         query: AlterDatabaseQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    ) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -25,7 +25,7 @@ impl Executor {
                     let from_database_name = query
                         .database_name
                         .clone()
-                        .ok_or_else(|| ExecuteError::dyn_boxed("no database name"))?;
+                        .ok_or_else(|| ExecuteError::new("no database name"))?;
 
                     // 변경할 데이터베이스명
                     let to_database_name = rename.name;
@@ -43,10 +43,10 @@ impl Executor {
                     if let Err(error) = result {
                         match error.kind() {
                             ErrorKind::NotFound => {
-                                return Err(ExecuteError::boxed("database not found"))
+                                return Err(ExecuteError::new("database not found"))
                             }
                             _ => {
-                                return Err(ExecuteError::boxed("database alter failed"));
+                                return Err(ExecuteError::new("database alter failed"));
                             }
                         }
                     }
@@ -69,20 +69,20 @@ impl Executor {
                                     )
                                     .await
                                     {
-                                        return Err(ExecuteError::dyn_boxed("no database name"));
+                                        return Err(ExecuteError::new("no database name"));
                                     }
                                 }
                                 None => {
-                                    return Err(ExecuteError::boxed("invalid config data"));
+                                    return Err(ExecuteError::new("invalid config data"));
                                 }
                             }
                         }
                         Err(error) => match error.kind() {
                             ErrorKind::NotFound => {
-                                return Err(ExecuteError::boxed("database not found"));
+                                return Err(ExecuteError::new("database not found"));
                             }
                             _ => {
-                                return Err(ExecuteError::boxed(format!("{:?}", error)));
+                                return Err(ExecuteError::new(format!("{:?}", error)));
                             }
                         },
                     }

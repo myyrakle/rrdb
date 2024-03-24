@@ -392,7 +392,7 @@ impl Executor {
                                 match aggregate {
                                     AggregateFunction::Count => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::dyn_boxed(
+                                            return Err(ExecuteError::new(
                                                 "Count function takes only one parameter.",
                                             ));
                                         }
@@ -438,7 +438,7 @@ impl Executor {
                                     }
                                     AggregateFunction::Sum => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::dyn_boxed(
+                                            return Err(ExecuteError::new(
                                                 "Sum function takes only one parameter.",
                                             ));
                                         }
@@ -477,7 +477,7 @@ impl Executor {
                                     }
                                     AggregateFunction::Max => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::dyn_boxed(
+                                            return Err(ExecuteError::new(
                                                 "Max function takes only one parameter.",
                                             ));
                                         }
@@ -486,7 +486,7 @@ impl Executor {
                                     }
                                     AggregateFunction::Min => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::dyn_boxed(
+                                            return Err(ExecuteError::new(
                                                 "Min function takes only one parameter.",
                                             ));
                                         }
@@ -514,7 +514,7 @@ impl Executor {
 
                         // 없으면 오류
                         if same_name_datas.is_empty() {
-                            return Err(ExecuteError::dyn_boxed(
+                            return Err(ExecuteError::new(
                                 format!("1 column select '{:?}' not exists", select_column),
                             ));
                         }
@@ -537,14 +537,14 @@ impl Executor {
                                 {
                                     Ok(found.data.to_owned())
                                 } else{
-                                    Err(ExecuteError::dyn_boxed(
+                                    Err(ExecuteError::new(
                                         format!("column select '{:?}' is ambiguous", select_column),
                                     ))
                                 }
                             }
                             None=>{
                                 if same_name_datas.len()>=2 {
-                                     Err(ExecuteError::dyn_boxed(
+                                     Err(ExecuteError::new(
                                         format!("column select '{:?}' is ambiguous", select_column),
                                     ))
                                 } else {
@@ -554,7 +554,7 @@ impl Executor {
                         }
                     }
                     None => {
-                        return Err(ExecuteError::dyn_boxed(
+                        return Err(ExecuteError::new(
                             format!("column select '{:?}' not exists", select_column),
                         ));
                     }
@@ -654,7 +654,7 @@ impl Executor {
                 let column_name  = select_column.column_name.clone();
                 
                 if context.config_columns.is_empty() {
-                    return Err(ExecuteError::dyn_boxed(
+                    return Err(ExecuteError::new(
                         format!("column select '{:?}' not exists", select_column),
                     ));
                 }
@@ -679,14 +679,14 @@ impl Executor {
                         {
                             Ok(found.1.data_type.to_owned().into())
                         } else{
-                             Err(ExecuteError::dyn_boxed(
+                             Err(ExecuteError::new(
                                 format!("column select '{:?}' is ambiguous", select_column),
                             ))
                         }
                     }
                     None=>{
                         if same_name_columns.len()>=2 {
-                             Err(ExecuteError::dyn_boxed(
+                             Err(ExecuteError::new(
                                 format!("column select '{:?}' is ambiguous", select_column),
                             ))
                         } else {

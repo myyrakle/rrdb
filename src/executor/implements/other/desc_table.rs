@@ -30,7 +30,7 @@ impl Executor {
             Ok(read_result) => {
                 let table_info: TableConfig = encoder
                     .decode(read_result.as_slice())
-                    .ok_or_else(|| ExecuteError::dyn_boxed("config decode error"))?;
+                    .ok_or_else(|| ExecuteError::new("config decode error"))?;
 
                 Ok(ExecuteResult {
                     columns: (vec![
@@ -71,11 +71,11 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::boxed(format!(
+                ErrorKind::NotFound => Err(ExecuteError::new(format!(
                     "table '{}' not exists",
                     table_name
                 ))),
-                _ => Err(ExecuteError::boxed("database listup failed")),
+                _ => Err(ExecuteError::new("database listup failed")),
             },
         }
     }

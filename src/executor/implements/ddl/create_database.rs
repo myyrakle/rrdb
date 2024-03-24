@@ -20,17 +20,17 @@ impl Executor {
         let database_name = query
             .database_name
             .clone()
-            .ok_or_else(|| ExecuteError::dyn_boxed("no database name"))?;
+            .ok_or_else(|| ExecuteError::new("no database name"))?;
 
         let database_path = base_path.clone().join(&database_name);
 
         if let Err(error) = tokio::fs::create_dir(database_path.clone()).await {
             match error.kind() {
                 ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::boxed("already exists database"))
+                    return Err(ExecuteError::new("already exists database"))
                 }
                 _ => {
-                    return Err(ExecuteError::boxed("database create failed"));
+                    return Err(ExecuteError::new("database create failed"));
                 }
             }
         }
@@ -40,11 +40,9 @@ impl Executor {
 
         if let Err(error) = tokio::fs::create_dir(&tables_path).await {
             match error.kind() {
-                ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::boxed("already exists tables"))
-                }
+                ErrorKind::AlreadyExists => return Err(ExecuteError::new("already exists tables")),
                 _ => {
-                    return Err(ExecuteError::boxed("tables create failed"));
+                    return Err(ExecuteError::new("tables create failed"));
                 }
             }
         }
@@ -56,7 +54,7 @@ impl Executor {
         };
 
         if let Err(error) = tokio::fs::write(config_path, encoder.encode(database_info)).await {
-            return Err(ExecuteError::boxed(error.to_string()));
+            return Err(ExecuteError::new(error.to_string()));
         }
 
         Ok(ExecuteResult {

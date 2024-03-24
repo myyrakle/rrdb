@@ -32,7 +32,7 @@ impl Executor {
             } else {
                 println!("path {:?}", base_path.clone());
                 println!("error: {:?}", error.to_string());
-                return Err(ExecuteError::boxed(error.to_string()));
+                return Err(ExecuteError::new(error.to_string()));
             }
         }
 
@@ -43,7 +43,7 @@ impl Executor {
         let global_config = toml::to_string(&global_info).unwrap();
 
         if let Err(error) = tokio::fs::write(global_path, global_config.as_bytes()).await {
-            return Err(ExecuteError::boxed(error.to_string()));
+            return Err(ExecuteError::new(error.to_string()));
         }
 
         self.create_database(CreateDatabaseQuery::builder().set_name("rrdb".into()))
@@ -95,7 +95,7 @@ impl Executor {
 
         match result {
             Ok(result) => Ok(result),
-            Err(error) => Err(ExecuteError::boxed(error.to_string())),
+            Err(error) => Err(ExecuteError::new(error.to_string())),
         }
     }
 }

@@ -100,7 +100,7 @@ impl Executor {
         // 삭제 작업
         for (path, _) in rows.into_iter() {
             if let Err(error) = tokio::fs::remove_file(&path).await {
-                return Err(ExecuteError::boxed(format!(
+                return Err(ExecuteError::new(format!(
                     "file {:?} remove failed: {}",
                     path, error
                 )));

@@ -69,8 +69,8 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
-                _ => Err(ExecuteError::boxed("table listup failed")),
+                ErrorKind::NotFound => Err(ExecuteError::new("base path not exists")),
+                _ => Err(ExecuteError::new("table listup failed")),
             },
         }
     }

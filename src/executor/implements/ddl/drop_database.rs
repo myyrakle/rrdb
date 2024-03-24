@@ -17,15 +17,15 @@ impl Executor {
         let database_name = query
             .database_name
             .clone()
-            .ok_or_else(|| ExecuteError::dyn_boxed("no database name"))?;
+            .ok_or_else(|| ExecuteError::new("no database name"))?;
 
         database_path.push(&database_name);
 
         if let Err(error) = tokio::fs::remove_dir_all(database_path.clone()).await {
             match error.kind() {
-                ErrorKind::NotFound => return Err(ExecuteError::boxed("database not found")),
+                ErrorKind::NotFound => return Err(ExecuteError::new("database not found")),
                 _ => {
-                    return Err(ExecuteError::boxed("database drop failed"));
+                    return Err(ExecuteError::new("database drop failed"));
                 }
             }
         }
