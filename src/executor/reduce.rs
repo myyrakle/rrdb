@@ -64,14 +64,14 @@ impl Executor {
                                     TableDataFieldType::Float(value) => {
                                         *e = TableDataFieldType::Float(-*value);
                                     }
-                                    _ => return  Err(TypeError::dyn_boxed(
+                                    _ => return  Err(TypeError::new(
                                         "unary '!' operator is valid only for integer and float types.",
                                     )),
                                 }
                             }
                             Ok(TableDataFieldType::Array(array))
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "unary '-' operator is valid only for integer and float types.",
                         )),
                     }
@@ -82,7 +82,7 @@ impl Executor {
                     match operand {
                         TableDataFieldType::Integer(_) => Ok(operand),
                         TableDataFieldType::Float(_) => Ok(operand),
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "unary '+' operator is valid only for integer and float types.",
                         )),
                     }
@@ -94,7 +94,7 @@ impl Executor {
                         TableDataFieldType::Boolean(value) => {
                             Ok(TableDataFieldType::Boolean(!value))
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "unary '!' operator is valid only for integer and float types.",
                         )),
                     }
@@ -105,7 +105,7 @@ impl Executor {
                 let rhs = Box::pin(self.reduce_expression(binary.rhs.clone(), context.clone())).await?;
 
                 if lhs.type_code() != rhs.type_code() {
-                    return Err(TypeError::dyn_boxed(
+                    return Err(TypeError::new(
                         "The types of lhs and rhs do not match.",
                     ));
                 }
@@ -190,7 +190,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '-' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -207,7 +207,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '-' operator is valid only for integer and float types.",
                         )),
                     },
@@ -224,7 +224,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '*' operator is valid only for integer and float types.",
                         )),
                     },
@@ -241,7 +241,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '/' operator is valid only for integer and float types.",
                         )),
                     },
@@ -252,7 +252,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary 'And' operator is valid only for boolean type.",
                         )),
                     },
@@ -263,7 +263,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary 'Or' operator is valid only for boolean type.",
                         )),
                     },
@@ -286,7 +286,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '<' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -309,7 +309,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '>' operator is valid only for integer and float and string types.",
                         )),
                     }, 
@@ -332,7 +332,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '<=' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -355,7 +355,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::dyn_boxed(
+                        _ => Err(TypeError::new(
                             "binary '>=' operator is valid only for integer and float and string types.",
                         )),
                     },

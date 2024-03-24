@@ -79,7 +79,7 @@ impl Executor {
                             match condition {
                                 TableDataFieldType::Boolean(boolean) => Ok((path, row, boolean)),
                                 TableDataFieldType::Null => Ok((path, row, false)),
-                                _ => Err(TypeError::dyn_boxed(
+                                _ => Err(TypeError::new(
                                     "condition expression is valid only for boolean and null types",
                                 )),
                             }
