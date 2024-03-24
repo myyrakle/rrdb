@@ -6,7 +6,7 @@ pub mod predule;
 pub mod server_error;
 pub mod type_error;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum RRDBError {
     ExecuteError(execute_error::ExecuteError),
     IntoError(into_error::IntoError),
