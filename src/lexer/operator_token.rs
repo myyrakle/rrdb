@@ -1,8 +1,6 @@
-use std::{convert::TryInto, error::Error};
-
 use crate::{
     ast::dml::expressions::operators::{BinaryOperator, UnaryOperator},
-    errors::predule::IntoError,
+    errors::{predule::IntoError, RRDBError},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -43,7 +41,7 @@ impl OperatorToken {
 }
 
 impl TryInto<BinaryOperator> for OperatorToken {
-    type Error = Box<dyn Error + Send>;
+    type Error = RRDBError;
 
     fn try_into(self) -> Result<BinaryOperator, Self::Error> {
         match self {
@@ -57,20 +55,20 @@ impl TryInto<BinaryOperator> for OperatorToken {
             Self::Gte => Ok(BinaryOperator::Gte),
             Self::Eq => Ok(BinaryOperator::Eq),
             Self::Neq => Ok(BinaryOperator::Neq),
-            _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
+            _ => Err(IntoError::new("BinaryOperator Cast Error")),
         }
     }
 }
 
 impl TryInto<UnaryOperator> for OperatorToken {
-    type Error = Box<dyn Error + Send>;
+    type Error = RRDBError;
 
     fn try_into(self) -> Result<UnaryOperator, Self::Error> {
         match self {
             Self::Plus => Ok(UnaryOperator::Pos),
             Self::Minus => Ok(UnaryOperator::Neg),
             Self::Not => Ok(UnaryOperator::Not),
-            _ => Err(IntoError::boxed("UnaryOperator Cast Error")),
+            _ => Err(IntoError::new("UnaryOperator Cast Error")),
         }
     }
 }

@@ -1,8 +1,7 @@
-use std::error::Error;
-
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::errors::execute_error::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
 use crate::utils::path::get_target_basepath;
@@ -23,7 +22,7 @@ impl Executor {
     }
 
     // 기본 설정파일 세팅
-    pub async fn init(&self) -> Result<(), Box<dyn Error + Send>> {
+    pub async fn init(&self) -> Result<(), RRDBError> {
         // 루트 디렉터리 생성 (없다면)
         let base_path = get_target_basepath();
         if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
@@ -32,7 +31,7 @@ impl Executor {
             } else {
                 println!("path {:?}", base_path.clone());
                 println!("error: {:?}", error.to_string());
-                return Err(ExecuteError::boxed(error.to_string()));
+                return Err(ExecuteError::new(error.to_string()));
             }
         }
 
@@ -43,7 +42,7 @@ impl Executor {
         let global_config = toml::to_string(&global_info).unwrap();
 
         if let Err(error) = tokio::fs::write(global_path, global_config.as_bytes()).await {
-            return Err(ExecuteError::boxed(error.to_string()));
+            return Err(ExecuteError::new(error.to_string()));
         }
 
         self.create_database(CreateDatabaseQuery::builder().set_name("rrdb".into()))
@@ -57,7 +56,7 @@ impl Executor {
         &self,
         statement: SQLStatement,
         _connection_id: String,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    ) -> Result<ExecuteResult, RRDBError> {
         Logger::info(format!("AST echo: {:?}", statement));
 
         // 쿼리 실행
@@ -95,7 +94,7 @@ impl Executor {
 
         match result {
             Ok(result) => Ok(result),
-            Err(error) => Err(ExecuteError::boxed(error.to_string())),
+            Err(error) => Err(ExecuteError::new(error.to_string())),
         }
     }
 }

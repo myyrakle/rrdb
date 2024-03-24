@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::error::Error;
 
 use futures::future::join_all;
 
@@ -8,6 +7,7 @@ use crate::ast::dml::plan::update::update_plan::UpdatePlanItem;
 use crate::ast::dml::update::UpdateQuery;
 use crate::errors::predule::ExecuteError;
 use crate::errors::type_error::TypeError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::TableDataFieldType;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
@@ -17,7 +17,7 @@ use crate::executor::result::ExecuteColumnType;
 use crate::optimizer::predule::Optimizer;
 
 impl Executor {
-    pub async fn update(&self, query: UpdateQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn update(&self, query: UpdateQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let table = query.target_table.clone().unwrap().table;
@@ -79,7 +79,7 @@ impl Executor {
                             match condition {
                                 TableDataFieldType::Boolean(boolean) => Ok((path, row, boolean)),
                                 TableDataFieldType::Null => Ok((path, row, false)),
-                                _ => Err(TypeError::dyn_boxed(
+                                _ => Err(TypeError::new(
                                     "condition expression is valid only for boolean and null types",
                                 )),
                             }
@@ -134,7 +134,7 @@ impl Executor {
                 match found {
                     Some(found) => found.data = set_value,
                     None => {
-                        return Err(ExecuteError::boxed(format!(
+                        return Err(ExecuteError::new(format!(
                             "column '{}' not found in data row",
                             column_name
                         )));
@@ -143,7 +143,7 @@ impl Executor {
             }
 
             if let Err(error) = tokio::fs::write(&path, encoder.encode(row)).await {
-                return Err(ExecuteError::boxed(format!(
+                return Err(ExecuteError::new(format!(
                     "path '{:?}' write failed: {}",
                     path, error
                 )));

@@ -7,19 +7,19 @@ use crate::ast::ddl::create_table::CreateTableQuery;
 use crate::ast::ddl::drop_database::SQLStatement;
 use crate::ast::ddl::drop_table::DropTableQuery;
 use crate::errors::predule::ParsingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::Token;
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
-use std::error::Error;
 
 impl Parser {
     // CREATE TABLE 쿼리 분석
     pub(crate) fn handle_create_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1205 need more tokens"));
+            return Err(ParsingError::new("E1205 need more tokens"));
         }
 
         let mut query_builder = CreateTableQuery::builder();
@@ -34,13 +34,13 @@ impl Parser {
 
         // 여는 괄호 체크
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1206 need more tokens"));
+            return Err(ParsingError::new("E1206 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::LeftParentheses != current_token {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E1207 expected '('. but your input word is '{:?}'",
                 current_token
             )));
@@ -49,7 +49,7 @@ impl Parser {
         // 닫는 괄호 나올때까지 행 파싱 반복
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("E1208 need more tokens"));
+                return Err(ParsingError::new("E1208 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -69,13 +69,13 @@ impl Parser {
 
         // 닫는 괄호 체크
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1209 need more tokens"));
+            return Err(ParsingError::new("E1209 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::RightParentheses != current_token {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E1210 expected ')'. but your input word is '{:?}'",
                 current_token
             )));
@@ -88,7 +88,7 @@ impl Parser {
         let current_token = self.get_next_token();
 
         if Token::SemiColon != current_token {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E1211 expected ';'. but your input word is '{:?}'",
                 current_token
             )));
@@ -101,9 +101,9 @@ impl Parser {
     pub(crate) fn handle_alter_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1201 need more tokens"));
+            return Err(ParsingError::new("E1201 need more tokens"));
         }
 
         let mut query_builder = AlterTableQuery::builder();
@@ -122,7 +122,7 @@ impl Parser {
             Token::SemiColon => return Ok(query_builder.build()),
             Token::Rename => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E1212 need more tokens"));
+                    return Err(ParsingError::new("E1212 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -131,7 +131,7 @@ impl Parser {
                     // table name rename
                     Token::To => {
                         if !self.has_next_token() {
-                            return Err(ParsingError::boxed("E1213 need more tokens"));
+                            return Err(ParsingError::new("E1213 need more tokens"));
                         }
 
                         let current_token = self.get_next_token();
@@ -142,7 +142,7 @@ impl Parser {
                                     .set_action(AlterTableRenameTo { name: identifier }.into());
                             }
                             _ => {
-                                return Err(ParsingError::boxed(format!(
+                                return Err(ParsingError::new(format!(
                                     "E1214 unexpected token {:?}",
                                     current_token
                                 )))
@@ -152,27 +152,27 @@ impl Parser {
                     // table column name rename
                     Token::Column => {
                         if !self.has_next_token() {
-                            return Err(ParsingError::boxed("E1217 need more tokens"));
+                            return Err(ParsingError::new("E1217 need more tokens"));
                         }
 
                         let current_token = self.get_next_token();
 
                         if let Token::Identifier(from_name) = current_token {
                             if !self.has_next_token() {
-                                return Err(ParsingError::boxed("E1219 need more tokens"));
+                                return Err(ParsingError::new("E1219 need more tokens"));
                             }
 
                             let current_token = self.get_next_token();
 
                             if Token::To != current_token {
-                                return Err(ParsingError::boxed(format!(
+                                return Err(ParsingError::new(format!(
                                     "E1220 expected token is 'TO', but you input is {:?}",
                                     current_token
                                 )));
                             }
 
                             if !self.has_next_token() {
-                                return Err(ParsingError::boxed("E1221 need more tokens"));
+                                return Err(ParsingError::new("E1221 need more tokens"));
                             }
 
                             let current_token = self.get_next_token();
@@ -182,13 +182,13 @@ impl Parser {
                                     AlterTableRenameColumn { from_name, to_name }.into(),
                                 );
                             } else {
-                                return Err(ParsingError::boxed(format!(
+                                return Err(ParsingError::new(format!(
                                     "E1222 expected token is 'identifer', but you input is {:?}",
                                     current_token
                                 )));
                             }
                         } else {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "E1218 expected token {:?}",
                                 current_token
                             )));
@@ -197,20 +197,20 @@ impl Parser {
                     // table column name rename
                     Token::Identifier(from_name) => {
                         if !self.has_next_token() {
-                            return Err(ParsingError::boxed("E1218 need more tokens"));
+                            return Err(ParsingError::new("E1218 need more tokens"));
                         }
 
                         let current_token = self.get_next_token();
 
                         if Token::To != current_token {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "E1223 expected token is 'TO', but you input is {:?}",
                                 current_token
                             )));
                         }
 
                         if !self.has_next_token() {
-                            return Err(ParsingError::boxed("E1224 need more tokens"));
+                            return Err(ParsingError::new("E1224 need more tokens"));
                         }
 
                         let current_token = self.get_next_token();
@@ -219,14 +219,14 @@ impl Parser {
                             query_builder = query_builder
                                 .set_action(AlterTableRenameColumn { from_name, to_name }.into());
                         } else {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "E1225 expected token is 'identifer', but you input is {:?}",
                                 current_token
                             )));
                         }
                     }
                     _ => {
-                        return Err(ParsingError::boxed(format!(
+                        return Err(ParsingError::new(format!(
                             "E1213 expected token is 'TO' or 'COLUMN', but you input is {:?}",
                             current_token
                         )))
@@ -235,7 +235,7 @@ impl Parser {
             }
             Token::Add => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E1215 need more tokens"));
+                    return Err(ParsingError::new("E1215 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -256,7 +256,7 @@ impl Parser {
                             query_builder.set_action(AlterTableAddColumn { column }.into());
                     }
                     _ => {
-                        return Err(ParsingError::boxed(format!(
+                        return Err(ParsingError::new(format!(
                             "E1216 unexpected keyword '{:?}'",
                             current_token
                         )))
@@ -269,7 +269,7 @@ impl Parser {
                 }
 
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E1226 need more tokens"));
+                    return Err(ParsingError::new("E1226 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -278,7 +278,7 @@ impl Parser {
                     query_builder =
                         query_builder.set_action(AlterTableDropColumn { column_name }.into());
                 } else {
-                    return Err(ParsingError::boxed(format!(
+                    return Err(ParsingError::new(format!(
                         "E1227 unexpected token {:?}",
                         current_token
                     )));
@@ -290,14 +290,14 @@ impl Parser {
                 }
 
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E1228 need more tokens"));
+                    return Err(ParsingError::new("E1228 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
 
                 if let Token::Identifier(column_name) = current_token {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("E1230 need more tokens"));
+                        return Err(ParsingError::new("E1230 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -320,7 +320,7 @@ impl Parser {
                                 self.get_next_token();
 
                                 if !self.has_next_token() {
-                                    return Err(ParsingError::boxed("E1233 need more tokens"));
+                                    return Err(ParsingError::new("E1233 need more tokens"));
                                 }
 
                                 let data_type = self.parse_data_type()?;
@@ -336,7 +336,7 @@ impl Parser {
                                 self.get_next_token();
 
                                 if !self.has_next_token() {
-                                    return Err(ParsingError::boxed("E1234 need more tokens"));
+                                    return Err(ParsingError::new("E1234 need more tokens"));
                                 }
 
                                 let expression = self.parse_expression(context)?;
@@ -349,7 +349,7 @@ impl Parser {
                                     .into(),
                                 );
                             } else {
-                                return Err(ParsingError::boxed("E1231 unexpected tokens"));
+                                return Err(ParsingError::new("E1231 unexpected tokens"));
                             }
                         }
                         Token::Drop => {
@@ -375,12 +375,12 @@ impl Parser {
                                     .into(),
                                 );
                             } else {
-                                return Err(ParsingError::boxed("E1231 unexpected tokens"));
+                                return Err(ParsingError::new("E1231 unexpected tokens"));
                             }
                         }
                         Token::Type => {
                             if !self.has_next_token() {
-                                return Err(ParsingError::boxed("E1232 need more tokens"));
+                                return Err(ParsingError::new("E1232 need more tokens"));
                             }
 
                             let data_type = self.parse_data_type()?;
@@ -394,21 +394,21 @@ impl Parser {
                             );
                         }
                         _ => {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "E1229 unexpected token {:?}",
                                 current_token
                             )))
                         }
                     }
                 } else {
-                    return Err(ParsingError::boxed(format!(
+                    return Err(ParsingError::new(format!(
                         "E1229 unexpected token {:?}",
                         current_token
                     )));
                 }
             }
             _ => {
-                return Err(ParsingError::boxed(format!(
+                return Err(ParsingError::new(format!(
                     "E1202 unexpected keyword '{:?}'",
                     current_token
                 )))
@@ -422,7 +422,7 @@ impl Parser {
     pub(crate) fn handle_drop_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         let mut query_builder = DropTableQuery::builder();
 
         // IF EXISTS 파싱
@@ -431,7 +431,7 @@ impl Parser {
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1203 need more tokens"));
+            return Err(ParsingError::new("E1203 need more tokens"));
         }
 
         let table = self.parse_table_name(context)?;
@@ -446,7 +446,7 @@ impl Parser {
         let current_token = self.get_next_token();
 
         if Token::SemiColon != current_token {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E1204 expected ';'. but your input word is '{:?}'",
                 current_token
             )));

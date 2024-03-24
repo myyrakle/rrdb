@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::error::Error;
 
 use futures::future::join_all;
 
@@ -11,6 +10,7 @@ use crate::ast::dml::plan::select::select_plan::SelectPlanItem;
 use crate::ast::dml::select::SelectQuery;
 use crate::ast::types::{SQLExpression, SelectColumn};
 use crate::errors::type_error::TypeError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::{TableDataField, TableDataFieldType, TableDataRow};
 use crate::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
@@ -18,7 +18,7 @@ use crate::executor::predule::{
 use crate::optimizer::predule::Optimizer;
 
 impl Executor {
-    pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, RRDBError> {
         // 최적화 작업
         let optimizer = Optimizer::new();
 
@@ -82,7 +82,7 @@ impl Executor {
                             match condition {
                                 TableDataFieldType::Boolean(boolean) => Ok((e, boolean)),
                                 TableDataFieldType::Null => Ok((e, false)),
-                                _ => Err(TypeError::dyn_boxed(
+                                _ => Err(TypeError::new(
                                     "condition expression is valid only for boolean and null types",
                                 )),
                             }

@@ -1,5 +1,3 @@
-use std::error::Error;
-
 pub mod ast;
 pub mod command;
 pub mod constants;
@@ -14,13 +12,14 @@ pub mod server;
 pub mod utils;
 
 use command::{Command, SubCommand};
+use errors::RRDBError;
 use executor::predule::Executor;
 use server::predule::{Server, ServerOption};
 
 use clap::Parser;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error + Send>> {
+async fn main() -> Result<(), RRDBError> {
     let args = Command::parse();
 
     match args.action {

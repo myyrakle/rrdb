@@ -1,18 +1,15 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::create_table::CreateTableQuery;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::table::TableConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{ExecuteResult, Executor};
 use crate::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
 impl Executor {
-    pub async fn create_table(
-        &self,
-        query: CreateTableQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn create_table(&self, query: CreateTableQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table.clone().unwrap().database_name.unwrap();
@@ -25,11 +22,9 @@ impl Executor {
 
         if let Err(error) = tokio::fs::create_dir(&table_path).await {
             match error.kind() {
-                ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::boxed("already exists table"))
-                }
+                ErrorKind::AlreadyExists => return Err(ExecuteError::new("already exists table")),
                 _ => {
-                    return Err(ExecuteError::boxed("table create failed"));
+                    return Err(ExecuteError::new("table create failed"));
                 }
             }
         }
@@ -39,21 +34,21 @@ impl Executor {
         let table_info: TableConfig = query.into();
 
         if let Err(error) = tokio::fs::write(&config_path, encoder.encode(table_info)).await {
-            return Err(ExecuteError::boxed(error.to_string()));
+            return Err(ExecuteError::new(error.to_string()));
         }
 
         let rows_path = table_path.clone().join("rows");
 
         // 데이터 경로 생성
         if let Err(error) = tokio::fs::create_dir(&rows_path).await {
-            return Err(ExecuteError::boxed(error.to_string()));
+            return Err(ExecuteError::new(error.to_string()));
         }
 
         let index_path = table_path.clone().join("index");
 
         // 인덱스 경로 생성
         if let Err(error) = tokio::fs::create_dir(&index_path).await {
-            return Err(ExecuteError::boxed(error.to_string()));
+            return Err(ExecuteError::new(error.to_string()));
         }
 
         // TODO: primary key 데이터 생성

@@ -1,19 +1,18 @@
-use std::error::Error;
-
 use crate::ast::dml::expressions::subquery::SubqueryExpression;
 use crate::ast::dml::parts::join::JoinType;
 use crate::ast::types::{Column, DataType, SelectColumn, TableName};
 use crate::errors::predule::ParsingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::{OperatorToken, Token};
 use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
     // 테이블 컬럼 정의 분석
-    pub(crate) fn parse_table_column(&mut self) -> Result<Column, Box<dyn Error + Send>> {
+    pub(crate) fn parse_table_column(&mut self) -> Result<Column, RRDBError> {
         let mut builder = Column::builder();
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0001 need more tokens"));
+            return Err(ParsingError::new("E0001 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -21,7 +20,7 @@ impl Parser {
         if let Token::Identifier(name) = current_token {
             builder = builder.set_name(name);
         } else {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0028 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
@@ -49,7 +48,7 @@ impl Parser {
                 }
                 Token::Primary => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("E0003 need more tokens"));
+                        return Err(ParsingError::new("E0003 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -59,7 +58,7 @@ impl Parser {
                             builder = builder.set_primary_key(true).set_not_null(true);
                         }
                         _ => {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "expected 'PRIMARY KEY'. but your input word is '{:?}'",
                                 current_token
                             )));
@@ -68,7 +67,7 @@ impl Parser {
                 }
                 Token::Not => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("E0004 need more tokens"));
+                        return Err(ParsingError::new("E0004 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -78,7 +77,7 @@ impl Parser {
                             builder = builder.set_not_null(true);
                         }
                         _ => {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "expected 'NOT NULL'. but your input word is '{:?}'",
                                 current_token
                             )));
@@ -90,7 +89,7 @@ impl Parser {
                 }
                 Token::Comment => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("E0005 need more tokens"));
+                        return Err(ParsingError::new("E0005 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -98,14 +97,14 @@ impl Parser {
                     if let Token::String(comment) = current_token {
                         builder = builder.set_comment(comment);
                     } else {
-                        return Err(ParsingError::boxed(format!(
+                        return Err(ParsingError::new(format!(
                             "expected comment string. but your input word is '{:?}'",
                             current_token
                         )));
                     }
                 }
                 Token::Default => {
-                    return Err(ParsingError::boxed("not supported yet"));
+                    return Err(ParsingError::new("not supported yet"));
                 }
                 _ => {}
             }
@@ -115,9 +114,9 @@ impl Parser {
     }
 
     // 데이터 타입 분석
-    pub(crate) fn parse_data_type(&mut self) -> Result<DataType, Box<dyn Error + Send>> {
+    pub(crate) fn parse_data_type(&mut self) -> Result<DataType, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0006 need more tokens"));
+            return Err(ParsingError::new("E0006 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -130,13 +129,13 @@ impl Parser {
                 "VARCHAR" => {
                     // 여는 괄호 체크
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("E0007 need more tokens"));
+                        return Err(ParsingError::new("E0007 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
 
                     if Token::LeftParentheses != current_token {
-                        return Err(ParsingError::boxed(format!(
+                        return Err(ParsingError::new(format!(
                             "expected '('. but your input word is '{:?}'",
                             current_token
                         )));
@@ -144,7 +143,7 @@ impl Parser {
 
                     // 문자열 길이 체크
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("E0008 need more tokens"));
+                        return Err(ParsingError::new("E0008 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -152,13 +151,13 @@ impl Parser {
                     if let Token::Integer(integer) = current_token {
                         // 닫는 괄호 체크
                         if !self.has_next_token() {
-                            return Err(ParsingError::boxed("E0009 need more tokens"));
+                            return Err(ParsingError::new("E0009 need more tokens"));
                         }
 
                         let current_token = self.get_next_token();
 
                         if Token::RightParentheses != current_token {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "expected ')'. but your input word is '{:?}'",
                                 current_token
                             )));
@@ -166,19 +165,19 @@ impl Parser {
 
                         Ok(DataType::Varchar(integer))
                     } else {
-                        Err(ParsingError::boxed(format!(
+                        Err(ParsingError::new(format!(
                             "expected integer number. but your input word is '{:?}'",
                             current_token
                         )))
                     }
                 }
-                _ => Err(ParsingError::boxed(format!(
+                _ => Err(ParsingError::new(format!(
                     "unknown data type '{}'",
                     type_name
                 ))),
             }
         } else {
-            Err(ParsingError::boxed(format!(
+            Err(ParsingError::new(format!(
                 "E0029 expected identifier. but your input word is '{:?}'",
                 current_token
             )))
@@ -189,10 +188,10 @@ impl Parser {
     pub(crate) fn parse_table_name(
         &mut self,
         context: ParserContext,
-    ) -> Result<TableName, Box<dyn Error + Send>> {
+    ) -> Result<TableName, RRDBError> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0010 need more tokens"));
+            return Err(ParsingError::new("E0010 need more tokens"));
         }
 
         // 첫번째로 오는 이름은 테이블명으로 추정
@@ -202,7 +201,7 @@ impl Parser {
         let mut table_name = if let Token::Identifier(name) = current_token {
             name
         } else {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0030 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
@@ -220,7 +219,7 @@ impl Parser {
         // .가 있을 경우 "데이터베이스명"."테이블명"의 형태로 추정
         if current_token == Token::Period {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("E0012 need more tokens"));
+                return Err(ParsingError::new("E0012 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -229,7 +228,7 @@ impl Parser {
                 database_name = Some(table_name);
                 table_name = name;
             } else {
-                return Err(ParsingError::boxed(format!(
+                return Err(ParsingError::new(format!(
                     "E0031 expected identifier. but your input word is '{:?}'",
                     current_token
                 )));
@@ -245,24 +244,24 @@ impl Parser {
     }
 
     // IF NOT EXISTS 체크 로직
-    pub(crate) fn has_if_not_exists(&mut self) -> Result<bool, Box<dyn Error + Send>> {
+    pub(crate) fn has_if_not_exists(&mut self) -> Result<bool, RRDBError> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0013 need more tokens"));
+            return Err(ParsingError::new("E0013 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::If == current_token {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("E0014 need more tokens"));
+                return Err(ParsingError::new("E0014 need more tokens"));
             }
 
             let current_token = self.get_next_token();
 
             if Token::Not == current_token {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E0015 need more tokens"));
+                    return Err(ParsingError::new("E0015 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -270,13 +269,13 @@ impl Parser {
                 if Token::Exists == current_token {
                     Ok(true)
                 } else {
-                    Err(ParsingError::boxed(format!(
+                    Err(ParsingError::new(format!(
                         "expected keyword is 'exists'. but your input word is '{:?}'",
                         current_token
                     )))
                 }
             } else {
-                Err(ParsingError::boxed(format!(
+                Err(ParsingError::new(format!(
                     "expected keyword is 'not'. but your input word is '{:?}'",
                     current_token
                 )))
@@ -288,17 +287,17 @@ impl Parser {
     }
 
     // IF EXISTS 체크 로직
-    pub(crate) fn has_if_exists(&mut self) -> Result<bool, Box<dyn Error + Send>> {
+    pub(crate) fn has_if_exists(&mut self) -> Result<bool, RRDBError> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0016 need more tokens"));
+            return Err(ParsingError::new("E0016 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if Token::If == current_token {
             if !self.has_next_token() {
-                return Err(ParsingError::boxed("E0017 need more tokens"));
+                return Err(ParsingError::new("E0017 need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -306,7 +305,7 @@ impl Parser {
             if Token::Exists == current_token {
                 Ok(true)
             } else {
-                Err(ParsingError::boxed(format!(
+                Err(ParsingError::new(format!(
                     "expected keyword is 'exists'. but your input word is '{:?}'",
                     current_token
                 )))
@@ -318,11 +317,11 @@ impl Parser {
     }
 
     // SELECT 컬럼 정의 분석
-    pub(crate) fn parse_select_column(&mut self) -> Result<SelectColumn, Box<dyn Error + Send>> {
+    pub(crate) fn parse_select_column(&mut self) -> Result<SelectColumn, RRDBError> {
         let mut select_column = SelectColumn::new(None, "".to_string());
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0018 need more tokens"));
+            return Err(ParsingError::new("E0018 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -330,7 +329,7 @@ impl Parser {
         if let Token::Identifier(name) = current_token {
             select_column.column_name = name;
         } else {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0032 expected identifier. but your input word is '{:?}'",
                 current_token
             )));
@@ -349,7 +348,7 @@ impl Parser {
                     select_column.column_name = name;
                     Ok(select_column)
                 } else {
-                    Err(ParsingError::boxed(format!(
+                    Err(ParsingError::new(format!(
                         "E0033 expected identifier. but your input word is '{:?}'",
                         current_token
                     )))
@@ -953,10 +952,10 @@ impl Parser {
     }
 
     // Table Alias 획득
-    pub(crate) fn parse_table_alias(&mut self) -> Result<String, Box<dyn Error + Send>> {
+    pub(crate) fn parse_table_alias(&mut self) -> Result<String, RRDBError> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0024 need more tokens"));
+            return Err(ParsingError::new("E0024 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -964,21 +963,21 @@ impl Parser {
         match current_token {
             Token::As => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E0026 need more tokens"));
+                    return Err(ParsingError::new("E0026 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
 
                 match current_token {
                     Token::Identifier(id) => Ok(id),
-                    _ => Err(ParsingError::boxed(format!(
+                    _ => Err(ParsingError::new(format!(
                         "E0027 expected identifier. but your input is {:?}",
                         current_token
                     ))),
                 }
             }
             Token::Identifier(id) => Ok(id),
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "E0025 expected AS. but your input is {:?}",
                 current_token
             ))),
@@ -989,37 +988,37 @@ impl Parser {
     pub(crate) fn parse_subquery(
         &mut self,
         context: ParserContext,
-    ) -> Result<SubqueryExpression, Box<dyn Error + Send>> {
+    ) -> Result<SubqueryExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0019 need more tokens"));
+            return Err(ParsingError::new("E0019 need more tokens"));
         }
 
         // ( 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::LeftParentheses {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0020 expected left parentheses. but your input is {:?}",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0021 need more tokens"));
+            return Err(ParsingError::new("E0021 need more tokens"));
         }
 
         // 서브쿼리 파싱
         let select = self.handle_select_query(context)?;
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0022 need more tokens"));
+            return Err(ParsingError::new("E0022 need more tokens"));
         }
 
         // ) 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::RightParentheses {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0023 expected right parentheses. but your input is {:?}",
                 current_token
             )));

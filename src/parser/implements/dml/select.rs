@@ -1,6 +1,4 @@
 use std::collections::HashSet;
-use std::error::Error;
-use std::iter::FromIterator;
 
 use crate::ast::dml::parts::_where::WhereClause;
 use crate::ast::dml::parts::group_by::GroupByItem;
@@ -10,6 +8,7 @@ use crate::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
 use crate::ast::dml::select::SelectQuery;
 use crate::errors::predule::ParsingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::{OperatorToken, Token};
 use crate::parser::predule::{Parser, ParserContext};
 
@@ -17,23 +16,23 @@ impl Parser {
     pub(crate) fn handle_select_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectQuery, Box<dyn Error + Send>> {
+    ) -> Result<SelectQuery, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0301: need more tokens"));
+            return Err(ParsingError::new("E0301: need more tokens"));
         }
 
         // SELECT 토큰 삼키기
         let current_token = self.get_next_token();
 
         if current_token != Token::Select {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0302: expected 'SELECT'. but your input word is '{:?}'",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0303: need more tokens"));
+            return Err(ParsingError::new("E0303: need more tokens"));
         }
 
         let mut query_builder = SelectQuery::builder();
@@ -93,7 +92,7 @@ impl Parser {
                 }
             }
             _ => {
-                return Err(ParsingError::boxed(format!(
+                return Err(ParsingError::new(format!(
                     "E0304 expected 'FROM' clause. but your input word is '{:?}'",
                     current_token
                 )));
@@ -140,7 +139,7 @@ impl Parser {
                             let group_by_item = self.parse_group_by_item(context.clone())?;
                             query_builder = query_builder.add_group_by(group_by_item);
                         } else {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "E0319 unexpected token '{:?}'",
                                 current_token
                             )));
@@ -168,7 +167,7 @@ impl Parser {
                 // 집계함수가 사용되지 않은 컬럼이 group by에 없다면 오류
                 for non_aggregate_column in non_aggregate_columns {
                     if !group_by_columns.contains(&non_aggregate_column) {
-                        return Err(ParsingError::boxed(format!(
+                        return Err(ParsingError::new(format!(
                             "E0331: column '{:?}' must be in a GROUP BY clause or used within an aggregate function",
                             non_aggregate_column
                         )));
@@ -181,7 +180,7 @@ impl Parser {
                 // 집계함수가 사용된 컬럼이 group by에 있다면 오류
                 for aggregate_column in aggregate_columns {
                     if group_by_columns.contains(&aggregate_column) {
-                        return Err(ParsingError::boxed(format!(
+                        return Err(ParsingError::new(format!(
                             "E0332: column '{:?}' cannot be in a GROUP BY clause",
                             group_by_columns
                         )));
@@ -196,7 +195,7 @@ impl Parser {
                 let having_clause = self.parse_having(context.clone())?;
                 query_builder = query_builder.set_having(having_clause);
             } else {
-                return Err(ParsingError::boxed(
+                return Err(ParsingError::new(
                     "E0315 Having without group by is invalid.",
                 ));
             }
@@ -230,7 +229,7 @@ impl Parser {
                             let order_by_item = self.parse_order_by_item(context.clone())?;
                             query_builder = query_builder.add_order_by(order_by_item);
                         } else {
-                            return Err(ParsingError::boxed(format!(
+                            return Err(ParsingError::new(format!(
                                 "E0318 unexpected token '{:?}'",
                                 current_token
                             )));
@@ -266,9 +265,9 @@ impl Parser {
     pub(crate) fn parse_select_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectItem, Box<dyn Error + Send>> {
+    ) -> Result<SelectItem, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0305 need more tokens"));
+            return Err(ParsingError::new("E0305 need more tokens"));
         }
 
         let select_item = SelectItem::builder();
@@ -287,7 +286,7 @@ impl Parser {
             Token::As => {
                 // 더 없을 경우 바로 반환
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E0306 expected alias. need more"));
+                    return Err(ParsingError::new("E0306 expected alias. need more"));
                 }
 
                 let current_token = self.get_next_token();
@@ -297,7 +296,7 @@ impl Parser {
                         let select_item = select_item.set_alias(identifier);
                         Ok(select_item.build())
                     }
-                    _ => Err(ParsingError::boxed(format!(
+                    _ => Err(ParsingError::new(format!(
                         "E0307 expected alias, but your input word is '{:?}'",
                         current_token
                     ))),
@@ -313,7 +312,7 @@ impl Parser {
                 // 현재 select_item은 종료된 것으로 판단.
                 Ok(select_item.build())
             }
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "E0308 expected expression. but your input word is '{:?}'",
                 current_token
             ))),
@@ -323,9 +322,9 @@ impl Parser {
     pub(crate) fn parse_order_by_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<OrderByItem, Box<dyn Error + Send>> {
+    ) -> Result<OrderByItem, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0313 need more tokens"));
+            return Err(ParsingError::new("E0313 need more tokens"));
         }
 
         // 표현식 파싱
@@ -366,7 +365,7 @@ impl Parser {
         match current_token {
             Token::Nulls => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E0329 need more tokens"));
+                    return Err(ParsingError::new("E0329 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -375,7 +374,7 @@ impl Parser {
                     Token::First => {}
                     Token::Last => order_by_item.nulls = OrderByNulls::Last,
                     _ => {
-                        return Err(ParsingError::boxed(format!(
+                        return Err(ParsingError::new(format!(
                             "E0330 expected keyword is FIRST or LAST, but your input is {:?}",
                             current_token
                         )))
@@ -394,9 +393,9 @@ impl Parser {
     pub(crate) fn parse_group_by_item(
         &mut self,
         _context: ParserContext,
-    ) -> Result<GroupByItem, Box<dyn Error + Send>> {
+    ) -> Result<GroupByItem, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0314 need more tokens"));
+            return Err(ParsingError::new("E0314 need more tokens"));
         }
 
         // 표현식 파싱
@@ -411,9 +410,9 @@ impl Parser {
         &mut self,
         join_type: JoinType,
         context: ParserContext,
-    ) -> Result<JoinClause, Box<dyn Error + Send>> {
+    ) -> Result<JoinClause, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0310 need more tokens"));
+            return Err(ParsingError::new("E0310 need more tokens"));
         }
 
         let right = self.parse_table_name(context.clone())?;
@@ -448,18 +447,15 @@ impl Parser {
         Ok(join)
     }
 
-    pub(crate) fn parse_where(
-        &mut self,
-        context: ParserContext,
-    ) -> Result<WhereClause, Box<dyn Error + Send>> {
+    pub(crate) fn parse_where(&mut self, context: ParserContext) -> Result<WhereClause, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0311 need more tokens"));
+            return Err(ParsingError::new("E0311 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if current_token != Token::Where {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0312 expected 'WHERE'. but your input word is '{:?}'",
                 current_token
             )));
@@ -473,15 +469,15 @@ impl Parser {
     pub(crate) fn parse_having(
         &mut self,
         context: ParserContext,
-    ) -> Result<HavingClause, Box<dyn Error + Send>> {
+    ) -> Result<HavingClause, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0316 need more tokens"));
+            return Err(ParsingError::new("E0316 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if current_token != Token::Having {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0317 expected 'Having'. but your input word is '{:?}'",
                 current_token
             )));
@@ -494,19 +490,16 @@ impl Parser {
         })
     }
 
-    pub(crate) fn parse_offset(
-        &mut self,
-        _context: ParserContext,
-    ) -> Result<u32, Box<dyn Error + Send>> {
+    pub(crate) fn parse_offset(&mut self, _context: ParserContext) -> Result<u32, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0320 need more tokens"));
+            return Err(ParsingError::new("E0320 need more tokens"));
         }
 
         // OFFSET 삼키기
         let current_token = self.get_next_token();
 
         if current_token != Token::Offset {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0321 expected 'Offset'. but your input word is '{:?}'",
                 current_token
             )));
@@ -514,7 +507,7 @@ impl Parser {
 
         // OFFSET 숫자값 획득
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0322 need more tokens"));
+            return Err(ParsingError::new("E0322 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -524,31 +517,28 @@ impl Parser {
                 if integer >= 0 {
                     Ok(integer as u32)
                 } else {
-                    Err(ParsingError::boxed(
+                    Err(ParsingError::new(
                         "E0323 Offset can only contain positive numbers.",
                     ))
                 }
             }
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "E0324 expected positive numbers. but your input word is '{:?}'",
                 current_token
             ))),
         }
     }
 
-    pub(crate) fn parse_limit(
-        &mut self,
-        _context: ParserContext,
-    ) -> Result<u32, Box<dyn Error + Send>> {
+    pub(crate) fn parse_limit(&mut self, _context: ParserContext) -> Result<u32, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0325 need more tokens"));
+            return Err(ParsingError::new("E0325 need more tokens"));
         }
 
         // OFFSET 삼키기
         let current_token = self.get_next_token();
 
         if current_token != Token::Limit {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "E0326 expected 'Limit'. but your input word is '{:?}'",
                 current_token
             )));
@@ -556,7 +546,7 @@ impl Parser {
 
         // OFFSET 숫자값 획득
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0327 need more tokens"));
+            return Err(ParsingError::new("E0327 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -566,12 +556,12 @@ impl Parser {
                 if integer >= 0 {
                     Ok(integer as u32)
                 } else {
-                    Err(ParsingError::boxed(
+                    Err(ParsingError::new(
                         "E0327 Limit can only contain positive numbers.",
                     ))
                 }
             }
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "E0328 expected positive numbers. but your input word is '{:?}'",
                 current_token
             ))),

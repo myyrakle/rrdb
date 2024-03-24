@@ -1,10 +1,10 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use futures::future::join_all;
 
 use crate::ast::other::show_databases::ShowDatabasesQuery;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::database::DatabaseConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
@@ -15,7 +15,7 @@ impl Executor {
     pub async fn show_databases(
         &self,
         _query: ShowDatabasesQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    ) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -64,16 +64,13 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
-                _ => Err(ExecuteError::boxed("database listup failed")),
+                ErrorKind::NotFound => Err(ExecuteError::new("base path not exists")),
+                _ => Err(ExecuteError::new("database listup failed")),
             },
         }
     }
 
-    pub async fn find_database(
-        &self,
-        database_name: String,
-    ) -> Result<bool, Box<dyn Error + Send>> {
+    pub async fn find_database(&self, database_name: String) -> Result<bool, RRDBError> {
         let result = self.show_databases(ShowDatabasesQuery {}).await?;
 
         Ok(result.rows.iter().any(|e| {

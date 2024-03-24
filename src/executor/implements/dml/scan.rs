@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
@@ -6,6 +5,7 @@ use futures::future::join_all;
 
 use crate::ast::types::TableName;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::TableDataRow;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::Executor;
@@ -14,7 +14,7 @@ impl Executor {
     pub async fn full_scan(
         &self,
         table_name: TableName,
-    ) -> Result<Vec<(PathBuf, TableDataRow)>, Box<dyn Error + Send>> {
+    ) -> Result<Vec<(PathBuf, TableDataRow)>, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let database_name = table_name.database_name.unwrap();
@@ -43,28 +43,26 @@ impl Executor {
                                             match encoder.decode::<TableDataRow>(result.as_slice())
                                             {
                                                 Some(decoded) => Ok((path.to_path_buf(), decoded)),
-                                                None => Err(ExecuteError::boxed(format!(
+                                                None => Err(ExecuteError::new(format!(
                                                     "full scan failed {:?}",
                                                     path
                                                 ))),
                                             }
                                         }
-                                        Err(error) => Err(ExecuteError::boxed(format!(
+                                        Err(error) => Err(ExecuteError::new(format!(
                                             "full scan failed {}",
                                             error
                                         ))),
                                     }
                                 } else {
-                                    Err(ExecuteError::boxed("full scan failed"))
+                                    Err(ExecuteError::new("full scan failed"))
                                 }
                             }
                             Err(error) => {
-                                Err(ExecuteError::boxed(format!("full scan failed {}", error)))
+                                Err(ExecuteError::new(format!("full scan failed {}", error)))
                             }
                         },
-                        Err(error) => {
-                            Err(ExecuteError::boxed(format!("full scan failed {}", error)))
-                        }
+                        Err(error) => Err(ExecuteError::new(format!("full scan failed {}", error))),
                     }
                 });
 
@@ -75,12 +73,12 @@ impl Executor {
 
                 match rows {
                     Ok(rows) => Ok(rows),
-                    Err(error) => Err(ExecuteError::boxed(error.to_string())),
+                    Err(error) => Err(ExecuteError::new(error.to_string())),
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists (3)")),
-                _ => Err(ExecuteError::boxed("full scan failed")),
+                ErrorKind::NotFound => Err(ExecuteError::new("base path not exists (3)")),
+                _ => Err(ExecuteError::new("full scan failed")),
             },
         }
     }

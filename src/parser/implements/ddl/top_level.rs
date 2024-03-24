@@ -1,19 +1,18 @@
 use crate::ast::SQLStatement;
 use crate::errors::predule::ParsingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::Token;
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
-
-use std::error::Error;
 
 impl Parser {
     // CREATE...로 시작되는 쿼리 분석
     pub(crate) fn handle_create_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1101 need more tokens"));
+            return Err(ParsingError::new("E1101 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -21,7 +20,7 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_create_table_query(context),
             Token::Database => self.handle_create_database_query(),
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "E1102 not supported command. possible commands: (create table). but your input is {:?}",
                 current_token
             ))),
@@ -32,9 +31,9 @@ impl Parser {
     pub(crate) fn handle_alter_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1103 need more tokens"));
+            return Err(ParsingError::new("E1103 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -42,7 +41,7 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_alter_table_query(context),
             Token::Database => self.handle_alter_database_query(),
-            _ => Err(ParsingError::boxed(
+            _ => Err(ParsingError::new(
                 "E1104 not supported command. possible commands: (alter table)",
             )),
         }
@@ -51,9 +50,9 @@ impl Parser {
     pub(crate) fn handle_drop_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E1105 need more tokens"));
+            return Err(ParsingError::new("E1105 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -61,7 +60,7 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_drop_table_query(context),
             Token::Database => self.handle_drop_database_query(),
-            _ => Err(ParsingError::boxed(
+            _ => Err(ParsingError::new(
                 "E1106 not supported command. possible commands: (create table)",
             )),
         }

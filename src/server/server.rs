@@ -1,6 +1,5 @@
-use std::error::Error;
-
 use crate::errors::execute_error::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::predule::Executor;
 use crate::logger::predule::Logger;
 use crate::pgwire::predule::Connection;
@@ -24,7 +23,7 @@ impl Server {
 
     /// 메인 서버 루프.
     /// 여러개의 태스크 제어
-    pub async fn run(&self) -> Result<(), Box<dyn Error + Send>> {
+    pub async fn run(&self) -> Result<(), RRDBError> {
         // TODO: 인덱스 로딩 등 기본 로직 실행.
 
         let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
@@ -51,7 +50,7 @@ impl Server {
                         Err(error) => {
                             let error = error.to_string();
                             if let Err(_response) = request.response_sender.send(ChannelResponse {
-                                result: Err(ExecuteError::boxed(ExecuteError::boxed(error))),
+                                result: Err(ExecuteError::new(error)),
                             }) {
                                 Logger::error("channel send failed");
                             }
@@ -65,7 +64,7 @@ impl Server {
         // client와의 커넥션 처리 루프
         let listener = TcpListener::bind((self.option.host.to_owned(), self.option.port as u16))
             .await
-            .map_err(|error| ExecuteError::dyn_boxed(error.to_string()))?;
+            .map_err(|error| ExecuteError::new(error.to_string()))?;
 
         let connection_task = tokio::spawn(async move {
             loop {

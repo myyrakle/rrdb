@@ -1,19 +1,17 @@
-use std::string::ToString;
+use super::RRDBError;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct ParsingError {
     pub message: String,
+    pub backtrace: std::backtrace::Backtrace,
 }
 
 impl ParsingError {
-    pub fn new<T: ToString>(message: T) -> Self {
-        Self {
+    pub fn new<T: ToString>(message: T) -> RRDBError {
+        RRDBError::ParsingError(Self {
             message: message.to_string(),
-        }
-    }
-
-    pub fn boxed<T: ToString>(message: T) -> Box<Self> {
-        Box::new(Self::new(message))
+            backtrace: std::backtrace::Backtrace::capture(),
+        })
     }
 }
 

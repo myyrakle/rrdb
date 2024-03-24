@@ -4,17 +4,15 @@ use crate::ast::ddl::alter_database::{
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::ast::ddl::drop_database::{DropDatabaseQuery, SQLStatement};
 use crate::errors::predule::ParsingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::Parser;
-use std::error::Error;
 
 impl Parser {
     // CREATE DATABASE 쿼리 분석
-    pub(crate) fn handle_create_database_query(
-        &mut self,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    pub(crate) fn handle_create_database_query(&mut self) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0101 need more tokens"));
+            return Err(ParsingError::new("E0101 need more tokens"));
         }
 
         let mut query_builder = CreateDatabaseQuery::builder();
@@ -24,7 +22,7 @@ impl Parser {
         query_builder = query_builder.set_if_not_exists(if_not_exists);
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0102 need more tokens"));
+            return Err(ParsingError::new("E0102 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -34,7 +32,7 @@ impl Parser {
                 query_builder = query_builder.set_name(identifier);
             }
             _ => {
-                return Err(ParsingError::boxed(
+                return Err(ParsingError::new(
                     "not supported command. possible commands: (create database)",
                 ));
             }
@@ -47,7 +45,7 @@ impl Parser {
         let current_token = self.get_next_token();
 
         if Token::SemiColon != current_token {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "expected ';'. but your input word is '{:?}'",
                 current_token
             )));
@@ -57,9 +55,7 @@ impl Parser {
     }
 
     // DROP DATABASE 쿼리 분석
-    pub(crate) fn handle_drop_database_query(
-        &mut self,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    pub(crate) fn handle_drop_database_query(&mut self) -> Result<SQLStatement, RRDBError> {
         let mut query_builder = DropDatabaseQuery::builder();
 
         // IF EXISTS 파싱
@@ -68,7 +64,7 @@ impl Parser {
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0104 need more tokens"));
+            return Err(ParsingError::new("E0104 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -78,7 +74,7 @@ impl Parser {
                 query_builder = query_builder.set_name(identifier);
             }
             _ => {
-                return Err(ParsingError::boxed(
+                return Err(ParsingError::new(
                     "not supported command. possible commands: (create database)",
                 ));
             }
@@ -92,7 +88,7 @@ impl Parser {
         let current_token = self.get_next_token();
 
         if Token::SemiColon != current_token {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "expected ';'. but your input word is '{:?}'",
                 current_token
             )));
@@ -102,11 +98,9 @@ impl Parser {
     }
 
     // ALTER DATABASE 쿼리 분석
-    pub(crate) fn handle_alter_database_query(
-        &mut self,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    pub(crate) fn handle_alter_database_query(&mut self) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0105 need more tokens"));
+            return Err(ParsingError::new("E0105 need more tokens"));
         }
 
         let mut query_builder = AlterDatabaseQuery::builder();
@@ -118,7 +112,7 @@ impl Parser {
                 query_builder = query_builder.set_name(identifier);
             }
             _ => {
-                return Err(ParsingError::boxed(
+                return Err(ParsingError::new(
                     "not supported command. possible commands: (alter database)",
                 ));
             }
@@ -133,22 +127,20 @@ impl Parser {
         match current_token {
             Token::Rename => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed(
-                        "E106: expected 'TO'. but no more token",
-                    ));
+                    return Err(ParsingError::new("E106: expected 'TO'. but no more token"));
                 }
 
                 let current_token = self.get_next_token();
 
                 if current_token != Token::To {
-                    return Err(ParsingError::boxed(format!(
+                    return Err(ParsingError::new(format!(
                         "E107: expected 'TO'. but your input word is '{:?}'",
                         current_token
                     )));
                 }
 
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed(
+                    return Err(ParsingError::new(
                         "E108: expected identifier. but no more token",
                     ));
                 }
@@ -162,7 +154,7 @@ impl Parser {
                         ));
                     }
                     _ => {
-                        return Err(ParsingError::boxed(
+                        return Err(ParsingError::new(
                             "E109: not supported command. possible commands: (alter database)",
                         ));
                     }
@@ -170,7 +162,7 @@ impl Parser {
             }
             Token::SemiColon => {}
             _ => {
-                return Err(ParsingError::boxed(format!(
+                return Err(ParsingError::new(format!(
                     "E107: not supported syntax'{:?}'",
                     current_token
                 )));

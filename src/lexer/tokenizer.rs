@@ -1,7 +1,7 @@
 use crate::errors::predule::LexingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::{OperatorToken, Token};
 use crate::logger::predule::Logger;
-use std::error::Error;
 
 #[derive(Debug)]
 pub struct Tokenizer {
@@ -94,7 +94,7 @@ impl Tokenizer {
 
     // 주어진 텍스트에서 토큰을 순서대로 획득해 반환합니다.
     // 끝을 만날 경우 Token::EOF를 반환합니다.
-    pub fn get_token(&mut self) -> Result<Token, Box<dyn Error + Send>> {
+    pub fn get_token(&mut self) -> Result<Token, RRDBError> {
         // 화이트 스페이스 삼킴
         while self.is_whitespace() && !self.is_eof() {
             self.read_char();
@@ -210,7 +210,7 @@ impl Tokenizer {
                 match number {
                     Ok(number) => Token::Float(number),
                     Err(_) => {
-                        return Err(LexingError::boxed(format!(
+                        return Err(LexingError::new(format!(
                             "invalid floating point number format: {}",
                             number_string
                         )))
@@ -222,7 +222,7 @@ impl Tokenizer {
                 match number {
                     Ok(number) => Token::Integer(number),
                     Err(_) => {
-                        return Err(LexingError::boxed(format!(
+                        return Err(LexingError::new(format!(
                             "invalid integer number format: {}",
                             number_string
                         )))
@@ -295,7 +295,7 @@ impl Tokenizer {
                 '<' => Token::Operator(OperatorToken::Lt), // TODO: <= 연산자 처리
                 '>' => Token::Operator(OperatorToken::Gt), // TODO: >= 연산자 처리
                 _ => {
-                    return Err(LexingError::boxed(format!(
+                    return Err(LexingError::new(format!(
                         "unexpected operator: {:?}",
                         self.last_char
                     )))
@@ -392,7 +392,7 @@ impl Tokenizer {
         else if self.is_eof() {
             Token::EOF
         } else {
-            return Err(LexingError::boxed(format!(
+            return Err(LexingError::new(format!(
                 "unexpected character: {:?}",
                 self.last_char
             )));
@@ -404,7 +404,7 @@ impl Tokenizer {
     }
 
     // Tokenizer 생성 없이 토큰 목록을 가져올 수 있는 유틸 함수입니다.
-    pub fn string_to_tokens(text: String) -> Result<Vec<Token>, Box<dyn Error + Send>> {
+    pub fn string_to_tokens(text: String) -> Result<Vec<Token>, RRDBError> {
         let mut tokenizer = Tokenizer::new(text);
 
         let mut tokens = vec![];
