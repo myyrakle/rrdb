@@ -15,7 +15,7 @@ impl Executor {
     pub async fn show_databases(
         &self,
         _query: ShowDatabasesQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    ) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -70,10 +70,7 @@ impl Executor {
         }
     }
 
-    pub async fn find_database(
-        &self,
-        database_name: String,
-    ) -> Result<bool, Box<dyn Error + Send>> {
+    pub async fn find_database(&self, database_name: String) -> Result<bool, RRDBError> {
         let result = self.show_databases(ShowDatabasesQuery {}).await?;
 
         Ok(result.rows.iter().any(|e| {

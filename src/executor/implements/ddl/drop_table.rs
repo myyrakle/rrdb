@@ -1,17 +1,14 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::drop_table::DropTableQuery;
 use crate::ast::types::TableName;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::predule::{ExecuteResult, Executor};
 use crate::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
 impl Executor {
-    pub async fn drop_table(
-        &self,
-        query: DropTableQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn drop_table(&self, query: DropTableQuery) -> Result<ExecuteResult, RRDBError> {
         let base_path = self.get_base_path();
 
         let TableName {

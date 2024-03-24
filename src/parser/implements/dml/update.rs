@@ -11,7 +11,7 @@ impl Parser {
     pub(crate) fn handle_update_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<UpdateQuery, Box<dyn Error + Send>> {
+    ) -> Result<UpdateQuery, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0601: need more tokens"));
         }

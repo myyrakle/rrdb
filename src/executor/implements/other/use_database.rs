@@ -8,10 +8,7 @@ use crate::{
 };
 
 impl Executor {
-    pub async fn use_databases(
-        &self,
-        query: UseDatabaseQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn use_databases(&self, query: UseDatabaseQuery) -> Result<ExecuteResult, RRDBError> {
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
                 name: "desc".into(),

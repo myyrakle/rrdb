@@ -16,7 +16,7 @@ impl Parser {
     pub(crate) fn handle_select_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectQuery, Box<dyn Error + Send>> {
+    ) -> Result<SelectQuery, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0301: need more tokens"));
         }
@@ -265,7 +265,7 @@ impl Parser {
     pub(crate) fn parse_select_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectItem, Box<dyn Error + Send>> {
+    ) -> Result<SelectItem, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0305 need more tokens"));
         }
@@ -322,7 +322,7 @@ impl Parser {
     pub(crate) fn parse_order_by_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<OrderByItem, Box<dyn Error + Send>> {
+    ) -> Result<OrderByItem, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0313 need more tokens"));
         }
@@ -393,7 +393,7 @@ impl Parser {
     pub(crate) fn parse_group_by_item(
         &mut self,
         _context: ParserContext,
-    ) -> Result<GroupByItem, Box<dyn Error + Send>> {
+    ) -> Result<GroupByItem, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0314 need more tokens"));
         }
@@ -410,7 +410,7 @@ impl Parser {
         &mut self,
         join_type: JoinType,
         context: ParserContext,
-    ) -> Result<JoinClause, Box<dyn Error + Send>> {
+    ) -> Result<JoinClause, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0310 need more tokens"));
         }
@@ -447,10 +447,7 @@ impl Parser {
         Ok(join)
     }
 
-    pub(crate) fn parse_where(
-        &mut self,
-        context: ParserContext,
-    ) -> Result<WhereClause, Box<dyn Error + Send>> {
+    pub(crate) fn parse_where(&mut self, context: ParserContext) -> Result<WhereClause, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0311 need more tokens"));
         }
@@ -472,7 +469,7 @@ impl Parser {
     pub(crate) fn parse_having(
         &mut self,
         context: ParserContext,
-    ) -> Result<HavingClause, Box<dyn Error + Send>> {
+    ) -> Result<HavingClause, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0316 need more tokens"));
         }
@@ -493,10 +490,7 @@ impl Parser {
         })
     }
 
-    pub(crate) fn parse_offset(
-        &mut self,
-        _context: ParserContext,
-    ) -> Result<u32, Box<dyn Error + Send>> {
+    pub(crate) fn parse_offset(&mut self, _context: ParserContext) -> Result<u32, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0320 need more tokens"));
         }
@@ -535,10 +529,7 @@ impl Parser {
         }
     }
 
-    pub(crate) fn parse_limit(
-        &mut self,
-        _context: ParserContext,
-    ) -> Result<u32, Box<dyn Error + Send>> {
+    pub(crate) fn parse_limit(&mut self, _context: ParserContext) -> Result<u32, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0325 need more tokens"));
         }

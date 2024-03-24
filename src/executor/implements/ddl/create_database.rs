@@ -1,8 +1,8 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::database::DatabaseConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{ExecuteResult, Executor};
@@ -12,7 +12,7 @@ impl Executor {
     pub async fn create_database(
         &self,
         query: CreateDatabaseQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    ) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();

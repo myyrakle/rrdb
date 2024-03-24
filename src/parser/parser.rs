@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, error::Error};
 
 use crate::ast::SQLStatement;
+use crate::errors::RRDBError;
 use crate::lexer::predule::{Token, Tokenizer};
 use crate::parser::predule::ParserContext;
 
@@ -12,7 +13,7 @@ pub struct Parser {
 
 impl Parser {
     // 파서 객체 생성
-    pub fn new(text: String) -> Result<Self, Box<dyn Error + Send>> {
+    pub fn new(text: String) -> Result<Self, RRDBError> {
         Ok(Self {
             current_token: Token::EOF,
             tokens: VecDeque::from(Tokenizer::string_to_tokens(text)?),
@@ -27,10 +28,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(
-        &mut self,
-        context: ParserContext,
-    ) -> Result<Vec<SQLStatement>, Box<dyn Error + Send>> {
+    pub fn parse(&mut self, context: ParserContext) -> Result<Vec<SQLStatement>, RRDBError> {
         let mut statements: Vec<SQLStatement> = vec![];
 
         // Top-Level Parser Loop

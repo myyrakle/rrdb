@@ -15,3 +15,16 @@ pub enum RRDBError {
     ServerError(server_error::ServerError),
     TypeError(type_error::TypeError),
 }
+
+impl ToString for RRDBError {
+    fn to_string(&self) -> String {
+        match self {
+            RRDBError::ExecuteError(e) => e.to_string(),
+            RRDBError::IntoError(e) => e.to_string(),
+            RRDBError::LexingError(e) => e.to_string(),
+            RRDBError::ParsingError(e) => e.to_string(),
+            RRDBError::ServerError(e) => e.to_string(),
+            RRDBError::TypeError(e) => e.to_string(),
+        }
+    }
+}

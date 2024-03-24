@@ -25,10 +25,7 @@ impl Optimizer {
         Self {}
     }
 
-    pub async fn optimize_select(
-        &self,
-        query: SelectQuery,
-    ) -> Result<SelectPlan, Box<dyn Error + Send>> {
+    pub async fn optimize_select(&self, query: SelectQuery) -> Result<SelectPlan, RRDBError> {
         let mut has_from = false;
         let mut plan = SelectPlan { list: vec![] };
 
@@ -100,10 +97,7 @@ impl Optimizer {
         Ok(plan)
     }
 
-    pub async fn optimize_update(
-        &self,
-        query: UpdateQuery,
-    ) -> Result<UpdatePlan, Box<dyn Error + Send>> {
+    pub async fn optimize_update(&self, query: UpdateQuery) -> Result<UpdatePlan, RRDBError> {
         let mut plan = UpdatePlan { list: vec![] };
 
         let target_table = query.target_table.clone().unwrap();
@@ -129,10 +123,7 @@ impl Optimizer {
         Ok(plan)
     }
 
-    pub async fn optimize_delete(
-        &self,
-        query: DeleteQuery,
-    ) -> Result<DeletePlan, Box<dyn Error + Send>> {
+    pub async fn optimize_delete(&self, query: DeleteQuery) -> Result<DeletePlan, RRDBError> {
         let mut plan = DeletePlan { list: vec![] };
 
         let target_table = query.from_table.clone().unwrap();

@@ -18,7 +18,7 @@ impl Parser {
     pub(crate) fn parse_expression(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
+    ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0201 need more tokens"));
         }
@@ -203,7 +203,7 @@ impl Parser {
         &mut self,
         operator: UnaryOperator,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
+    ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0201 need more tokens"));
         }
@@ -246,7 +246,7 @@ impl Parser {
     pub(crate) fn parse_parentheses_expression(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
+    ) -> Result<SQLExpression, RRDBError> {
         let context = context.set_in_parentheses(true);
 
         if !self.has_next_token() {
@@ -325,7 +325,7 @@ impl Parser {
         &mut self,
         lhs: SQLExpression,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
+    ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0206 need more tokens"));
         }
@@ -411,7 +411,7 @@ impl Parser {
         database_name: Option<String>,
         function_name: String,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
+    ) -> Result<SQLExpression, RRDBError> {
         let function = if database_name.is_some() {
             UserDefinedFunction {
                 database_name,
@@ -493,7 +493,7 @@ impl Parser {
         &mut self,
         a: SQLExpression,
         context: ParserContext,
-    ) -> Result<SQLExpression, Box<dyn Error + Send>> {
+    ) -> Result<SQLExpression, RRDBError> {
         let context = context.set_in_between_clause(true);
 
         if !self.has_next_token() {

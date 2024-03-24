@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::alter_table::{AlterColumnAction, AlterTableAction, AlterTableQuery};

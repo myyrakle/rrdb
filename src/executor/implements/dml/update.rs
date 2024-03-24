@@ -17,7 +17,7 @@ use crate::executor::result::ExecuteColumnType;
 use crate::optimizer::predule::Optimizer;
 
 impl Executor {
-    pub async fn update(&self, query: UpdateQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn update(&self, query: UpdateQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let table = query.target_table.clone().unwrap().table;

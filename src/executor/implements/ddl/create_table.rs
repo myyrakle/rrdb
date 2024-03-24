@@ -1,18 +1,15 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::create_table::CreateTableQuery;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::table::TableConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{ExecuteResult, Executor};
 use crate::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteRow};
 
 impl Executor {
-    pub async fn create_table(
-        &self,
-        query: CreateTableQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn create_table(&self, query: CreateTableQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table.clone().unwrap().database_name.unwrap();

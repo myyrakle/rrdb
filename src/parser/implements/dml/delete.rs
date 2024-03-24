@@ -10,7 +10,7 @@ impl Parser {
     pub(crate) fn handle_delete_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<DeleteQuery, Box<dyn Error + Send>> {
+    ) -> Result<DeleteQuery, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E0501 need more tokens"));
         }

@@ -12,10 +12,7 @@ use crate::executor::predule::{
 };
 
 impl Executor {
-    pub async fn show_tables(
-        &self,
-        query: ShowTablesQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn show_tables(&self, query: ShowTablesQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();

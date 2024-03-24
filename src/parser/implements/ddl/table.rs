@@ -17,7 +17,7 @@ impl Parser {
     pub(crate) fn handle_create_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E1205 need more tokens"));
         }
@@ -101,7 +101,7 @@ impl Parser {
     pub(crate) fn handle_alter_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
             return Err(ParsingError::boxed("E1201 need more tokens"));
         }
@@ -422,7 +422,7 @@ impl Parser {
     pub(crate) fn handle_drop_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         let mut query_builder = DropTableQuery::builder();
 
         // IF EXISTS 파싱

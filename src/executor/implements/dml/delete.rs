@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::error::Error;
 
 use futures::future::join_all;
 
@@ -8,6 +7,7 @@ use crate::ast::dml::plan::delete::delete_plan::DeletePlanItem;
 use crate::ast::dml::plan::select::scan::ScanType;
 use crate::errors::predule::ExecuteError;
 use crate::errors::type_error::TypeError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::TableDataFieldType;
 use crate::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,
@@ -16,7 +16,7 @@ use crate::executor::result::ExecuteColumnType;
 use crate::optimizer::predule::Optimizer;
 
 impl Executor {
-    pub async fn delete(&self, query: DeleteQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn delete(&self, query: DeleteQuery) -> Result<ExecuteResult, RRDBError> {
         let table = query.from_table.as_ref().unwrap().table.clone();
 
         // 최적화 작업

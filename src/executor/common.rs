@@ -6,12 +6,10 @@ use super::encoder::storage::StorageEncoder;
 use super::predule::Executor;
 use crate::ast::types::TableName;
 use crate::errors::execute_error::ExecuteError;
+use crate::errors::RRDBError;
 
 impl Executor {
-    pub async fn get_table_config(
-        &self,
-        table_name: TableName,
-    ) -> Result<TableConfig, Box<dyn Error + Send>> {
+    pub async fn get_table_config(&self, table_name: TableName) -> Result<TableConfig, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();

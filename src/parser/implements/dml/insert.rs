@@ -10,7 +10,7 @@ impl Parser {
     pub(crate) fn handle_insert_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<InsertQuery, Box<dyn Error + Send>> {
+    ) -> Result<InsertQuery, RRDBError> {
         let mut query_builder = InsertQuery::builder();
 
         if !self.has_next_token() {
@@ -107,7 +107,7 @@ impl Parser {
     pub(crate) fn parse_insert_columns(
         &mut self,
         _context: ParserContext,
-    ) -> Result<Vec<String>, Box<dyn Error + Send>> {
+    ) -> Result<Vec<String>, RRDBError> {
         let mut names = vec![];
         loop {
             if !self.has_next_token() {
@@ -155,7 +155,7 @@ impl Parser {
     pub(crate) fn parse_insert_values(
         &mut self,
         context: ParserContext,
-    ) -> Result<Vec<InsertValue>, Box<dyn Error + Send>> {
+    ) -> Result<Vec<InsertValue>, RRDBError> {
         // Values 파싱
         let mut values: Vec<InsertValue> = vec![];
 

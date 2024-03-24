@@ -27,7 +27,7 @@ impl Executor {
         &self,
         expression: SQLExpression,
         context: ReduceContext
-    ) -> Result<TableDataFieldType, Box<dyn Error + Send>> {
+    ) -> Result<TableDataFieldType, RRDBError> {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),
@@ -568,7 +568,7 @@ impl Executor {
         &self,
         expression: SQLExpression,
         context: ReduceContext
-    ) -> Result<ExecuteColumnType, Box<dyn Error + Send>> {
+    ) -> Result<ExecuteColumnType, RRDBError> {
         match expression {
             SQLExpression::Integer(_) => Ok(ExecuteColumnType::Integer),
             SQLExpression::Boolean(_) => Ok(ExecuteColumnType::Bool),

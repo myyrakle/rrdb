@@ -10,10 +10,7 @@ use crate::executor::predule::{
 };
 
 impl Executor {
-    pub async fn desc_table(
-        &self,
-        query: DescTableQuery,
-    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn desc_table(&self, query: DescTableQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table_name.database_name.unwrap();

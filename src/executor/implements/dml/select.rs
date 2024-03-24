@@ -18,7 +18,7 @@ use crate::executor::predule::{
 use crate::optimizer::predule::Optimizer;
 
 impl Executor {
-    pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, RRDBError> {
         // 최적화 작업
         let optimizer = Optimizer::new();
 

@@ -14,7 +14,7 @@ impl Executor {
     pub async fn full_scan(
         &self,
         table_name: TableName,
-    ) -> Result<Vec<(PathBuf, TableDataRow)>, Box<dyn Error + Send>> {
+    ) -> Result<Vec<(PathBuf, TableDataRow)>, RRDBError> {
         let encoder = StorageEncoder::new();
 
         let database_name = table_name.database_name.unwrap();

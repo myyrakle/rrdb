@@ -8,7 +8,7 @@ impl Parser {
     pub(crate) fn parse_commit_query(
         &mut self,
         _context: ParserContext,
-    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
+    ) -> Result<SQLStatement, RRDBError> {
         Ok(CommitQuery {}.into())
     }
 }
