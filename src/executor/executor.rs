@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::errors::execute_error::ExecuteError;

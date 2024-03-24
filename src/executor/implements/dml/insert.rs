@@ -1,10 +1,10 @@
 use std::collections::HashSet;
-use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::dml::insert::{InsertData, InsertQuery};
 use crate::ast::types::SQLExpression;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::{TableDataField, TableDataRow};
 use crate::executor::config::table::TableConfig;
 use crate::executor::encoder::storage::StorageEncoder;

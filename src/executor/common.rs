@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use super::config::table::TableConfig;

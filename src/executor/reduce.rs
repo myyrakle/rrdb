@@ -1,7 +1,6 @@
 
 
 use std::collections::HashMap;
-use std::error::Error;
 
 use futures::future::join_all;
 use itertools::Itertools;
@@ -10,6 +9,7 @@ use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
 use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
 use crate::ast::types::{ AggregateFunction, BuiltInFunction, Column, Function, SQLExpression, TableName};
 use crate::errors::predule::{TypeError, ExecuteError};
+use crate::errors::RRDBError;
 use crate::executor::predule::{ Executor, ExecuteColumnType};
 
 use super::config::row::{TableDataFieldType, TableDataRow};

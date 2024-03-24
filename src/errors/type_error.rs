@@ -1,4 +1,4 @@
-use std::error::Error;
+use super::RRDBError;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeError {
@@ -6,18 +6,10 @@ pub struct TypeError {
 }
 
 impl TypeError {
-    pub fn new<T: ToString>(message: T) -> Self {
-        Self {
+    pub fn new<T: ToString>(message: T) -> RRDBError {
+        RRDBError::TypeError(Self {
             message: message.to_string(),
-        }
-    }
-
-    pub fn boxed<T: ToString>(message: T) -> Box<Self> {
-        Box::new(Self::new(message))
-    }
-
-    pub fn dyn_boxed<T: ToString>(message: T) -> RRDBError {
-        Box::new(Self::new(message))
+        })
     }
 }
 

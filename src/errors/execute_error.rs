@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use super::RRDBError;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
