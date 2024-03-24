@@ -1,21 +1,22 @@
-use std::error::Error;
-
-use crate::ast::dml::{
-    delete::DeleteQuery,
-    parts::from::FromTarget,
-    plan::{
-        delete::{delete_plan::DeletePlan, from::DeleteFromPlan},
-        select::{
-            filter::FilterPlan,
-            from::SelectFromPlan,
-            limit_offset::LimitOffsetPlan,
-            scan::ScanType,
-            select_plan::{SelectPlan, SelectPlanItem},
+use crate::{
+    ast::dml::{
+        delete::DeleteQuery,
+        parts::from::FromTarget,
+        plan::{
+            delete::{delete_plan::DeletePlan, from::DeleteFromPlan},
+            select::{
+                filter::FilterPlan,
+                from::SelectFromPlan,
+                limit_offset::LimitOffsetPlan,
+                scan::ScanType,
+                select_plan::{SelectPlan, SelectPlanItem},
+            },
+            update::{from::UpdateFromPlan, update_plan::UpdatePlan},
         },
-        update::{from::UpdateFromPlan, update_plan::UpdatePlan},
+        select::SelectQuery,
+        update::UpdateQuery,
     },
-    select::SelectQuery,
-    update::UpdateQuery,
+    errors::RRDBError,
 };
 
 pub struct Optimizer {}

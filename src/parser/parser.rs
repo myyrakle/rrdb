@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, error::Error};
+use std::collections::VecDeque;
 
 use crate::ast::SQLStatement;
 use crate::errors::RRDBError;
