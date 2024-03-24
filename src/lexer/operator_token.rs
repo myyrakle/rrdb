@@ -1,8 +1,6 @@
-use std::error::Error;
-
 use crate::{
     ast::dml::expressions::operators::{BinaryOperator, UnaryOperator},
-    errors::predule::IntoError,
+    errors::{predule::IntoError, RRDBError},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -57,7 +55,7 @@ impl TryInto<BinaryOperator> for OperatorToken {
             Self::Gte => Ok(BinaryOperator::Gte),
             Self::Eq => Ok(BinaryOperator::Eq),
             Self::Neq => Ok(BinaryOperator::Neq),
-            _ => Err(IntoError::boxed("BinaryOperator Cast Error")),
+            _ => Err(IntoError::new("BinaryOperator Cast Error")),
         }
     }
 }
@@ -70,7 +68,7 @@ impl TryInto<UnaryOperator> for OperatorToken {
             Self::Plus => Ok(UnaryOperator::Pos),
             Self::Minus => Ok(UnaryOperator::Neg),
             Self::Not => Ok(UnaryOperator::Not),
-            _ => Err(IntoError::boxed("UnaryOperator Cast Error")),
+            _ => Err(IntoError::new("UnaryOperator Cast Error")),
         }
     }
 }

@@ -1,17 +1,15 @@
+use super::RRDBError;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IntoError {
     pub message: String,
 }
 
 impl IntoError {
-    pub fn new<T: ToString>(message: T) -> Self {
-        Self {
+    pub fn new<T: ToString>(message: T) -> RRDBError {
+        RRDBError::IntoError(Self {
             message: message.to_string(),
-        }
-    }
-
-    pub fn boxed<T: ToString>(message: T) -> Box<Self> {
-        Box::new(Self::new(message))
+        })
     }
 }
 
