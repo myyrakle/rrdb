@@ -1,11 +1,12 @@
 use std::error::Error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
+use crate::pgwire::connection::state;
 use crate::utils::path::get_target_basepath;
 use crate::wal::wal::WalManager;
 
@@ -57,14 +58,12 @@ impl Executor {
     // 쿼리 최적화 및 실행, 결과 반환
     pub async fn process_query(
         &self,
-        wal: Arc<WalManager>,
+        wal: Arc<Mutex<WalManager>>,
         statement: SQLStatement,
         _connection_id: String,
     ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
-        
-
         Logger::info(format!("AST echo: {:?}", statement));
-
+        
         // 쿼리 실행
         let result = match statement {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
@@ -83,7 +82,7 @@ impl Executor {
                 self.alter_table(query).await
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
-            SQLStatement::DML(DMLStatement::InsertQuery(query)) => self.insert(query).await,
+            SQLStatement::DML(DMLStatement::InsertQuery(query)) => self.insert(wal, query).await,
             SQLStatement::DML(DMLStatement::SelectQuery(query)) => self.select(query).await,
             SQLStatement::DML(DMLStatement::UpdateQuery(query)) => self.update(query).await,
             SQLStatement::DML(DMLStatement::DeleteQuery(query)) => self.delete(query).await,

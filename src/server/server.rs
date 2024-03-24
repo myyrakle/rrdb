@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::Executor;
@@ -34,7 +34,7 @@ impl Server {
 
         // shared WAL
         // wal struct을 생성, Arc로 관리
-        let shared_wal = Arc::new(WalManager::new().await);
+        let shared_wal = Arc::new(Mutex::new(WalManager::new().await));
 
         // background task
         // 쿼리 실행 요청을 전달받음

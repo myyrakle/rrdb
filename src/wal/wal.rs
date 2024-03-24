@@ -1,7 +1,8 @@
+use std::error::Error;
+
 use tokio::fs;
 
-use crate::utils::path::get_target_basepath;
-
+use crate::{ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement}, utils::path::get_target_basepath};
 use super::{format::{BinaryFormatterImpl, LogFileHeader, MAGIC_NUMBER, VERSION}, record::LogRecord};
 
 const WAL_METADATA: &str = "current_wal_index";
@@ -43,7 +44,6 @@ impl WalManager {
         todo!()
         // let log: Vec<u8> = Vec::new();
         // let formatter = BinaryFormatterImpl::new();
-        
 
         // let header = LogFileHeader {
         //    magic_number: MAGIC_NUMBER,

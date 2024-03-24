@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::io::ErrorKind;
 use std::iter::FromIterator;
+use std::sync::{Arc, Mutex};
 
 use crate::ast::dml::insert::{InsertData, InsertQuery};
 use crate::ast::types::SQLExpression;
@@ -12,9 +13,10 @@ use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
 };
+use crate::wal::prelude::WalManager;
 
 impl Executor {
-    pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
+    pub async fn insert(&self, wal: Arc<Mutex<WalManager>>, query: InsertQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let into_table = query.into_table.as_ref().unwrap();
