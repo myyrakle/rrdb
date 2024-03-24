@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
@@ -6,6 +5,7 @@ use futures::future::join_all;
 
 use crate::ast::types::TableName;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::TableDataRow;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::Executor;

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::error::Error;
 
 use futures::future::join_all;
 
@@ -8,6 +7,7 @@ use crate::ast::dml::plan::update::update_plan::UpdatePlanItem;
 use crate::ast::dml::update::UpdateQuery;
 use crate::errors::predule::ExecuteError;
 use crate::errors::type_error::TypeError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::TableDataFieldType;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{

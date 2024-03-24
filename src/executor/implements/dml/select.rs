@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::error::Error;
 
 use futures::future::join_all;
 
@@ -11,6 +10,7 @@ use crate::ast::dml::plan::select::select_plan::SelectPlanItem;
 use crate::ast::dml::select::SelectQuery;
 use crate::ast::types::{SQLExpression, SelectColumn};
 use crate::errors::type_error::TypeError;
+use crate::errors::RRDBError;
 use crate::executor::config::row::{TableDataField, TableDataFieldType, TableDataRow};
 use crate::executor::predule::{
     ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, Executor, ReduceContext,

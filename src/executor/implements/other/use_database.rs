@@ -1,7 +1,6 @@
-use std::error::Error;
-
 use crate::{
     ast::other::use_database::UseDatabaseQuery,
+    errors::RRDBError,
     executor::predule::{
         ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
     },

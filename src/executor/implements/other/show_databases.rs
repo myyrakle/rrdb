@@ -1,10 +1,10 @@
-use std::error::Error;
 use std::io::ErrorKind;
 
 use futures::future::join_all;
 
 use crate::ast::other::show_databases::ShowDatabasesQuery;
 use crate::errors::predule::ExecuteError;
+use crate::errors::RRDBError;
 use crate::executor::config::database::DatabaseConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
