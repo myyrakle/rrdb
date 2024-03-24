@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use crate::ast::dml::expressions::between::BetweenExpression;
 use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
 use crate::ast::dml::expressions::call::CallExpression;
@@ -10,6 +8,7 @@ use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
 use crate::ast::types::{BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction};
 use crate::errors::predule::ParsingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::Parser;
 use crate::parser::predule::ParserContext;
@@ -20,7 +19,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0201 need more tokens"));
+            return Err(ParsingError::new("E0201 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -33,7 +32,7 @@ impl Parser {
 
                     Ok(expression)
                 } else {
-                    Err(ParsingError::boxed(format!(
+                    Err(ParsingError::new(format!(
                         "E0212 unexpected operator: {:?}",
                         operator
                     )))
@@ -113,7 +112,7 @@ impl Parser {
             }
             Token::LeftParentheses => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E0214 need more tokens"));
+                    return Err(ParsingError::new("E0214 need more tokens"));
                 }
 
                 let second_token = self.get_next_token();
@@ -151,7 +150,7 @@ impl Parser {
                     }
                 }
             }
-            Token::RightParentheses => Err(ParsingError::boxed(format!(
+            Token::RightParentheses => Err(ParsingError::new(format!(
                 "E0213 unexpected token: {:?}",
                 current_token
             ))),
@@ -192,7 +191,7 @@ impl Parser {
                     Ok(lhs)
                 }
             }
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "E0202 unexpected token: {:?}",
                 current_token
             ))),
@@ -205,7 +204,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0201 need more tokens"));
+            return Err(ParsingError::new("E0201 need more tokens"));
         }
 
         let expression = self.parse_expression(context)?;
@@ -250,28 +249,28 @@ impl Parser {
         let context = context.set_in_parentheses(true);
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0203 need more tokens"));
+            return Err(ParsingError::new("E0203 need more tokens"));
         }
 
         // ( 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::LeftParentheses {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "expected left parentheses. but your input is {:?}",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0204 need more tokens"));
+            return Err(ParsingError::new("E0204 need more tokens"));
         }
 
         // 표현식 파싱
         let expression = self.parse_expression(context.clone())?;
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0205 need more tokens"));
+            return Err(ParsingError::new("E0205 need more tokens"));
         }
 
         // ) 삼킴
@@ -292,7 +291,7 @@ impl Parser {
 
                 loop {
                     if !self.has_next_token() {
-                        return Err(ParsingError::boxed("E0215 need more tokens"));
+                        return Err(ParsingError::new("E0215 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -311,7 +310,7 @@ impl Parser {
 
                 Ok(list.into())
             }
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "expected right parentheses. but your input is {:?}",
                 current_token
             ))),
@@ -327,7 +326,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0206 need more tokens"));
+            return Err(ParsingError::new("E0206 need more tokens"));
         }
 
         // 연산자 획득
@@ -435,21 +434,21 @@ impl Parser {
         };
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0207 need more tokens"));
+            return Err(ParsingError::new("E0207 need more tokens"));
         }
 
         // ( 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::LeftParentheses {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "expected left parentheses. but your input is {:?}",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0208 need more tokens"));
+            return Err(ParsingError::new("E0208 need more tokens"));
         }
 
         // 닫는 괄호가 나올때까지 인자 파싱
@@ -470,14 +469,14 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0209 need more tokens"));
+            return Err(ParsingError::new("E0209 need more tokens"));
         }
 
         // ) 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::RightParentheses {
-            return Err(ParsingError::boxed(format!(
+            return Err(ParsingError::new(format!(
                 "expected right parentheses. but your input is {:?}",
                 current_token
             )));
@@ -497,7 +496,7 @@ impl Parser {
         let context = context.set_in_between_clause(true);
 
         if !self.has_next_token() {
-            return Err(ParsingError::boxed("E0210 need more tokens"));
+            return Err(ParsingError::new("E0210 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -517,7 +516,7 @@ impl Parser {
             }
             Token::Not => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::boxed("E0211 need more tokens"));
+                    return Err(ParsingError::new("E0211 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -535,13 +534,13 @@ impl Parser {
 
                         Ok(expression.into())
                     }
-                    _ => Err(ParsingError::boxed(format!(
+                    _ => Err(ParsingError::new(format!(
                         "expected between. but your input is {:?}",
                         current_token
                     ))),
                 }
             }
-            _ => Err(ParsingError::boxed(format!(
+            _ => Err(ParsingError::new(format!(
                 "expected between. but your input is {:?}",
                 current_token
             ))),

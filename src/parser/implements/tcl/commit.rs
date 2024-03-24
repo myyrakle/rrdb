@@ -1,7 +1,6 @@
-use std::error::Error;
-
 use crate::ast::tcl::CommitQuery;
 use crate::ast::SQLStatement;
+use crate::errors::RRDBError;
 use crate::parser::predule::{Parser, ParserContext};
 
 impl Parser {
