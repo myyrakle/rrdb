@@ -1,7 +1,7 @@
 use crate::errors::predule::LexingError;
+use crate::errors::RRDBError;
 use crate::lexer::predule::{OperatorToken, Token};
 use crate::logger::predule::Logger;
-use std::error::Error;
 
 #[derive(Debug)]
 pub struct Tokenizer {
@@ -210,7 +210,7 @@ impl Tokenizer {
                 match number {
                     Ok(number) => Token::Float(number),
                     Err(_) => {
-                        return Err(LexingError::boxed(format!(
+                        return Err(LexingError::new(format!(
                             "invalid floating point number format: {}",
                             number_string
                         )))
@@ -222,7 +222,7 @@ impl Tokenizer {
                 match number {
                     Ok(number) => Token::Integer(number),
                     Err(_) => {
-                        return Err(LexingError::boxed(format!(
+                        return Err(LexingError::new(format!(
                             "invalid integer number format: {}",
                             number_string
                         )))
@@ -295,7 +295,7 @@ impl Tokenizer {
                 '<' => Token::Operator(OperatorToken::Lt), // TODO: <= 연산자 처리
                 '>' => Token::Operator(OperatorToken::Gt), // TODO: >= 연산자 처리
                 _ => {
-                    return Err(LexingError::boxed(format!(
+                    return Err(LexingError::new(format!(
                         "unexpected operator: {:?}",
                         self.last_char
                     )))
@@ -392,7 +392,7 @@ impl Tokenizer {
         else if self.is_eof() {
             Token::EOF
         } else {
-            return Err(LexingError::boxed(format!(
+            return Err(LexingError::new(format!(
                 "unexpected character: {:?}",
                 self.last_char
             )));

@@ -1,8 +1,7 @@
-use std::error::Error;
-
 use super::predule::OperatorToken;
 use crate::ast::dml::expressions::operators::BinaryOperator;
 use crate::errors::predule::IntoError;
+use crate::errors::RRDBError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
