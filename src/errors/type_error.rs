@@ -1,14 +1,16 @@
 use super::RRDBError;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct TypeError {
     pub message: String,
+    pub backtrace: std::backtrace::Backtrace,
 }
 
 impl TypeError {
     pub fn new<T: ToString>(message: T) -> RRDBError {
         RRDBError::TypeError(Self {
             message: message.to_string(),
+            backtrace: std::backtrace::Backtrace::capture(),
         })
     }
 }
