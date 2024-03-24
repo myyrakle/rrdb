@@ -1,8 +1,8 @@
+use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::other::desc_table::DescTableQuery;
 use crate::errors::predule::ExecuteError;
-use crate::errors::RRDBError;
 use crate::executor::config::table::TableConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
@@ -10,7 +10,10 @@ use crate::executor::predule::{
 };
 
 impl Executor {
-    pub async fn desc_table(&self, query: DescTableQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn desc_table(
+        &self,
+        query: DescTableQuery,
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table_name.database_name.unwrap();
@@ -27,7 +30,7 @@ impl Executor {
             Ok(read_result) => {
                 let table_info: TableConfig = encoder
                     .decode(read_result.as_slice())
-                    .ok_or_else(|| ExecuteError::new("config decode error"))?;
+                    .ok_or_else(|| ExecuteError::dyn_boxed("config decode error"))?;
 
                 Ok(ExecuteResult {
                     columns: (vec![
@@ -68,11 +71,11 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::new(format!(
+                ErrorKind::NotFound => Err(ExecuteError::boxed(format!(
                     "table '{}' not exists",
                     table_name
                 ))),
-                _ => Err(ExecuteError::new("database listup failed")),
+                _ => Err(ExecuteError::boxed("database listup failed")),
             },
         }
     }

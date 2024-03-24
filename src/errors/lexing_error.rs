@@ -1,17 +1,19 @@
-use super::RRDBError;
+use std::string::ToString;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LexingError {
     pub message: String,
-    pub backtrace: std::backtrace::Backtrace,
 }
 
 impl LexingError {
-    pub fn new<T: ToString>(message: T) -> RRDBError {
-        RRDBError::LexingError(Self {
+    pub fn new<T: ToString>(message: T) -> Self {
+        Self {
             message: message.to_string(),
-            backtrace: std::backtrace::Backtrace::capture(),
-        })
+        }
+    }
+
+    pub fn boxed<T: ToString>(message: T) -> Box<Self> {
+        Box::new(Self::new(message))
     }
 }
 

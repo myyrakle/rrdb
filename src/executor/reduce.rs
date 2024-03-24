@@ -1,6 +1,7 @@
 
 
 use std::collections::HashMap;
+use std::error::Error;
 
 use futures::future::join_all;
 use itertools::Itertools;
@@ -9,7 +10,6 @@ use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
 use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
 use crate::ast::types::{ AggregateFunction, BuiltInFunction, Column, Function, SQLExpression, TableName};
 use crate::errors::predule::{TypeError, ExecuteError};
-use crate::errors::RRDBError;
 use crate::executor::predule::{ Executor, ExecuteColumnType};
 
 use super::config::row::{TableDataFieldType, TableDataRow};
@@ -27,7 +27,7 @@ impl Executor {
         &self,
         expression: SQLExpression,
         context: ReduceContext
-    ) -> Result<TableDataFieldType, RRDBError> {
+    ) -> Result<TableDataFieldType, Box<dyn Error + Send>> {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),
@@ -64,14 +64,14 @@ impl Executor {
                                     TableDataFieldType::Float(value) => {
                                         *e = TableDataFieldType::Float(-*value);
                                     }
-                                    _ => return  Err(TypeError::new(
+                                    _ => return  Err(TypeError::dyn_boxed(
                                         "unary '!' operator is valid only for integer and float types.",
                                     )),
                                 }
                             }
                             Ok(TableDataFieldType::Array(array))
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "unary '-' operator is valid only for integer and float types.",
                         )),
                     }
@@ -82,7 +82,7 @@ impl Executor {
                     match operand {
                         TableDataFieldType::Integer(_) => Ok(operand),
                         TableDataFieldType::Float(_) => Ok(operand),
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "unary '+' operator is valid only for integer and float types.",
                         )),
                     }
@@ -94,7 +94,7 @@ impl Executor {
                         TableDataFieldType::Boolean(value) => {
                             Ok(TableDataFieldType::Boolean(!value))
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "unary '!' operator is valid only for integer and float types.",
                         )),
                     }
@@ -105,7 +105,7 @@ impl Executor {
                 let rhs = Box::pin(self.reduce_expression(binary.rhs.clone(), context.clone())).await?;
 
                 if lhs.type_code() != rhs.type_code() {
-                    return Err(TypeError::new(
+                    return Err(TypeError::dyn_boxed(
                         "The types of lhs and rhs do not match.",
                     ));
                 }
@@ -190,7 +190,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '-' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -207,7 +207,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '-' operator is valid only for integer and float types.",
                         )),
                     },
@@ -224,7 +224,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '*' operator is valid only for integer and float types.",
                         )),
                     },
@@ -241,7 +241,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '/' operator is valid only for integer and float types.",
                         )),
                     },
@@ -252,7 +252,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary 'And' operator is valid only for boolean type.",
                         )),
                     },
@@ -263,7 +263,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary 'Or' operator is valid only for boolean type.",
                         )),
                     },
@@ -286,7 +286,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '<' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -309,7 +309,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '>' operator is valid only for integer and float and string types.",
                         )),
                     }, 
@@ -332,7 +332,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '<=' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -355,7 +355,7 @@ impl Executor {
                             }
                             unreachable!()
                         }
-                        _ => Err(TypeError::new(
+                        _ => Err(TypeError::dyn_boxed(
                             "binary '>=' operator is valid only for integer and float and string types.",
                         )),
                     },
@@ -392,7 +392,7 @@ impl Executor {
                                 match aggregate {
                                     AggregateFunction::Count => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::new(
+                                            return Err(ExecuteError::dyn_boxed(
                                                 "Count function takes only one parameter.",
                                             ));
                                         }
@@ -438,7 +438,7 @@ impl Executor {
                                     }
                                     AggregateFunction::Sum => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::new(
+                                            return Err(ExecuteError::dyn_boxed(
                                                 "Sum function takes only one parameter.",
                                             ));
                                         }
@@ -477,7 +477,7 @@ impl Executor {
                                     }
                                     AggregateFunction::Max => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::new(
+                                            return Err(ExecuteError::dyn_boxed(
                                                 "Max function takes only one parameter.",
                                             ));
                                         }
@@ -486,7 +486,7 @@ impl Executor {
                                     }
                                     AggregateFunction::Min => {
                                         if call.arguments.len() != 1 {
-                                            return Err(ExecuteError::new(
+                                            return Err(ExecuteError::dyn_boxed(
                                                 "Min function takes only one parameter.",
                                             ));
                                         }
@@ -514,7 +514,7 @@ impl Executor {
 
                         // 없으면 오류
                         if same_name_datas.is_empty() {
-                            return Err(ExecuteError::new(
+                            return Err(ExecuteError::dyn_boxed(
                                 format!("1 column select '{:?}' not exists", select_column),
                             ));
                         }
@@ -537,14 +537,14 @@ impl Executor {
                                 {
                                     Ok(found.data.to_owned())
                                 } else{
-                                    Err(ExecuteError::new(
+                                    Err(ExecuteError::dyn_boxed(
                                         format!("column select '{:?}' is ambiguous", select_column),
                                     ))
                                 }
                             }
                             None=>{
                                 if same_name_datas.len()>=2 {
-                                     Err(ExecuteError::new(
+                                     Err(ExecuteError::dyn_boxed(
                                         format!("column select '{:?}' is ambiguous", select_column),
                                     ))
                                 } else {
@@ -554,7 +554,7 @@ impl Executor {
                         }
                     }
                     None => {
-                        return Err(ExecuteError::new(
+                        return Err(ExecuteError::dyn_boxed(
                             format!("column select '{:?}' not exists", select_column),
                         ));
                     }
@@ -568,7 +568,7 @@ impl Executor {
         &self,
         expression: SQLExpression,
         context: ReduceContext
-    ) -> Result<ExecuteColumnType, RRDBError> {
+    ) -> Result<ExecuteColumnType, Box<dyn Error + Send>> {
         match expression {
             SQLExpression::Integer(_) => Ok(ExecuteColumnType::Integer),
             SQLExpression::Boolean(_) => Ok(ExecuteColumnType::Bool),
@@ -654,7 +654,7 @@ impl Executor {
                 let column_name  = select_column.column_name.clone();
                 
                 if context.config_columns.is_empty() {
-                    return Err(ExecuteError::new(
+                    return Err(ExecuteError::dyn_boxed(
                         format!("column select '{:?}' not exists", select_column),
                     ));
                 }
@@ -679,14 +679,14 @@ impl Executor {
                         {
                             Ok(found.1.data_type.to_owned().into())
                         } else{
-                             Err(ExecuteError::new(
+                             Err(ExecuteError::dyn_boxed(
                                 format!("column select '{:?}' is ambiguous", select_column),
                             ))
                         }
                     }
                     None=>{
                         if same_name_columns.len()>=2 {
-                             Err(ExecuteError::new(
+                             Err(ExecuteError::dyn_boxed(
                                 format!("column select '{:?}' is ambiguous", select_column),
                             ))
                         } else {

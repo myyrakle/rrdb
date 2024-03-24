@@ -1,14 +1,14 @@
-#[derive(Debug)]
+use std::string::ToString;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ServerError {
     pub message: String,
-    pub backtrace: std::backtrace::Backtrace,
 }
 
 impl ServerError {
     pub fn new<T: ToString>(message: T) -> Self {
         Self {
             message: message.to_string(),
-            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 

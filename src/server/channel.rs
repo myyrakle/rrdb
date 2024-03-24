@@ -1,6 +1,8 @@
+use std::error::Error;
+
 use tokio::sync::oneshot::Sender;
 
-use crate::{ast::SQLStatement, errors::RRDBError, executor::result::ExecuteResult};
+use crate::{ast::SQLStatement, executor::result::ExecuteResult};
 
 #[derive(Debug)]
 pub struct ChannelRequest {
@@ -11,5 +13,5 @@ pub struct ChannelRequest {
 
 #[derive(Debug)]
 pub struct ChannelResponse {
-    pub result: Result<ExecuteResult, RRDBError>,
+    pub result: Result<ExecuteResult, Box<dyn Error + Send>>,
 }

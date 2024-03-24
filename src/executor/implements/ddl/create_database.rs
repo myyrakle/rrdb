@@ -1,8 +1,8 @@
+use std::error::Error;
 use std::io::ErrorKind;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::errors::predule::ExecuteError;
-use crate::errors::RRDBError;
 use crate::executor::config::database::DatabaseConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{ExecuteResult, Executor};
@@ -12,7 +12,7 @@ impl Executor {
     pub async fn create_database(
         &self,
         query: CreateDatabaseQuery,
-    ) -> Result<ExecuteResult, RRDBError> {
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -20,17 +20,17 @@ impl Executor {
         let database_name = query
             .database_name
             .clone()
-            .ok_or_else(|| ExecuteError::new("no database name"))?;
+            .ok_or_else(|| ExecuteError::dyn_boxed("no database name"))?;
 
         let database_path = base_path.clone().join(&database_name);
 
         if let Err(error) = tokio::fs::create_dir(database_path.clone()).await {
             match error.kind() {
                 ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::new("already exists database"))
+                    return Err(ExecuteError::boxed("already exists database"))
                 }
                 _ => {
-                    return Err(ExecuteError::new("database create failed"));
+                    return Err(ExecuteError::boxed("database create failed"));
                 }
             }
         }
@@ -40,9 +40,11 @@ impl Executor {
 
         if let Err(error) = tokio::fs::create_dir(&tables_path).await {
             match error.kind() {
-                ErrorKind::AlreadyExists => return Err(ExecuteError::new("already exists tables")),
+                ErrorKind::AlreadyExists => {
+                    return Err(ExecuteError::boxed("already exists tables"))
+                }
                 _ => {
-                    return Err(ExecuteError::new("tables create failed"));
+                    return Err(ExecuteError::boxed("tables create failed"));
                 }
             }
         }
@@ -54,7 +56,7 @@ impl Executor {
         };
 
         if let Err(error) = tokio::fs::write(config_path, encoder.encode(database_info)).await {
-            return Err(ExecuteError::new(error.to_string()));
+            return Err(ExecuteError::boxed(error.to_string()));
         }
 
         Ok(ExecuteResult {

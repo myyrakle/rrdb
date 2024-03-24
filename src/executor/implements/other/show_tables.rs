@@ -1,10 +1,10 @@
+use std::error::Error;
 use std::io::ErrorKind;
 
 use futures::future::join_all;
 
 use crate::ast::other::show_tables::ShowTablesQuery;
 use crate::errors::predule::ExecuteError;
-use crate::errors::RRDBError;
 use crate::executor::config::table::TableConfig;
 use crate::executor::encoder::storage::StorageEncoder;
 use crate::executor::predule::{
@@ -12,7 +12,10 @@ use crate::executor::predule::{
 };
 
 impl Executor {
-    pub async fn show_tables(&self, query: ShowTablesQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn show_tables(
+        &self,
+        query: ShowTablesQuery,
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -66,8 +69,8 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::new("base path not exists")),
-                _ => Err(ExecuteError::new("table listup failed")),
+                ErrorKind::NotFound => Err(ExecuteError::boxed("base path not exists")),
+                _ => Err(ExecuteError::boxed("table listup failed")),
             },
         }
     }

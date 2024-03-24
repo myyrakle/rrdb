@@ -1,22 +1,21 @@
-use crate::{
-    ast::dml::{
-        delete::DeleteQuery,
-        parts::from::FromTarget,
-        plan::{
-            delete::{delete_plan::DeletePlan, from::DeleteFromPlan},
-            select::{
-                filter::FilterPlan,
-                from::SelectFromPlan,
-                limit_offset::LimitOffsetPlan,
-                scan::ScanType,
-                select_plan::{SelectPlan, SelectPlanItem},
-            },
-            update::{from::UpdateFromPlan, update_plan::UpdatePlan},
+use std::error::Error;
+
+use crate::ast::dml::{
+    delete::DeleteQuery,
+    parts::from::FromTarget,
+    plan::{
+        delete::{delete_plan::DeletePlan, from::DeleteFromPlan},
+        select::{
+            filter::FilterPlan,
+            from::SelectFromPlan,
+            limit_offset::LimitOffsetPlan,
+            scan::ScanType,
+            select_plan::{SelectPlan, SelectPlanItem},
         },
-        select::SelectQuery,
-        update::UpdateQuery,
+        update::{from::UpdateFromPlan, update_plan::UpdatePlan},
     },
-    errors::RRDBError,
+    select::SelectQuery,
+    update::UpdateQuery,
 };
 
 pub struct Optimizer {}
@@ -26,7 +25,10 @@ impl Optimizer {
         Self {}
     }
 
-    pub async fn optimize_select(&self, query: SelectQuery) -> Result<SelectPlan, RRDBError> {
+    pub async fn optimize_select(
+        &self,
+        query: SelectQuery,
+    ) -> Result<SelectPlan, Box<dyn Error + Send>> {
         let mut has_from = false;
         let mut plan = SelectPlan { list: vec![] };
 
@@ -98,7 +100,10 @@ impl Optimizer {
         Ok(plan)
     }
 
-    pub async fn optimize_update(&self, query: UpdateQuery) -> Result<UpdatePlan, RRDBError> {
+    pub async fn optimize_update(
+        &self,
+        query: UpdateQuery,
+    ) -> Result<UpdatePlan, Box<dyn Error + Send>> {
         let mut plan = UpdatePlan { list: vec![] };
 
         let target_table = query.target_table.clone().unwrap();
@@ -124,7 +129,10 @@ impl Optimizer {
         Ok(plan)
     }
 
-    pub async fn optimize_delete(&self, query: DeleteQuery) -> Result<DeletePlan, RRDBError> {
+    pub async fn optimize_delete(
+        &self,
+        query: DeleteQuery,
+    ) -> Result<DeletePlan, Box<dyn Error + Send>> {
         let mut plan = DeletePlan { list: vec![] };
 
         let target_table = query.from_table.clone().unwrap();

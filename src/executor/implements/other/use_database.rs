@@ -1,13 +1,17 @@
+use std::error::Error;
+
 use crate::{
     ast::other::use_database::UseDatabaseQuery,
-    errors::RRDBError,
     executor::predule::{
         ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow, Executor,
     },
 };
 
 impl Executor {
-    pub async fn use_databases(&self, query: UseDatabaseQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn use_databases(
+        &self,
+        query: UseDatabaseQuery,
+    ) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
                 name: "desc".into(),

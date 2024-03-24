@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::io::ErrorKind;
 
 use super::config::table::TableConfig;
@@ -5,10 +6,12 @@ use super::encoder::storage::StorageEncoder;
 use super::predule::Executor;
 use crate::ast::types::TableName;
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::RRDBError;
 
 impl Executor {
-    pub async fn get_table_config(&self, table_name: TableName) -> Result<TableConfig, RRDBError> {
+    pub async fn get_table_config(
+        &self,
+        table_name: TableName,
+    ) -> Result<TableConfig, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_base_path();
@@ -32,12 +35,12 @@ impl Executor {
 
                 match table_config {
                     Some(table_config) => Ok(table_config),
-                    None => Err(ExecuteError::new("invalid config data")),
+                    None => Err(ExecuteError::boxed("invalid config data")),
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::new("table not found")),
-                _ => Err(ExecuteError::new(format!("{:?}", error))),
+                ErrorKind::NotFound => Err(ExecuteError::boxed("table not found")),
+                _ => Err(ExecuteError::boxed(format!("{:?}", error))),
             },
         }
     }

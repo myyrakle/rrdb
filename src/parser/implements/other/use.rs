@@ -1,7 +1,8 @@
+use std::error::Error;
+
 use crate::ast::other::use_database::UseDatabaseQuery;
 use crate::ast::SQLStatement;
 use crate::errors::predule::ParsingError;
-use crate::errors::RRDBError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::{Parser, ParserContext};
 
@@ -9,9 +10,9 @@ impl Parser {
     pub(crate) fn parse_use_query(
         &mut self,
         _context: ParserContext,
-    ) -> Result<SQLStatement, RRDBError> {
+    ) -> Result<SQLStatement, Box<dyn Error + Send>> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0901 need more tokens"));
+            return Err(ParsingError::boxed("E0901 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -21,7 +22,7 @@ impl Parser {
                 database_name: identifier,
             }
             .into()),
-            _ => Err(ParsingError::new(format!(
+            _ => Err(ParsingError::boxed(format!(
                 "E0902: unexpected token '{:?}'",
                 current_token
             ))),

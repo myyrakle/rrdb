@@ -1,10 +1,11 @@
 use std::collections::HashSet;
+use std::error::Error;
 use std::io::ErrorKind;
+use std::iter::FromIterator;
 
 use crate::ast::dml::insert::{InsertData, InsertQuery};
 use crate::ast::types::SQLExpression;
 use crate::errors::predule::ExecuteError;
-use crate::errors::RRDBError;
 use crate::executor::config::row::{TableDataField, TableDataRow};
 use crate::executor::config::table::TableConfig;
 use crate::executor::encoder::storage::StorageEncoder;
@@ -13,7 +14,7 @@ use crate::executor::predule::{
 };
 
 impl Executor {
-    pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, Box<dyn Error + Send>> {
         let encoder = StorageEncoder::new();
 
         let into_table = query.into_table.as_ref().unwrap();
@@ -40,16 +41,16 @@ impl Executor {
                 match table_config {
                     Some(table_config) => table_config,
                     None => {
-                        return Err(ExecuteError::new("invalid config data"));
+                        return Err(ExecuteError::boxed("invalid config data"));
                     }
                 }
             }
             Err(error) => match error.kind() {
                 ErrorKind::NotFound => {
-                    return Err(ExecuteError::new("table not found"));
+                    return Err(ExecuteError::boxed("table not found"));
                 }
                 _ => {
-                    return Err(ExecuteError::new(format!("{:?}", error)));
+                    return Err(ExecuteError::boxed(format!("{:?}", error)));
                 }
             },
         };
@@ -66,7 +67,7 @@ impl Executor {
         // 필수 입력 컬럼값 검증
         for required_column in required_columns {
             if !input_columns_set.contains(&required_column.name) {
-                return Err(ExecuteError::new(format!(
+                return Err(ExecuteError::boxed(format!(
                     "column '{}' is required, but it was not provided",
                     &required_column.name
                 )));
@@ -94,7 +95,7 @@ impl Executor {
                             Some(default) => default.to_owned(),
                             None => {
                                 if column_config_info.not_null {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::boxed(format!(
                                         "column '{}' is not null column
                                         ",
                                         column_name
@@ -114,7 +115,7 @@ impl Executor {
                                 if column.data_type.type_code() != data.type_code()
                                     && data.type_code() != 0
                                 {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::boxed(format!(
                                         "column '{}' type mismatch
                                         ",
                                         column_name
@@ -122,7 +123,7 @@ impl Executor {
                                 }
                             }
                             None => {
-                                return Err(ExecuteError::new(format!(
+                                return Err(ExecuteError::boxed(format!(
                                     "column '{}' not exists",
                                     column_name
                                 )))
@@ -146,7 +147,7 @@ impl Executor {
                             Some(default) => default.to_owned(),
                             None => {
                                 if column_config_info.not_null {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::boxed(format!(
                                         "column '{}' is not null column
                                         ",
                                         column_name
@@ -166,7 +167,7 @@ impl Executor {
                                 if column.data_type.type_code() != data.type_code()
                                     && data.type_code() != 0
                                 {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::boxed(format!(
                                         "column '{}' type mismatch
                                         ",
                                         column_name
@@ -174,7 +175,7 @@ impl Executor {
                                 }
                             }
                             None => {
-                                return Err(ExecuteError::new(format!(
+                                return Err(ExecuteError::boxed(format!(
                                     "column '{}' not exists",
                                     column_name
                                 )))
@@ -200,7 +201,7 @@ impl Executor {
                     let row_file_path = rows_path.join(file_name);
 
                     if let Err(error) = tokio::fs::write(row_file_path, encoder.encode(row)).await {
-                        return Err(ExecuteError::new(error.to_string()));
+                        return Err(ExecuteError::boxed(error.to_string()));
                     }
                 }
             }

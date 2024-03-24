@@ -1,17 +1,23 @@
-use super::RRDBError;
+use std::{error::Error, string::ToString};
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeError {
     pub message: String,
-    pub backtrace: std::backtrace::Backtrace,
 }
 
 impl TypeError {
-    pub fn new<T: ToString>(message: T) -> RRDBError {
-        RRDBError::TypeError(Self {
+    pub fn new<T: ToString>(message: T) -> Self {
+        Self {
             message: message.to_string(),
-            backtrace: std::backtrace::Backtrace::capture(),
-        })
+        }
+    }
+
+    pub fn boxed<T: ToString>(message: T) -> Box<Self> {
+        Box::new(Self::new(message))
+    }
+
+    pub fn dyn_boxed<T: ToString>(message: T) -> Box<dyn Error + Send> {
+        Box::new(Self::new(message))
     }
 }
 
