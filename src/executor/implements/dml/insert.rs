@@ -103,7 +103,7 @@ impl Executor {
 
                         match columns_map.get(column_name) {
                             Some(column) => {
-                                if (column.not_null && data.type_code() == 0) {
+                                if column.not_null && data.type_code() == 0 {
                                     return Err(ExecuteError::new(format!(
                                         "column '{}' is not null column
                                         ",
