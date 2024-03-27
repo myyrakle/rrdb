@@ -93,14 +93,6 @@ impl Executor {
                         let default_value = match &column_config_info.default {
                             Some(default) => default.to_owned(),
                             None => {
-                                if column_config_info.not_null {
-                                    return Err(ExecuteError::new(format!(
-                                        "column '{}' is not null column
-                                        ",
-                                        column_name
-                                    )));
-                                }
-
                                 SQLExpression::Null
                             }
                         };
@@ -111,6 +103,14 @@ impl Executor {
 
                         match columns_map.get(column_name) {
                             Some(column) => {
+                                if (column.not_null && data.type_code() == 0) {
+                                    return Err(ExecuteError::new(format!(
+                                        "column '{}' is not null column
+                                        ",
+                                        column_name
+                                    )));
+                                }
+
                                 if column.data_type.type_code() != data.type_code()
                                     && data.type_code() != 0
                                 {
