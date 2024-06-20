@@ -16,7 +16,7 @@ impl Executor {
         let database_name = query.table_name.database_name.unwrap();
         let table_name = query.table_name.table_name;
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
         let table_path = base_path
             .join(&database_name)
             .join("tables")

@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
@@ -12,17 +13,13 @@ use crate::logger::predule::Logger;
 
 use super::config::global::GlobalConfig;
 
-pub struct Executor {}
-
-impl Default for Executor {
-    fn default() -> Self {
-        Self::new()
-    }
+pub struct Executor {
+    pub(crate) config: Arc<GlobalConfig>,
 }
 
 impl Executor {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(config: Arc<GlobalConfig>) -> Self {
+        Self { config: config }
     }
 
     // 기본 설정파일 세팅

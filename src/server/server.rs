@@ -1,10 +1,13 @@
+use std::sync::Arc;
+
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
+use crate::executor::config::global::GlobalConfig;
 use crate::executor::predule::Executor;
 use crate::logger::predule::Logger;
 use crate::pgwire::predule::Connection;
 use crate::server::channel::ChannelResponse;
-use crate::server::predule::{ChannelRequest, ServerOption, SharedState};
+use crate::server::predule::{ChannelRequest, SharedState};
 
 use futures::future::join_all;
 use tokio::net::TcpListener;
@@ -13,12 +16,14 @@ use tokio::sync::mpsc;
 use super::client::ClientInfo;
 
 pub struct Server {
-    pub option: ServerOption,
+    pub config: Arc<GlobalConfig>,
 }
 
 impl Server {
-    pub fn new(option: ServerOption) -> Self {
-        Self { option }
+    pub fn new(config: GlobalConfig) -> Self {
+        Self {
+            config: Arc::new(config),
+        }
     }
 
     /// 메인 서버 루프.
@@ -30,10 +35,15 @@ impl Server {
 
         // background task
         // 쿼리 실행 요청을 전달받음
+        let config = self.config.clone();
+
         let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
+                let config = config.clone();
+
+                // 쿼리 실행 태스크
                 tokio::spawn(async move {
-                    let executor = Executor::new();
+                    let executor = Executor::new(config);
                     let result = executor
                         .process_query(request.statement, request.connection_id)
                         .await;
@@ -62,10 +72,11 @@ impl Server {
 
         // connection task
         // client와의 커넥션 처리 루프
-        let listener = TcpListener::bind((self.option.host.to_owned(), self.option.port as u16))
+        let listener = TcpListener::bind((self.config.host.to_owned(), self.config.port as u16))
             .await
             .map_err(|error| ExecuteError::new(error.to_string()))?;
 
+        let config = self.config.clone();
         let connection_task = tokio::spawn(async move {
             loop {
                 let accepted = listener.accept().await;
@@ -89,8 +100,9 @@ impl Server {
                     client_info,
                 };
 
+                let config = config.clone();
                 tokio::spawn(async move {
-                    let mut conn = Connection::new(shared_state);
+                    let mut conn = Connection::new(shared_state, config);
                     if let Err(error) = conn.run(stream).await {
                         Logger::error(format!("connection error {:?}", error));
                     }
@@ -100,7 +112,7 @@ impl Server {
 
         Logger::info(format!(
             "Server is running on {}:{}",
-            self.option.host, self.option.port
+            self.config.host, self.config.port
         ));
 
         join_all(vec![connection_task, background_task]).await;

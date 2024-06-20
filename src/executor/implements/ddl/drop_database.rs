@@ -11,7 +11,7 @@ impl Executor {
         &self,
         query: DropDatabaseQuery,
     ) -> Result<ExecuteResult, RRDBError> {
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
         let mut database_path = base_path.clone();
 
         let database_name = query

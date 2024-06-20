@@ -11,7 +11,7 @@ impl Executor {
     pub async fn get_table_config(&self, table_name: TableName) -> Result<TableConfig, RRDBError> {
         let encoder = StorageEncoder::new();
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         let TableName {
             database_name,

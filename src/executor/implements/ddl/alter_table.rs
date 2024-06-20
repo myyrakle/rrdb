@@ -14,7 +14,7 @@ impl Executor {
     pub async fn alter_table(&self, query: AlterTableQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         let TableName {
             database_name,

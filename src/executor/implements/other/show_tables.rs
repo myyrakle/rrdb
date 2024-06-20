@@ -15,7 +15,7 @@ impl Executor {
     pub async fn show_tables(&self, query: ShowTablesQuery) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
         let database_path = base_path.clone().join(query.database);
         let tables_path = database_path.join("tables");
 

@@ -21,7 +21,7 @@ impl Executor {
         let database_name = into_table.clone().database_name.unwrap();
         let table_name = into_table.clone().table_name;
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         let database_path = base_path.clone().join(&database_name);
 
@@ -92,9 +92,7 @@ impl Executor {
 
                         let default_value = match &column_config_info.default {
                             Some(default) => default.to_owned(),
-                            None => {
-                                SQLExpression::Null
-                            }
+                            None => SQLExpression::Null,
                         };
 
                         let value = value.list[i].clone().unwrap_or(default_value);

@@ -18,7 +18,7 @@ impl Executor {
     ) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         match std::fs::read_dir(&base_path) {
             Ok(read_dir_result) => {
