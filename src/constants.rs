@@ -1,5 +1,3 @@
-pub mod predule;
-
 // 기본 데이터베이스 이름
 pub const DEFAULT_DATABASE_NAME: &str = "rrdb";
 
