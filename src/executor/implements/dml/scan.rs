@@ -20,7 +20,7 @@ impl Executor {
         let database_name = table_name.database_name.unwrap();
         let table_name = table_name.table_name;
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         let database_path = base_path.clone().join(&database_name);
 

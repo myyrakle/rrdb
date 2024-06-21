@@ -15,7 +15,7 @@ impl Executor {
         let database_name = query.table.clone().unwrap().database_name.unwrap();
         let table_name = query.table.clone().unwrap().table_name;
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
         let database_path = base_path.clone().join(&database_name);
 
         let table_path = database_path.clone().join("tables").join(&table_name);

@@ -1,13 +1,13 @@
 //! Contains the [Connection] struct, which represents an individual Postgres session, and related types.
 
 use futures::{SinkExt, StreamExt};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
 use crate::{
     ast::{OtherStatement, SQLStatement},
-    executor::executor::Executor,
+    executor::{config::global::GlobalConfig, executor::Executor},
     logger::predule::Logger,
     parser::{context::ParserContext, predule::Parser},
     pgwire::{
@@ -33,11 +33,12 @@ pub struct Connection {
     state: ConnectionState,
     statements: HashMap<String, PreparedStatement>,
     portals: HashMap<String, Option<BoundPortal<RRDBEngine>>>,
+    config: Arc<GlobalConfig>,
 }
 
 impl Connection {
     /// Create a new connection from an engine instance.
-    pub fn new(shared_state: SharedState) -> Self {
+    pub fn new(shared_state: SharedState, config: Arc<GlobalConfig>) -> Self {
         Self {
             state: ConnectionState::Startup,
             statements: HashMap::new(),
@@ -46,6 +47,7 @@ impl Connection {
                 shared_state,
                 portal: None,
             },
+            config: config,
         }
     }
 
@@ -107,7 +109,7 @@ impl Connection {
                     ClientMessage::Startup(startup) => {
                         if let Some(database_name) = startup.parameters.get("database") {
                             // 해당 데이터베이스가 존재하는지 검사
-                            let executor = Executor::new();
+                            let executor = Executor::new(self.config.clone());
                             let result = executor.find_database(database_name.clone()).await;
 
                             match result {

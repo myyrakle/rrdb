@@ -9,7 +9,7 @@ use crate::executor::result::{ExecuteColumn, ExecuteColumnType, ExecuteField, Ex
 
 impl Executor {
     pub async fn drop_table(&self, query: DropTableQuery) -> Result<ExecuteResult, RRDBError> {
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         let TableName {
             database_name,

@@ -11,10 +11,12 @@ pub mod pgwire;
 pub mod server;
 pub mod utils;
 
+use std::sync::Arc;
+
 use command::{Command, SubCommand};
 use errors::RRDBError;
-use executor::predule::Executor;
-use server::predule::{Server, ServerOption};
+use executor::{config::global::GlobalConfig, predule::Executor};
+use server::predule::Server;
 
 use clap::Parser;
 
@@ -26,16 +28,14 @@ async fn main() -> Result<(), RRDBError> {
         SubCommand::Init(init) => {
             let _init_option = init.init;
 
-            let executor = Executor::new();
+            let executor = Executor::new(Arc::new(GlobalConfig::default()));
 
             executor.init().await?;
         }
         SubCommand::Run(run) => {
-            let server_option = ServerOption {
-                port: run.value.port,
-                host: run.value.host,
-            };
-            let server = Server::new(server_option);
+            let config = GlobalConfig::load_from_path(run.value.config);
+
+            let server = Server::new(config);
 
             server.run().await?;
         }

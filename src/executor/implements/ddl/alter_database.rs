@@ -15,7 +15,7 @@ impl Executor {
     ) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         #[allow(clippy::single_match)]
         match query.action {

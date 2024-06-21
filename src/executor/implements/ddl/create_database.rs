@@ -15,7 +15,7 @@ impl Executor {
     ) -> Result<ExecuteResult, RRDBError> {
         let encoder = StorageEncoder::new();
 
-        let base_path = self.get_base_path();
+        let base_path = self.get_data_directory();
 
         let database_name = query
             .database_name
