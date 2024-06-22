@@ -20,19 +20,19 @@ impl Executor {
         // 3. 데이터 디렉터리 생성 (없다면)
         self.create_data_directory_if_not_exists().await?;
 
-        // 4. 데몬 스크립트 생성 (없다면)
-        self.create_daemon_script_if_not_exists().await?;
-
-        // 5. 데몬 설정파일 생성 (없다면)
+        // 4. 데몬 설정파일 생성 (없다면)
         self.create_daemon_config_if_not_exists().await?;
 
-        // 6. 기본 데이터베이스 생성 (rrdb)
+        // 5. 기본 데이터베이스 생성 (rrdb)
         self.create_database(
             CreateDatabaseQuery::builder()
                 .set_name(DEFAULT_DATABASE_NAME.into())
                 .set_if_not_exists(true),
         )
         .await?;
+
+        // 6. 데몬 실행
+        self.start_daemon().await?;
 
         Ok(())
     }
@@ -92,11 +92,21 @@ impl Executor {
         Ok(())
     }
 
-    async fn create_daemon_script_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
         if cfg!(target_os = "linux") {
-            let base_path = PathBuf::from("/usr/bin/rrdb.sh");
-            let script = r#"#!/bin/bash
-/usr/bin/rrdb run"#;
+            let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
+            let script = r#"[Unit]
+Description=RRDB
+
+[Service]
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/rrdb run
+RemainAfterExit=on
+User=root
+
+[Install]
+WantedBy=multi-user.target"#;
 
             if let Err(error) = tokio::fs::write(base_path, script).await {
                 if error.kind() == std::io::ErrorKind::AlreadyExists {
@@ -112,27 +122,17 @@ impl Executor {
         }
     }
 
-    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn start_daemon(&self) -> Result<(), RRDBError> {
         if cfg!(target_os = "linux") {
-            let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
-            let script = r#"[Unit]
-Description=RRDB
+            let output = std::process::Command::new("systemctl")
+                .arg("enable")
+                .arg("--now")
+                .arg("rrdb.service")
+                .output()
+                .expect("failed to start daemon");
 
-[Service]
-Type=oneshot
-Restart=on-failure
-ExecStart=/usr/bin/rrdb.sh
-RemainAfterExit=on
-
-[Install]
-WantedBy=multi-user.target"#;
-
-            if let Err(error) = tokio::fs::write(base_path, script).await {
-                if error.kind() == std::io::ErrorKind::AlreadyExists {
-                    // Do Nothing
-                } else {
-                    return Err(ExecuteError::new(error.to_string()));
-                }
+            if !output.status.success() {
+                return Err(ExecuteError::new("failed to start daemon"));
             }
 
             Ok(())
