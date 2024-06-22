@@ -27,7 +27,21 @@ impl Executor {
         if let Err(error) = tokio::fs::create_dir(database_path.clone()).await {
             match error.kind() {
                 ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::new("already exists database"))
+                    if query.if_not_exists {
+                        return Ok(ExecuteResult {
+                            columns: (vec![ExecuteColumn {
+                                name: "desc".into(),
+                                data_type: ExecuteColumnType::String,
+                            }]),
+                            rows: (vec![ExecuteRow {
+                                fields: vec![ExecuteField::String(
+                                    "database already exists".into(),
+                                )],
+                            }]),
+                        });
+                    } else {
+                        return Err(ExecuteError::new("already exists database"));
+                    }
                 }
                 _ => {
                     return Err(ExecuteError::new("database create failed"));
