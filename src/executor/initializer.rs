@@ -14,7 +14,28 @@ impl Executor {
     // 기본 설정파일 세팅
     pub async fn init(&self) -> Result<(), RRDBError> {
         // 1. 루트 디렉터리 생성 (없다면)
+        self.create_top_level_directory_if_not_exists().await?;
+
+        // 2. 전역 설정파일 생성 (없다면)
+        self.create_global_config_if_not_exists().await?;
+
+        // 3. 데이터 디렉터리 생성 (없다면)
+        self.create_data_directory_if_not_exists().await?;
+
+        // 4. 기본 데이터베이스 생성 (rrdb)
+        self.create_database(
+            CreateDatabaseQuery::builder()
+                .set_name(DEFAULT_DATABASE_NAME.into())
+                .set_if_not_exists(true),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn create_top_level_directory_if_not_exists(&self) -> Result<(), RRDBError> {
         let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
+
         if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
                 // Do Nothing
@@ -25,7 +46,12 @@ impl Executor {
             }
         }
 
-        // 2. 전역 설정파일 생성 (없다면)
+        Ok(())
+    }
+
+    async fn create_global_config_if_not_exists(&self) -> Result<(), RRDBError> {
+        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
+
         let mut global_path = base_path.clone();
         global_path.push(DEFAULT_CONFIG_FILENAME);
 
@@ -45,7 +71,12 @@ impl Executor {
             return Err(ExecuteError::new(error.to_string()));
         }
 
-        // 3. 데이터 디렉터리 생성 (없다면)
+        Ok(())
+    }
+
+    async fn create_data_directory_if_not_exists(&self) -> Result<(), RRDBError> {
+        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
+
         let mut data_path = base_path.clone();
         data_path.push(DEFAULT_DATA_DIRNAME);
 
@@ -56,14 +87,6 @@ impl Executor {
                 return Err(ExecuteError::new(error.to_string()));
             }
         }
-
-        // 4. 기본 데이터베이스 생성 (rrdb)
-        self.create_database(
-            CreateDatabaseQuery::builder()
-                .set_name(DEFAULT_DATABASE_NAME.into())
-                .set_if_not_exists(true),
-        )
-        .await?;
 
         Ok(())
     }
