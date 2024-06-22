@@ -22,7 +22,13 @@ impl Executor {
         // 3. 데이터 디렉터리 생성 (없다면)
         self.create_data_directory_if_not_exists().await?;
 
-        // 4. 기본 데이터베이스 생성 (rrdb)
+        // 4. 데몬 스크립트 생성 (없다면)
+        self.create_daemon_script_if_not_exists().await?;
+
+        // 5. 데몬 설정파일 생성 (없다면)
+        self.create_daemon_config_if_not_exists().await?;
+
+        // 6. 기본 데이터베이스 생성 (rrdb)
         self.create_database(
             CreateDatabaseQuery::builder()
                 .set_name(DEFAULT_DATABASE_NAME.into())
@@ -75,10 +81,7 @@ impl Executor {
     }
 
     async fn create_data_directory_if_not_exists(&self) -> Result<(), RRDBError> {
-        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
-
-        let mut data_path = base_path.clone();
-        data_path.push(DEFAULT_DATA_DIRNAME);
+        let data_path = self.config.data_directory.clone();
 
         if let Err(error) = tokio::fs::create_dir(data_path).await {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
@@ -89,5 +92,13 @@ impl Executor {
         }
 
         Ok(())
+    }
+
+    async fn create_daemon_script_if_not_exists(&self) -> Result<(), RRDBError> {
+        unimplemented!()
+    }
+
+    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+        unimplemented!()
     }
 }
