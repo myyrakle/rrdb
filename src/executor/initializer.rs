@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::constants::{
-    DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME, DEFAULT_DATA_DIRNAME,
-};
+use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME};
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
 
