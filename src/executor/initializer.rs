@@ -93,10 +93,51 @@ impl Executor {
     }
 
     async fn create_daemon_script_if_not_exists(&self) -> Result<(), RRDBError> {
-        unimplemented!()
+        if cfg!(target_os = "linux") {
+            let base_path = PathBuf::from("/usr/bin/rrdb.sh");
+            let script = r#"#!/bin/bash
+/usr/bin/rrdb run"#;
+
+            if let Err(error) = tokio::fs::write(base_path, script).await {
+                if error.kind() == std::io::ErrorKind::AlreadyExists {
+                    // Do Nothing
+                } else {
+                    return Err(ExecuteError::new(error.to_string()));
+                }
+            }
+
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        unimplemented!()
+        if cfg!(target_os = "linux") {
+            let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
+            let script = r#"[Unit]
+Description=RRDB
+
+[Service]
+Type=oneshot
+Restart=on-failure
+ExecStart=/usr/bin/rrdb.sh
+RemainAfterExit=on
+
+[Install]
+WantedBy=multi-user.target"#;
+
+            if let Err(error) = tokio::fs::write(base_path, script).await {
+                if error.kind() == std::io::ErrorKind::AlreadyExists {
+                    // Do Nothing
+                } else {
+                    return Err(ExecuteError::new(error.to_string()));
+                }
+            }
+
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 }
