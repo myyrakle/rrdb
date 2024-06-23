@@ -3,8 +3,15 @@ macro_rules! join_vec {
         $x
     };
     ($x:expr, $($y:expr),+) => {
-        |mut lhs: Vec<_>, mut rhs: Vec<_>|->Vec<_>{lhs.append(&mut rhs);
-            lhs}($x, join_vec!($($y),+))
+        {
+            let join_fn = |mut lhs: Vec<_>, mut rhs: Vec<_>| -> Vec<_> {
+                lhs.append(&mut rhs);
+                lhs
+            };
+
+            join_fn($x, join_vec!($($y),+))
+        }
+
     };
 }
 

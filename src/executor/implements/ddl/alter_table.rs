@@ -33,7 +33,10 @@ impl Executor {
 
                 // table 디렉터리명 변경
                 if let Err(error) = tokio::fs::rename(&table_path, &change_path).await {
-                    return Err(ExecuteError::new(format!("table rename failed: {}", error)));
+                    return Err(ExecuteError::wrap(format!(
+                        "table rename failed: {}",
+                        error
+                    )));
                 }
 
                 // config data 파일 내용 변경
@@ -45,7 +48,7 @@ impl Executor {
                 if let Err(error) =
                     tokio::fs::write(config_path, encoder.encode(table_config)).await
                 {
-                    return Err(ExecuteError::new(error.to_string()));
+                    return Err(ExecuteError::wrap(error.to_string()));
                 }
             }
             AlterTableAction::AddColumn(action) => {
@@ -59,7 +62,7 @@ impl Executor {
                 let mut table_config = self.get_table_config(query.table.unwrap()).await?;
 
                 if table_config.columns.contains(&column_to_add) {
-                    return Err(ExecuteError::new(format!(
+                    return Err(ExecuteError::wrap(format!(
                         "column '{}' already exists ",
                         column_to_add.name
                     )));
@@ -70,7 +73,7 @@ impl Executor {
                 if let Err(error) =
                     tokio::fs::write(config_path, encoder.encode(table_config)).await
                 {
-                    return Err(ExecuteError::new(error.to_string()));
+                    return Err(ExecuteError::wrap(error.to_string()));
                 }
             }
             AlterTableAction::AlterColumn(action) => {
@@ -95,7 +98,7 @@ impl Executor {
                                 target.default = Some(action.expression);
                             }
                             None => {
-                                return Err(ExecuteError::new(format!(
+                                return Err(ExecuteError::wrap(format!(
                                     "column '{}' not exists ",
                                     column_name
                                 )));
@@ -105,7 +108,7 @@ impl Executor {
                         if let Err(error) =
                             tokio::fs::write(config_path, encoder.encode(table_config)).await
                         {
-                            return Err(ExecuteError::new(error.to_string()));
+                            return Err(ExecuteError::wrap(error.to_string()));
                         }
                     }
                     AlterColumnAction::AlterColumnDropDefault(_) => {
@@ -129,7 +132,7 @@ impl Executor {
                                                 target.default = None;
                                             }
                                             None => {
-                                                return Err(ExecuteError::new(format!(
+                                                return Err(ExecuteError::wrap(format!(
                                                     "column '{}' not exists ",
                                                     column_name
                                                 )));
@@ -142,20 +145,20 @@ impl Executor {
                                         )
                                         .await
                                         {
-                                            return Err(ExecuteError::new(error.to_string()));
+                                            return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
                                     None => {
-                                        return Err(ExecuteError::new("invalid config data"));
+                                        return Err(ExecuteError::wrap("invalid config data"));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 ErrorKind::NotFound => {
-                                    return Err(ExecuteError::new("table not found"));
+                                    return Err(ExecuteError::wrap("table not found"));
                                 }
                                 _ => {
-                                    return Err(ExecuteError::new(format!("{:?}", error)));
+                                    return Err(ExecuteError::wrap(format!("{:?}", error)));
                                 }
                             },
                         }
@@ -181,7 +184,7 @@ impl Executor {
                                                 target.not_null = true;
                                             }
                                             None => {
-                                                return Err(ExecuteError::new(format!(
+                                                return Err(ExecuteError::wrap(format!(
                                                     "column '{}' not exists ",
                                                     column_name
                                                 )));
@@ -194,20 +197,20 @@ impl Executor {
                                         )
                                         .await
                                         {
-                                            return Err(ExecuteError::new(error.to_string()));
+                                            return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
                                     None => {
-                                        return Err(ExecuteError::new("invalid config data"));
+                                        return Err(ExecuteError::wrap("invalid config data"));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 ErrorKind::NotFound => {
-                                    return Err(ExecuteError::new("table not found"));
+                                    return Err(ExecuteError::wrap("table not found"));
                                 }
                                 _ => {
-                                    return Err(ExecuteError::new(format!("{:?}", error)));
+                                    return Err(ExecuteError::wrap(format!("{:?}", error)));
                                 }
                             },
                         }
@@ -233,7 +236,7 @@ impl Executor {
                                                 target.not_null = false;
                                             }
                                             None => {
-                                                return Err(ExecuteError::new(format!(
+                                                return Err(ExecuteError::wrap(format!(
                                                     "column '{}' not exists ",
                                                     column_name
                                                 )));
@@ -246,20 +249,20 @@ impl Executor {
                                         )
                                         .await
                                         {
-                                            return Err(ExecuteError::new(error.to_string()));
+                                            return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
                                     None => {
-                                        return Err(ExecuteError::new("invalid config data"));
+                                        return Err(ExecuteError::wrap("invalid config data"));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 ErrorKind::NotFound => {
-                                    return Err(ExecuteError::new("table not found"));
+                                    return Err(ExecuteError::wrap("table not found"));
                                 }
                                 _ => {
-                                    return Err(ExecuteError::new(format!("{:?}", error)));
+                                    return Err(ExecuteError::wrap(format!("{:?}", error)));
                                 }
                             },
                         }
@@ -284,7 +287,7 @@ impl Executor {
                                                 target.data_type = action.data_type;
                                             }
                                             None => {
-                                                return Err(ExecuteError::new(format!(
+                                                return Err(ExecuteError::wrap(format!(
                                                     "column '{}' not exists ",
                                                     column_name
                                                 )));
@@ -297,20 +300,20 @@ impl Executor {
                                         )
                                         .await
                                         {
-                                            return Err(ExecuteError::new(error.to_string()));
+                                            return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
                                     None => {
-                                        return Err(ExecuteError::new("invalid config data"));
+                                        return Err(ExecuteError::wrap("invalid config data"));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 ErrorKind::NotFound => {
-                                    return Err(ExecuteError::new("table not found"));
+                                    return Err(ExecuteError::wrap("table not found"));
                                 }
                                 _ => {
-                                    return Err(ExecuteError::new(format!("{:?}", error)));
+                                    return Err(ExecuteError::wrap(format!("{:?}", error)));
                                 }
                             },
                         }
@@ -330,7 +333,7 @@ impl Executor {
                     .iter()
                     .any(|e| e.name == action.column_name)
                 {
-                    return Err(ExecuteError::new(format!(
+                    return Err(ExecuteError::wrap(format!(
                         "column '{}' not exists ",
                         action.column_name
                     )));
@@ -343,7 +346,7 @@ impl Executor {
                 if let Err(error) =
                     tokio::fs::write(config_path, encoder.encode(table_config)).await
                 {
-                    return Err(ExecuteError::new(error.to_string()));
+                    return Err(ExecuteError::wrap(error.to_string()));
                 }
             }
             AlterTableAction::RenameColumn(action) => {
@@ -359,7 +362,7 @@ impl Executor {
                     .iter()
                     .any(|e| e.name == action.to_name)
                 {
-                    return Err(ExecuteError::new(format!(
+                    return Err(ExecuteError::wrap(format!(
                         "column '{}' already exists ",
                         action.to_name
                     )));
@@ -375,7 +378,7 @@ impl Executor {
                         target.name = action.to_name;
                     }
                     None => {
-                        return Err(ExecuteError::new(format!(
+                        return Err(ExecuteError::wrap(format!(
                             "column '{}' not exists ",
                             action.from_name
                         )));
@@ -385,7 +388,7 @@ impl Executor {
                 if let Err(error) =
                     tokio::fs::write(config_path, encoder.encode(table_config)).await
                 {
-                    return Err(ExecuteError::new(error.to_string()));
+                    return Err(ExecuteError::wrap(error.to_string()));
                 }
             }
             AlterTableAction::None => {}

@@ -7,7 +7,7 @@ pub struct ParsingError {
 }
 
 impl ParsingError {
-    pub fn new<T: ToString>(message: T) -> RRDBError {
+    pub fn wrap<T: ToString>(message: T) -> RRDBError {
         RRDBError::ParsingError(Self {
             message: message.to_string(),
             backtrace: std::backtrace::Backtrace::capture(),

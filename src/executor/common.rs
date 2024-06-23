@@ -32,12 +32,12 @@ impl Executor {
 
                 match table_config {
                     Some(table_config) => Ok(table_config),
-                    None => Err(ExecuteError::new("invalid config data")),
+                    None => Err(ExecuteError::wrap("invalid config data")),
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::new("table not found")),
-                _ => Err(ExecuteError::new(format!("{:?}", error))),
+                ErrorKind::NotFound => Err(ExecuteError::wrap("table not found")),
+                _ => Err(ExecuteError::wrap(format!("{:?}", error))),
             },
         }
     }

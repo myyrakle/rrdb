@@ -24,9 +24,9 @@ impl Executor {
 
         if let Err(error) = tokio::fs::remove_dir_all(table_path).await {
             match error.kind() {
-                ErrorKind::NotFound => return Err(ExecuteError::new("table not found")),
+                ErrorKind::NotFound => return Err(ExecuteError::wrap("table not found")),
                 _ => {
-                    return Err(ExecuteError::new("table drop failed"));
+                    return Err(ExecuteError::wrap("table drop failed"));
                 }
             }
         }

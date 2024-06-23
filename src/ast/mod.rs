@@ -22,8 +22,7 @@ use crate::ast::{
 
 use self::tcl::{BeginTransactionQuery, CommitQuery, RollbackQuery};
 
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum SQLStatement {
     DDL(DDLStatement),
     DML(DMLStatement),
@@ -33,8 +32,6 @@ pub enum SQLStatement {
     #[default]
     None,
 }
-
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DDLStatement {

@@ -12,7 +12,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E1101 need more tokens"));
+            return Err(ParsingError::wrap("E1101 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -20,7 +20,7 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_create_table_query(context),
             Token::Database => self.handle_create_database_query(),
-            _ => Err(ParsingError::new(format!(
+            _ => Err(ParsingError::wrap(format!(
                 "E1102 not supported command. possible commands: (create table). but your input is {:?}",
                 current_token
             ))),
@@ -33,7 +33,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E1103 need more tokens"));
+            return Err(ParsingError::wrap("E1103 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -41,7 +41,7 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_alter_table_query(context),
             Token::Database => self.handle_alter_database_query(),
-            _ => Err(ParsingError::new(
+            _ => Err(ParsingError::wrap(
                 "E1104 not supported command. possible commands: (alter table)",
             )),
         }
@@ -52,7 +52,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E1105 need more tokens"));
+            return Err(ParsingError::wrap("E1105 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -60,7 +60,7 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_drop_table_query(context),
             Token::Database => self.handle_drop_database_query(),
-            _ => Err(ParsingError::new(
+            _ => Err(ParsingError::wrap(
                 "E1106 not supported command. possible commands: (create table)",
             )),
         }

@@ -76,7 +76,7 @@ impl Executor {
                             match condition {
                                 TableDataFieldType::Boolean(boolean) => Ok((path, row, boolean)),
                                 TableDataFieldType::Null => Ok((path, row, false)),
-                                _ => Err(TypeError::new(
+                                _ => Err(TypeError::wrap(
                                     "condition expression is valid only for boolean and null types",
                                 )),
                             }
@@ -100,7 +100,7 @@ impl Executor {
         // 삭제 작업
         for (path, _) in rows.into_iter() {
             if let Err(error) = tokio::fs::remove_file(&path).await {
-                return Err(ExecuteError::new(format!(
+                return Err(ExecuteError::wrap(format!(
                     "file {:?} remove failed: {}",
                     path, error
                 )));

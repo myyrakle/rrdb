@@ -60,7 +60,7 @@ impl Executor {
 
         match result {
             Ok(result) => Ok(result),
-            Err(error) => Err(ExecuteError::new(error.to_string())),
+            Err(error) => Err(ExecuteError::wrap(error.to_string())),
         }
     }
 }

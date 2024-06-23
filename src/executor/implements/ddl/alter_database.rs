@@ -25,7 +25,7 @@ impl Executor {
                     let from_database_name = query
                         .database_name
                         .clone()
-                        .ok_or_else(|| ExecuteError::new("no database name"))?;
+                        .ok_or_else(|| ExecuteError::wrap("no database name"))?;
 
                     // 변경할 데이터베이스명
                     let to_database_name = rename.name;
@@ -43,10 +43,10 @@ impl Executor {
                     if let Err(error) = result {
                         match error.kind() {
                             ErrorKind::NotFound => {
-                                return Err(ExecuteError::new("database not found"))
+                                return Err(ExecuteError::wrap("database not found"))
                             }
                             _ => {
-                                return Err(ExecuteError::new("database alter failed"));
+                                return Err(ExecuteError::wrap("database alter failed"));
                             }
                         }
                     }
@@ -69,20 +69,20 @@ impl Executor {
                                     )
                                     .await
                                     {
-                                        return Err(ExecuteError::new("no database name"));
+                                        return Err(ExecuteError::wrap("no database name"));
                                     }
                                 }
                                 None => {
-                                    return Err(ExecuteError::new("invalid config data"));
+                                    return Err(ExecuteError::wrap("invalid config data"));
                                 }
                             }
                         }
                         Err(error) => match error.kind() {
                             ErrorKind::NotFound => {
-                                return Err(ExecuteError::new("database not found"));
+                                return Err(ExecuteError::wrap("database not found"));
                             }
                             _ => {
-                                return Err(ExecuteError::new(format!("{:?}", error)));
+                                return Err(ExecuteError::wrap(format!("{:?}", error)));
                             }
                         },
                     }

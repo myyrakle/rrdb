@@ -142,13 +142,13 @@ impl Token {
             Token::Not => match second_token {
                 Token::Like => Ok(BinaryOperator::NotLike),
                 Token::In => Ok(BinaryOperator::NotIn),
-                _ => Err(IntoError::new("BinaryOperator Cast Error")),
+                _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
             },
             Token::Is => match second_token {
                 Token::Not => Ok(BinaryOperator::IsNot),
                 _ => Ok(BinaryOperator::Is),
             },
-            _ => Err(IntoError::new("BinaryOperator Cast Error")),
+            _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
         }
     }
 
@@ -179,7 +179,7 @@ impl TryInto<BinaryOperator> for Token {
             Token::Like => Ok(BinaryOperator::Like),
             Token::In => Ok(BinaryOperator::In),
             Token::Is => Ok(BinaryOperator::Is),
-            _ => Err(IntoError::new("BinaryOperator Cast Error")),
+            _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
         }
     }
 }
