@@ -22,20 +22,15 @@ use crate::ast::{
 
 use self::tcl::{BeginTransactionQuery, CommitQuery, RollbackQuery};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum SQLStatement {
     DDL(DDLStatement),
     DML(DMLStatement),
     DCL(DCLStatement),
     TCL(TCLStatement),
     Other(OtherStatement),
+    #[default]
     None,
-}
-
-impl Default for SQLStatement {
-    fn default() -> Self {
-        SQLStatement::None
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

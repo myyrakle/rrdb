@@ -18,16 +18,16 @@ impl Executor {
 
         let base_path = self.get_data_directory();
         let table_path = base_path
-            .join(&database_name)
+            .join(database_name)
             .join("tables")
             .join(&table_name);
         let config_path = table_path.join("table.config");
 
-        match std::fs::read(&config_path) {
+        match std::fs::read(config_path) {
             Ok(read_result) => {
                 let table_info: TableConfig = encoder
                     .decode(read_result.as_slice())
-                    .ok_or_else(|| ExecuteError::new("config decode error"))?;
+                    .ok_or_else(|| ExecuteError::wrap("config decode error"))?;
 
                 Ok(ExecuteResult {
                     columns: (vec![
@@ -68,11 +68,11 @@ impl Executor {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::new(format!(
+                ErrorKind::NotFound => Err(ExecuteError::wrap(format!(
                     "table '{}' not exists",
                     table_name
                 ))),
-                _ => Err(ExecuteError::new("database listup failed")),
+                _ => Err(ExecuteError::wrap("database listup failed")),
             },
         }
     }

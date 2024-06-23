@@ -55,7 +55,7 @@ impl TryInto<BinaryOperator> for OperatorToken {
             Self::Gte => Ok(BinaryOperator::Gte),
             Self::Eq => Ok(BinaryOperator::Eq),
             Self::Neq => Ok(BinaryOperator::Neq),
-            _ => Err(IntoError::new("BinaryOperator Cast Error")),
+            _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
         }
     }
 }
@@ -68,7 +68,7 @@ impl TryInto<UnaryOperator> for OperatorToken {
             Self::Plus => Ok(UnaryOperator::Pos),
             Self::Minus => Ok(UnaryOperator::Neg),
             Self::Not => Ok(UnaryOperator::Not),
-            _ => Err(IntoError::new("UnaryOperator Cast Error")),
+            _ => Err(IntoError::wrap("UnaryOperator Cast Error")),
         }
     }
 }

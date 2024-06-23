@@ -11,28 +11,28 @@ impl Parser {
         context: ParserContext,
     ) -> Result<DeleteQuery, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0501 need more tokens"));
+            return Err(ParsingError::wrap("E0501 need more tokens"));
         }
 
         // DELETE 토큰 삼키기
         let current_token = self.get_next_token();
 
         if current_token != Token::Delete {
-            return Err(ParsingError::new(format!(
+            return Err(ParsingError::wrap(format!(
                 "E0502: expected 'DELETE'. but your input word is '{:?}'",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0503 need more tokens"));
+            return Err(ParsingError::wrap("E0503 need more tokens"));
         }
 
         // FROM 토큰 삼키기
         let current_token = self.get_next_token();
 
         if current_token != Token::From {
-            return Err(ParsingError::new(format!(
+            return Err(ParsingError::wrap(format!(
                 "E0504: expected 'FROM'. but your input word is '{:?}'",
                 current_token
             )));
@@ -41,7 +41,7 @@ impl Parser {
         let mut query_builder = DeleteQuery::builder();
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0505 need more tokens"));
+            return Err(ParsingError::wrap("E0505 need more tokens"));
         }
 
         // 테이블명 파싱

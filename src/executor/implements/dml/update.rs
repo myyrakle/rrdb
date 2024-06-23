@@ -79,7 +79,7 @@ impl Executor {
                             match condition {
                                 TableDataFieldType::Boolean(boolean) => Ok((path, row, boolean)),
                                 TableDataFieldType::Null => Ok((path, row, false)),
-                                _ => Err(TypeError::new(
+                                _ => Err(TypeError::wrap(
                                     "condition expression is valid only for boolean and null types",
                                 )),
                             }
@@ -134,7 +134,7 @@ impl Executor {
                 match found {
                     Some(found) => found.data = set_value,
                     None => {
-                        return Err(ExecuteError::new(format!(
+                        return Err(ExecuteError::wrap(format!(
                             "column '{}' not found in data row",
                             column_name
                         )));
@@ -143,7 +143,7 @@ impl Executor {
             }
 
             if let Err(error) = tokio::fs::write(&path, encoder.encode(row)).await {
-                return Err(ExecuteError::new(format!(
+                return Err(ExecuteError::wrap(format!(
                     "path '{:?}' write failed: {}",
                     path, error
                 )));
