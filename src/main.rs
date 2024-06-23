@@ -26,14 +26,16 @@ async fn main() -> Result<(), RRDBError> {
 
     match args.action {
         SubCommand::Init(init) => {
+            let config = GlobalConfig::load_from_path(None).unwrap_or_default();
+
             let _init_option = init.init;
 
-            let executor = Executor::new(Arc::new(GlobalConfig::default()));
+            let executor = Executor::new(Arc::new(config));
 
             executor.init().await?;
         }
         SubCommand::Run(run) => {
-            let config = GlobalConfig::load_from_path(run.value.config);
+            let config = GlobalConfig::load_from_path(run.value.config).expect("config load error");
 
             let server = Server::new(config);
 

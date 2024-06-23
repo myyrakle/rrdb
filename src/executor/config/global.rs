@@ -29,19 +29,20 @@ impl std::default::Default for GlobalConfig {
 }
 
 impl GlobalConfig {
-    pub fn load_from_path(filepath: Option<String>) -> Self {
+    pub fn default_config_path() -> PathBuf {
+        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
+        base_path.join(DEFAULT_CONFIG_FILENAME)
+    }
+
+    pub fn load_from_path(filepath: Option<String>) -> anyhow::Result<Self> {
         let filepath = match filepath {
             Some(path) => PathBuf::from(path),
-            None => {
-                let path = PathBuf::new();
-                let path = path.join(DEFAULT_CONFIG_BASEPATH);
-                let path = path.join(DEFAULT_CONFIG_FILENAME);
-
-                path
-            }
+            None => Self::default_config_path(),
         };
 
-        let config = std::fs::read_to_string(filepath).unwrap();
-        toml::from_str(&config).unwrap()
+        let config = std::fs::read_to_string(filepath)?;
+        let decoded = toml::from_str(&config)?;
+
+        Ok(decoded)
     }
 }
