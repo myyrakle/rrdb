@@ -112,7 +112,7 @@ impl Executor {
 
                 if let TableDataFieldType::Array(ref left_array) = lhs {
                     if let TableDataFieldType::Array(ref right_array) = rhs{
-                        let futures = (0..left_array.len()).into_iter().map(|i|
+                        let futures = (0..left_array.len()).map(|i|
                            {
                             let binary = binary.clone(); 
                             let context = context.clone(); 
@@ -554,9 +554,9 @@ impl Executor {
                         }
                     }
                     None => {
-                        return Err(ExecuteError::new(
+                        Err(ExecuteError::new(
                             format!("column select '{:?}' not exists", select_column),
-                        ));
+                        ))
                     }
                 }
                 

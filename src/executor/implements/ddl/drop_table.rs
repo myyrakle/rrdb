@@ -18,7 +18,7 @@ impl Executor {
 
         let table_path = base_path
             .clone()
-            .join(&database_name.unwrap())
+            .join(database_name.unwrap())
             .join("tables")
             .join(&table_name);
 

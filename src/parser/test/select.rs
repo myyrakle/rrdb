@@ -26,7 +26,7 @@ pub fn select_from_1() {
     let expected = SelectQuery::builder()
         .add_select_item(
             SelectItem::builder()
-                .set_item(SQLExpression::Integer(1).into())
+                .set_item(SQLExpression::Integer(1))
                 .set_alias("asdf".into())
                 .build(),
         )
@@ -55,7 +55,7 @@ pub fn select_from_2() {
     let expected = SelectQuery::builder()
         .add_select_item(
             SelectItem::builder()
-                .set_item(SQLExpression::Integer(1).into())
+                .set_item(SQLExpression::Integer(1))
                 .set_alias("asdf".into())
                 .build(),
         )
@@ -96,7 +96,7 @@ pub fn select_from_3() {
             SelectQuery::builder()
                 .add_select_item(
                     SelectItem::builder()
-                        .set_item(SQLExpression::Integer(1).into())
+                        .set_item(SQLExpression::Integer(1))
                         .set_alias("number".into())
                         .build(),
                 )
@@ -767,7 +767,7 @@ pub fn select_group_by_1() {
         })
         .set_from_alias("p".into())
         .add_group_by(GroupByItem {
-            item: SelectColumn::new(Some("p".into()), "content".into()).into(),
+            item: SelectColumn::new(Some("p".into()), "content".into()),
         })
         .build();
 
@@ -802,10 +802,10 @@ pub fn select_group_by_2() {
         })
         .set_from_alias("p".into())
         .add_group_by(GroupByItem {
-            item: SelectColumn::new(Some("p".into()), "content".into()).into(),
+            item: SelectColumn::new(Some("p".into()), "content".into()),
         })
         .add_group_by(GroupByItem {
-            item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
+            item: SelectColumn::new(Some("p".into()), "user_id".into()),
         })
         .build();
 
@@ -858,7 +858,7 @@ pub fn select_group_by_having_1() {
         })
         .set_from_alias("p".into())
         .add_group_by(GroupByItem {
-            item: SelectColumn::new(Some("p".into()), "content".into()).into(),
+            item: SelectColumn::new(Some("p".into()), "content".into()),
         })
         .set_having(HavingClause {
             expression: BinaryOperatorExpression {
@@ -1041,7 +1041,7 @@ pub fn select_subquery_1() {
                     SelectQuery::builder()
                         .add_select_item(
                             SelectItem::builder()
-                                .set_item(SQLExpression::Integer(1).into())
+                                .set_item(SQLExpression::Integer(1))
                                 .set_alias("number".into())
                                 .build(),
                         )

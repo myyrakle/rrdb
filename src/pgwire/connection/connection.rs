@@ -47,7 +47,7 @@ impl Connection {
                 shared_state,
                 portal: None,
             },
-            config: config,
+            config,
         }
     }
 

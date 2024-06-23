@@ -14,7 +14,7 @@ pub struct Executor {
 
 impl Executor {
     pub fn new(config: Arc<GlobalConfig>) -> Self {
-        Self { config: config }
+        Self { config }
     }
 
     // 쿼리 최적화 및 실행, 결과 반환
