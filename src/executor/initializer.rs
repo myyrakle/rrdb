@@ -42,8 +42,6 @@ impl Executor {
 
         if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
-                // Do Nothing
-            } else {
                 println!("path {:?}", base_path.clone());
                 println!("error: {:?}", error.to_string());
                 return Err(ExecuteError::new(error.to_string()));
@@ -61,9 +59,7 @@ impl Executor {
 
         if let Err(error) = tokio::fs::create_dir(global_path.parent().unwrap().to_path_buf()).await
         {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
-                // Do Nothing
-            } else {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::new(error.to_string()));
             }
         }
@@ -82,9 +78,7 @@ impl Executor {
         let data_path = self.config.data_directory.clone();
 
         if let Err(error) = tokio::fs::create_dir(data_path).await {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
-                // Do Nothing
-            } else {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::new(error.to_string()));
             }
         }
@@ -109,9 +103,7 @@ User=root
 WantedBy=multi-user.target"#;
 
             if let Err(error) = tokio::fs::write(base_path, script).await {
-                if error.kind() == std::io::ErrorKind::AlreadyExists {
-                    // Do Nothing
-                } else {
+                if error.kind() != std::io::ErrorKind::AlreadyExists {
                     return Err(ExecuteError::new(error.to_string()));
                 }
             }
