@@ -19,7 +19,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0201 need more tokens"));
+            return Err(ParsingError::wrap("E0201 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -32,7 +32,7 @@ impl Parser {
 
                     Ok(expression)
                 } else {
-                    Err(ParsingError::new(format!(
+                    Err(ParsingError::wrap(format!(
                         "E0212 unexpected operator: {:?}",
                         operator
                     )))
@@ -112,7 +112,7 @@ impl Parser {
             }
             Token::LeftParentheses => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::new("E0214 need more tokens"));
+                    return Err(ParsingError::wrap("E0214 need more tokens"));
                 }
 
                 let second_token = self.get_next_token();
@@ -150,7 +150,7 @@ impl Parser {
                     }
                 }
             }
-            Token::RightParentheses => Err(ParsingError::new(format!(
+            Token::RightParentheses => Err(ParsingError::wrap(format!(
                 "E0213 unexpected token: {:?}",
                 current_token
             ))),
@@ -191,7 +191,7 @@ impl Parser {
                     Ok(lhs)
                 }
             }
-            _ => Err(ParsingError::new(format!(
+            _ => Err(ParsingError::wrap(format!(
                 "E0202 unexpected token: {:?}",
                 current_token
             ))),
@@ -204,7 +204,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0201 need more tokens"));
+            return Err(ParsingError::wrap("E0201 need more tokens"));
         }
 
         let expression = self.parse_expression(context)?;
@@ -249,28 +249,28 @@ impl Parser {
         let context = context.set_in_parentheses(true);
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0203 need more tokens"));
+            return Err(ParsingError::wrap("E0203 need more tokens"));
         }
 
         // ( 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::LeftParentheses {
-            return Err(ParsingError::new(format!(
+            return Err(ParsingError::wrap(format!(
                 "expected left parentheses. but your input is {:?}",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0204 need more tokens"));
+            return Err(ParsingError::wrap("E0204 need more tokens"));
         }
 
         // 표현식 파싱
         let expression = self.parse_expression(context.clone())?;
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0205 need more tokens"));
+            return Err(ParsingError::wrap("E0205 need more tokens"));
         }
 
         // ) 삼킴
@@ -291,7 +291,7 @@ impl Parser {
 
                 loop {
                     if !self.has_next_token() {
-                        return Err(ParsingError::new("E0215 need more tokens"));
+                        return Err(ParsingError::wrap("E0215 need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -310,7 +310,7 @@ impl Parser {
 
                 Ok(list.into())
             }
-            _ => Err(ParsingError::new(format!(
+            _ => Err(ParsingError::wrap(format!(
                 "expected right parentheses. but your input is {:?}",
                 current_token
             ))),
@@ -326,7 +326,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0206 need more tokens"));
+            return Err(ParsingError::wrap("E0206 need more tokens"));
         }
 
         // 연산자 획득
@@ -434,21 +434,21 @@ impl Parser {
         };
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0207 need more tokens"));
+            return Err(ParsingError::wrap("E0207 need more tokens"));
         }
 
         // ( 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::LeftParentheses {
-            return Err(ParsingError::new(format!(
+            return Err(ParsingError::wrap(format!(
                 "expected left parentheses. but your input is {:?}",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0208 need more tokens"));
+            return Err(ParsingError::wrap("E0208 need more tokens"));
         }
 
         // 닫는 괄호가 나올때까지 인자 파싱
@@ -469,14 +469,14 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0209 need more tokens"));
+            return Err(ParsingError::wrap("E0209 need more tokens"));
         }
 
         // ) 삼킴
         let current_token = self.get_next_token();
 
         if current_token != Token::RightParentheses {
-            return Err(ParsingError::new(format!(
+            return Err(ParsingError::wrap(format!(
                 "expected right parentheses. but your input is {:?}",
                 current_token
             )));
@@ -496,7 +496,7 @@ impl Parser {
         let context = context.set_in_between_clause(true);
 
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0210 need more tokens"));
+            return Err(ParsingError::wrap("E0210 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -516,7 +516,7 @@ impl Parser {
             }
             Token::Not => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::new("E0211 need more tokens"));
+                    return Err(ParsingError::wrap("E0211 need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -534,13 +534,13 @@ impl Parser {
 
                         Ok(expression.into())
                     }
-                    _ => Err(ParsingError::new(format!(
+                    _ => Err(ParsingError::wrap(format!(
                         "expected between. but your input is {:?}",
                         current_token
                     ))),
                 }
             }
-            _ => Err(ParsingError::new(format!(
+            _ => Err(ParsingError::wrap(format!(
                 "expected between. but your input is {:?}",
                 current_token
             ))),

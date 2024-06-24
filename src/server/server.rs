@@ -60,7 +60,7 @@ impl Server {
                         Err(error) => {
                             let error = error.to_string();
                             if let Err(_response) = request.response_sender.send(ChannelResponse {
-                                result: Err(ExecuteError::new(error)),
+                                result: Err(ExecuteError::wrap(error)),
                             }) {
                                 Logger::error("channel send failed");
                             }
@@ -74,7 +74,7 @@ impl Server {
         // client와의 커넥션 처리 루프
         let listener = TcpListener::bind((self.config.host.to_owned(), self.config.port as u16))
             .await
-            .map_err(|error| ExecuteError::new(error.to_string()))?;
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
         let config = self.config.clone();
         let connection_task = tokio::spawn(async move {

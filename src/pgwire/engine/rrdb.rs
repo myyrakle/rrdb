@@ -28,7 +28,7 @@ impl Portal for RRDBPortal {
                         writer.write_bool(data);
                     }
                     ExecuteField::Integer(data) => {
-                        writer.write_int8(data as i64);
+                        writer.write_int8(data);
                     }
                     ExecuteField::Float(data) => {
                         writer.write_float8(data);

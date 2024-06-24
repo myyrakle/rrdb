@@ -40,16 +40,16 @@ impl Executor {
                 match table_config {
                     Some(table_config) => table_config,
                     None => {
-                        return Err(ExecuteError::new("invalid config data"));
+                        return Err(ExecuteError::wrap("invalid config data"));
                     }
                 }
             }
             Err(error) => match error.kind() {
                 ErrorKind::NotFound => {
-                    return Err(ExecuteError::new("table not found"));
+                    return Err(ExecuteError::wrap("table not found"));
                 }
                 _ => {
-                    return Err(ExecuteError::new(format!("{:?}", error)));
+                    return Err(ExecuteError::wrap(format!("{:?}", error)));
                 }
             },
         };
@@ -66,7 +66,7 @@ impl Executor {
         // 필수 입력 컬럼값 검증
         for required_column in required_columns {
             if !input_columns_set.contains(&required_column.name) {
-                return Err(ExecuteError::new(format!(
+                return Err(ExecuteError::wrap(format!(
                     "column '{}' is required, but it was not provided",
                     &required_column.name
                 )));
@@ -102,7 +102,7 @@ impl Executor {
                         match columns_map.get(column_name) {
                             Some(column) => {
                                 if column.not_null && data.type_code() == 0 {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::wrap(format!(
                                         "column '{}' is not null column
                                         ",
                                         column_name
@@ -112,7 +112,7 @@ impl Executor {
                                 if column.data_type.type_code() != data.type_code()
                                     && data.type_code() != 0
                                 {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::wrap(format!(
                                         "column '{}' type mismatch
                                         ",
                                         column_name
@@ -120,7 +120,7 @@ impl Executor {
                                 }
                             }
                             None => {
-                                return Err(ExecuteError::new(format!(
+                                return Err(ExecuteError::wrap(format!(
                                     "column '{}' not exists",
                                     column_name
                                 )))
@@ -144,7 +144,7 @@ impl Executor {
                             Some(default) => default.to_owned(),
                             None => {
                                 if column_config_info.not_null {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::wrap(format!(
                                         "column '{}' is not null column
                                         ",
                                         column_name
@@ -164,7 +164,7 @@ impl Executor {
                                 if column.data_type.type_code() != data.type_code()
                                     && data.type_code() != 0
                                 {
-                                    return Err(ExecuteError::new(format!(
+                                    return Err(ExecuteError::wrap(format!(
                                         "column '{}' type mismatch
                                         ",
                                         column_name
@@ -172,7 +172,7 @@ impl Executor {
                                 }
                             }
                             None => {
-                                return Err(ExecuteError::new(format!(
+                                return Err(ExecuteError::wrap(format!(
                                     "column '{}' not exists",
                                     column_name
                                 )))
@@ -198,7 +198,7 @@ impl Executor {
                     let row_file_path = rows_path.join(file_name);
 
                     if let Err(error) = tokio::fs::write(row_file_path, encoder.encode(row)).await {
-                        return Err(ExecuteError::new(error.to_string()));
+                        return Err(ExecuteError::wrap(error.to_string()));
                     }
                 }
             }

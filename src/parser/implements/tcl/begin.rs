@@ -11,13 +11,13 @@ impl Parser {
         _context: ParserContext,
     ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E2001 need more tokens"));
+            return Err(ParsingError::wrap("E2001 need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if current_token != Token::Transaction {
-            return Err(ParsingError::new("E2002 Expected BEGIN"));
+            return Err(ParsingError::wrap("E2002 Expected BEGIN"));
         }
 
         Ok(BeginTransactionQuery {}.into())

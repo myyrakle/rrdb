@@ -43,26 +43,26 @@ impl Executor {
                                             match encoder.decode::<TableDataRow>(result.as_slice())
                                             {
                                                 Some(decoded) => Ok((path.to_path_buf(), decoded)),
-                                                None => Err(ExecuteError::new(format!(
+                                                None => Err(ExecuteError::wrap(format!(
                                                     "full scan failed {:?}",
                                                     path
                                                 ))),
                                             }
                                         }
-                                        Err(error) => Err(ExecuteError::new(format!(
+                                        Err(error) => Err(ExecuteError::wrap(format!(
                                             "full scan failed {}",
                                             error
                                         ))),
                                     }
                                 } else {
-                                    Err(ExecuteError::new("full scan failed"))
+                                    Err(ExecuteError::wrap("full scan failed"))
                                 }
                             }
                             Err(error) => {
-                                Err(ExecuteError::new(format!("full scan failed {}", error)))
+                                Err(ExecuteError::wrap(format!("full scan failed {}", error)))
                             }
                         },
-                        Err(error) => Err(ExecuteError::new(format!("full scan failed {}", error))),
+                        Err(error) => Err(ExecuteError::wrap(format!("full scan failed {}", error))),
                     }
                 });
 
@@ -73,12 +73,12 @@ impl Executor {
 
                 match rows {
                     Ok(rows) => Ok(rows),
-                    Err(error) => Err(ExecuteError::new(error.to_string())),
+                    Err(error) => Err(ExecuteError::wrap(error.to_string())),
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::new("base path not exists (3)")),
-                _ => Err(ExecuteError::new("full scan failed")),
+                ErrorKind::NotFound => Err(ExecuteError::wrap("base path not exists (3)")),
+                _ => Err(ExecuteError::wrap("full scan failed")),
             },
         }
     }

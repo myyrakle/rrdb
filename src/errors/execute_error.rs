@@ -7,7 +7,7 @@ pub struct ExecuteError {
 }
 
 impl ExecuteError {
-    pub fn new<T: ToString>(message: T) -> RRDBError {
+    pub fn wrap<T: ToString>(message: T) -> RRDBError {
         RRDBError::ExecuteError(Self {
             message: message.to_string(),
             backtrace: std::backtrace::Backtrace::capture(),

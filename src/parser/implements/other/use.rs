@@ -11,7 +11,7 @@ impl Parser {
         _context: ParserContext,
     ) -> Result<SQLStatement, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::new("E0901 need more tokens"));
+            return Err(ParsingError::wrap("E0901 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -21,7 +21,7 @@ impl Parser {
                 database_name: identifier,
             }
             .into()),
-            _ => Err(ParsingError::new(format!(
+            _ => Err(ParsingError::wrap(format!(
                 "E0902: unexpected token '{:?}'",
                 current_token
             ))),

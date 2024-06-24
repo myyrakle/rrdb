@@ -44,7 +44,7 @@ impl Executor {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
                 println!("path {:?}", base_path.clone());
                 println!("error: {:?}", error.to_string());
-                return Err(ExecuteError::new(error.to_string()));
+                return Err(ExecuteError::wrap(error.to_string()));
             }
         }
 
@@ -60,7 +60,7 @@ impl Executor {
         if let Err(error) = tokio::fs::create_dir(global_path.parent().unwrap().to_path_buf()).await
         {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
-                return Err(ExecuteError::new(error.to_string()));
+                return Err(ExecuteError::wrap(error.to_string()));
             }
         }
 
@@ -68,7 +68,7 @@ impl Executor {
         let global_config = toml::to_string(&global_info).unwrap();
 
         if let Err(error) = tokio::fs::write(global_path, global_config.as_bytes()).await {
-            return Err(ExecuteError::new(error.to_string()));
+            return Err(ExecuteError::wrap(error.to_string()));
         }
 
         Ok(())
@@ -79,7 +79,7 @@ impl Executor {
 
         if let Err(error) = tokio::fs::create_dir(data_path).await {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
-                return Err(ExecuteError::new(error.to_string()));
+                return Err(ExecuteError::wrap(error.to_string()));
             }
         }
 
@@ -104,7 +104,7 @@ WantedBy=multi-user.target"#;
 
             if let Err(error) = tokio::fs::write(base_path, script).await {
                 if error.kind() != std::io::ErrorKind::AlreadyExists {
-                    return Err(ExecuteError::new(error.to_string()));
+                    return Err(ExecuteError::wrap(error.to_string()));
                 }
             }
 
@@ -124,7 +124,7 @@ WantedBy=multi-user.target"#;
                 .expect("failed to start daemon");
 
             if !output.status.success() {
-                return Err(ExecuteError::new("failed to start daemon"));
+                return Err(ExecuteError::wrap("failed to start daemon"));
             }
 
             Ok(())
