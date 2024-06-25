@@ -1,5 +1,7 @@
 use std::path::PathBuf;
-use std::process::Output;
+use std::process::{Command, Output};
+
+use std::io::Error;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::constants::{
@@ -153,34 +155,30 @@ WantedBy=multi-user.target"#;
         todo!();
     }
 
-    #[cfg(target_os = "linux")]
     async fn start_daemon(&self) -> Result<(), RRDBError> {
-        let output = std::process::Command::new("systemctl")
-            .arg("enable")
-            .arg("--now")
-            .arg("rrdb.service")
-            .output()
-            .expect("failed to start daemon");
+        let (program, args) = self.get_daemon_start_command();
+        let output = Command::new(program).args(args).output();
+
         self.check_output_status(output)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
+        ("systemctl", vec!["enable", "--now", "rrdb.service"])
     }
 
     #[cfg(target_os = "macos")]
-    async fn start_daemon(&self) -> Result<(), RRDBError> {
-        let output = std::process::Command::new("launchctl")
-            .arg("load")
-            .arg(LAUNCHD_PLIST_PATH)
-            .output()
-            .expect("failed to start daemon");
-        self.check_output_status(output)
+    fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
+        ("launchctl", vec!["load", LAUNCHD_PLIST_PATH])
     }
 
     #[cfg(other)]
-    async fn start_daemon(&self) -> Result<(), RRDBError> {
-        todo!();
+    fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
+        todo!()
     }
 
-    fn check_output_status(&self, output: Output) -> Result<(), RRDBError> {
-        if !output.status.success() {
+    fn check_output_status(&self, output: Result<Output, Error>) -> Result<(), RRDBError> {
+        if output.is_err() {
             Err(ExecuteError::wrap("failed to start daemon"))
         } else {
             Ok(())
