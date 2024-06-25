@@ -1,7 +1,12 @@
 use std::path::PathBuf;
+use std::process::{Command, Output};
+
+use std::io::Error;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME};
+use crate::constants::{
+    DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME, LAUNCHD_PLIST_PATH,
+};
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
 
@@ -86,10 +91,10 @@ impl Executor {
         Ok(())
     }
 
+    #[cfg(target_os = "linux")]
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        if cfg!(target_os = "linux") {
-            let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
-            let script = r#"[Unit]
+        let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
+        let script = r#"[Unit]
 Description=RRDB
 
 [Service]
@@ -98,36 +103,83 @@ Restart=on-failure
 ExecStart=/usr/bin/rrdb run
 RemainAfterExit=on
 User=root
+StandardOutput=file:/var/log/rrdb.stdout.log
+StandardError=file:/var/log/rrdb.stderr.log
 
 [Install]
 WantedBy=multi-user.target"#;
 
-            if let Err(error) = tokio::fs::write(base_path, script).await {
-                if error.kind() != std::io::ErrorKind::AlreadyExists {
-                    return Err(ExecuteError::wrap(error.to_string()));
-                }
-            }
+        self.write_and_check_err(base_path, script).await
+    }
 
-            Ok(())
-        } else {
-            Ok(())
+    #[cfg(target_os = "macos")]
+    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+        let base_path = PathBuf::from(LAUNCHD_PLIST_PATH);
+        let script = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>myyrakle.github.io.rrdb</string>
+        <key>UserName</key>
+        <string>root</string>
+        <key>Program</key>
+        <string>/usr/local/bin/rrdb</string>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>/var/log/rrdb.stdout.log</string>
+        <key>StandardErrorPath</key>
+        <string>/var/log/rrdb.stderr.log</string>
+</dict>
+</plist>"#;
+
+        self.write_and_check_err(base_path, script).await
+    }
+
+    async fn write_and_check_err(
+        &self,
+        base_path: PathBuf,
+        contents: &str,
+    ) -> Result<(), RRDBError> {
+        if let Err(error) = tokio::fs::write(base_path, contents).await {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(ExecuteError::wrap(error.to_string()));
+            }
         }
+        Ok(())
+    }
+
+    #[cfg(other)]
+    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+        todo!();
     }
 
     async fn start_daemon(&self) -> Result<(), RRDBError> {
-        if cfg!(target_os = "linux") {
-            let output = std::process::Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg("rrdb.service")
-                .output()
-                .expect("failed to start daemon");
+        let (program, args) = self.get_daemon_start_command();
+        let output = Command::new(program).args(args).output();
 
-            if !output.status.success() {
-                return Err(ExecuteError::wrap("failed to start daemon"));
-            }
+        self.check_output_status(output)
+    }
 
-            Ok(())
+    #[cfg(target_os = "linux")]
+    fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
+        ("systemctl", vec!["enable", "--now", "rrdb.service"])
+    }
+
+    #[cfg(target_os = "macos")]
+    fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
+        ("launchctl", vec!["load", LAUNCHD_PLIST_PATH])
+    }
+
+    #[cfg(other)]
+    fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
+        todo!()
+    }
+
+    fn check_output_status(&self, output: Result<Output, Error>) -> Result<(), RRDBError> {
+        if output.is_err() {
+            Err(ExecuteError::wrap("failed to start daemon"))
         } else {
             Ok(())
         }

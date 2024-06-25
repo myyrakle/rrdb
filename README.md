@@ -25,6 +25,15 @@ sudo ln -s /home/$USER/.cargo/bin/rrdb /usr/bin/rrdb
 sudo rrdb init
 ```
 
+- 플랫폼별 초기화 (MacOS)
+
+심볼릭 링크를 생성하고 초기화를 수행합니다.
+
+```
+sudo ln -s /home/$USER/.cargo/bin/rrdb /usr/local/bin/rrdb
+sudo rrdb init
+```
+
 - 플랫폼별 초기화 (Windows)
 
 powershell을 관리자 권한으로 실행하고 다음 명령어를 수행합니다.
