@@ -89,10 +89,10 @@ impl Executor {
         Ok(())
     }
 
+    #[cfg(target_os = "linux")]
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        if cfg!(target_os = "linux") {
-            let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
-            let script = r#"[Unit]
+        let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
+        let script = r#"[Unit]
 Description=RRDB
 
 [Service]
@@ -107,15 +107,18 @@ StandardError=file:/var/log/rrdb.stderr.log
 [Install]
 WantedBy=multi-user.target"#;
 
-            if let Err(error) = tokio::fs::write(base_path, script).await {
-                if error.kind() != std::io::ErrorKind::AlreadyExists {
-                    return Err(ExecuteError::wrap(error.to_string()));
-                }
+        if let Err(error) = tokio::fs::write(base_path, script).await {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(ExecuteError::wrap(error.to_string()));
             }
         }
-        if cfg!(target_os = "macos") {
-            let base_path = PathBuf::from(LAUNCHD_PLIST_PATH);
-            let script = r#"<?xml version="1.0" encoding="UTF-8"?>
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+        let base_path = PathBuf::from(LAUNCHD_PLIST_PATH);
+        let script = r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -134,39 +137,50 @@ WantedBy=multi-user.target"#;
 </dict>
 </plist>"#;
 
-            if let Err(error) = tokio::fs::write(base_path, script).await {
-                if error.kind() != std::io::ErrorKind::AlreadyExists {
-                    return Err(ExecuteError::wrap(error.to_string()));
-                }
+        if let Err(error) = tokio::fs::write(base_path, script).await {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(ExecuteError::wrap(error.to_string()));
             }
         }
         Ok(())
     }
 
+    #[cfg(other)]
+    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+        todo!();
+    }
+
+    #[cfg(target_os = "linux")]
     async fn start_daemon(&self) -> Result<(), RRDBError> {
-        let mut output: Option<Output> = None;
-        if cfg!(target_os = "linux") {
-            output = Some(
-                std::process::Command::new("systemctl")
-                    .arg("enable")
-                    .arg("--now")
-                    .arg("rrdb.service")
-                    .output()
-                    .expect("failed to start daemon"),
-            );
+        let output = std::process::Command::new("systemctl")
+            .arg("enable")
+            .arg("--now")
+            .arg("rrdb.service")
+            .output()
+            .expect("failed to start daemon");
+        self.check_output_status(output)
+    }
+
+    #[cfg(target_os = "macos")]
+    async fn start_daemon(&self) -> Result<(), RRDBError> {
+        let output = std::process::Command::new("launchctl")
+            .arg("load")
+            .arg(LAUNCHD_PLIST_PATH)
+            .output()
+            .expect("failed to start daemon");
+        self.check_output_status(output)
+    }
+
+    #[cfg(other)]
+    async fn start_daemon(&self) -> Result<(), RRDBError> {
+        todo!();
+    }
+
+    fn check_output_status(&self, output: Output) -> Result<(), RRDBError> {
+        if !output.status.success() {
+            Err(ExecuteError::wrap("failed to start daemon"))
+        } else {
+            Ok(())
         }
-        if cfg!(target_os = "macos") {
-            output = Some(
-                std::process::Command::new("launchctl")
-                    .arg("load")
-                    .arg(LAUNCHD_PLIST_PATH)
-                    .output()
-                    .expect("failed to start daemon"),
-            );
-        }
-        if output.is_some() && output.unwrap().status.success() {
-            return Err(ExecuteError::wrap("failed to start daemon"));
-        }
-        Ok(())
     }
 }
