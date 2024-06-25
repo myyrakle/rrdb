@@ -119,6 +119,8 @@ WantedBy=multi-user.target"#;
 <dict>
         <key>Label</key>
         <string>myyrakle.github.io.rrdb</string>
+        <key>UserName</key>
+        <string>root</string>
         <key>Program</key>
         <string>/usr/local/bin/rrdb</string>
         <key>RunAtLoad</key>
