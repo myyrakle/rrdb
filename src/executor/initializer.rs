@@ -107,12 +107,7 @@ StandardError=file:/var/log/rrdb.stderr.log
 [Install]
 WantedBy=multi-user.target"#;
 
-        if let Err(error) = tokio::fs::write(base_path, script).await {
-            if error.kind() != std::io::ErrorKind::AlreadyExists {
-                return Err(ExecuteError::wrap(error.to_string()));
-            }
-        }
-        Ok(())
+        self.write_and_check_err(base_path, script).await
     }
 
     #[cfg(target_os = "macos")]
@@ -137,7 +132,15 @@ WantedBy=multi-user.target"#;
 </dict>
 </plist>"#;
 
-        if let Err(error) = tokio::fs::write(base_path, script).await {
+        self.write_and_check_err(base_path, script).await
+    }
+
+    async fn write_and_check_err(
+        &self,
+        base_path: PathBuf,
+        contents: &str,
+    ) -> Result<(), RRDBError> {
+        if let Err(error) = tokio::fs::write(base_path, contents).await {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
