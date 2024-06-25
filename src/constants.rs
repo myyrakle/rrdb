@@ -16,3 +16,9 @@ pub const DEFAULT_CONFIG_BASEPATH: &str = "C:\\Program Files\\rrdb";
 
 #[cfg(target_os = "macos")]
 pub const DEFAULT_CONFIG_BASEPATH: &str = "/var/lib/rrdb";
+
+#[cfg(target_os = "macos")]
+pub const LAUNCHD_PLIST_PATH: &str = "/Library/LaunchDaemons/io.github.myyrakle.rrdb.plist";
+
+#[cfg(other)]
+pub const LAUNCHD_PLIST_PATH: &str = "";

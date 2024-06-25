@@ -1,7 +1,10 @@
 use std::path::PathBuf;
+use std::process::Output;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME};
+use crate::constants::{
+    DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME, LAUNCHD_PLIST_PATH,
+};
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
 
@@ -107,29 +110,57 @@ WantedBy=multi-user.target"#;
                     return Err(ExecuteError::wrap(error.to_string()));
                 }
             }
-
-            Ok(())
-        } else {
-            Ok(())
         }
+        if cfg!(target_os = "macos") {
+            let base_path = PathBuf::from(LAUNCHD_PLIST_PATH);
+            let script = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>myyrakle.github.io.rrdb</string>
+        <key>Program</key>
+        <string>/usr/local/bin/rrdb</string>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>/var/log/rrdb.log</string>
+</dict>
+</plist>"#;
+
+            if let Err(error) = tokio::fs::write(base_path, script).await {
+                if error.kind() != std::io::ErrorKind::AlreadyExists {
+                    return Err(ExecuteError::wrap(error.to_string()));
+                }
+            }
+        }
+        Ok(())
     }
 
     async fn start_daemon(&self) -> Result<(), RRDBError> {
+        let mut output: Option<Output> = None;
         if cfg!(target_os = "linux") {
-            let output = std::process::Command::new("systemctl")
-                .arg("enable")
-                .arg("--now")
-                .arg("rrdb.service")
-                .output()
-                .expect("failed to start daemon");
-
-            if !output.status.success() {
-                return Err(ExecuteError::wrap("failed to start daemon"));
-            }
-
-            Ok(())
-        } else {
-            Ok(())
+            output = Some(
+                std::process::Command::new("systemctl")
+                    .arg("enable")
+                    .arg("--now")
+                    .arg("rrdb.service")
+                    .output()
+                    .expect("failed to start daemon"),
+            );
         }
+        if cfg!(target_os = "macos") {
+            output = Some(
+                std::process::Command::new("launchctl")
+                    .arg("load")
+                    .arg(LAUNCHD_PLIST_PATH)
+                    .output()
+                    .expect("failed to start daemon"),
+            );
+        }
+        if output.is_some() && output.unwrap().status.success() {
+            return Err(ExecuteError::wrap("failed to start daemon"));
+        }
+        Ok(())
     }
 }
