@@ -101,6 +101,8 @@ Restart=on-failure
 ExecStart=/usr/bin/rrdb run
 RemainAfterExit=on
 User=root
+StandardOutput=file:/var/log/rrdb.stdout.log
+StandardError=file:/var/log/rrdb.stderr.log
 
 [Install]
 WantedBy=multi-user.target"#;
@@ -126,7 +128,9 @@ WantedBy=multi-user.target"#;
         <key>RunAtLoad</key>
         <true/>
         <key>StandardOutPath</key>
-        <string>/var/log/rrdb.log</string>
+        <string>/var/log/rrdb.stdout.log</string>
+        <key>StandardErrorPath</key>
+        <string>/var/log/rrdb.stderr.log</string>
 </dict>
 </plist>"#;
 
