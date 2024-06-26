@@ -8,7 +8,7 @@ use crate::ast::dml::parts::select_item::{SelectItem, SelectKind};
 use crate::ast::dml::plan::select::scan::ScanType;
 use crate::ast::dml::plan::select::select_plan::SelectPlanItem;
 use crate::ast::dml::select::SelectQuery;
-use crate::ast::types::{SQLExpression, SelectColumn};
+use crate::ast::types::{SQLExpression, SelectColumn, TableName};
 use crate::errors::type_error::TypeError;
 use crate::errors::RRDBError;
 use crate::executor::config::row::{TableDataField, TableDataFieldType, TableDataRow};
@@ -32,10 +32,14 @@ impl Executor {
 
         let mut rows = vec![];
 
+        let mut no_from_clause = true;
+
         for each_plan in plan.list {
             match each_plan {
                 // Select From 처리
                 SelectPlanItem::From(from) => {
+                    no_from_clause = false;
+
                     let table_name = from.table_name.clone();
 
                     let table_config = self.get_table_config(table_name.clone()).await?;
@@ -294,6 +298,16 @@ impl Executor {
                 }
                 _ => unimplemented!("미구현"),
             }
+        }
+
+        if no_from_clause {
+            rows.push(TableDataRow {
+                fields: vec![TableDataField {
+                    table_name: TableName::new(None, "no_table".into()),
+                    column_name: "result".into(),
+                    data: TableDataFieldType::Null,
+                }],
+            });
         }
 
         let config_columns = table_infos
