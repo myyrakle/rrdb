@@ -4,14 +4,15 @@ use std::process::{Command, Output};
 use std::io::Error;
 
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::constants::{
-    DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME, LAUNCHD_PLIST_PATH,
-};
+use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME};
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
 
 use super::config::global::GlobalConfig;
 use super::predule::Executor;
+
+#[cfg(target_os = "macos")]
+use crate::constants::LAUNCHD_PLIST_PATH;
 
 impl Executor {
     // 기본 설정파일 세팅
