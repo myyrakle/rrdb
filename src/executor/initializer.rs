@@ -126,6 +126,10 @@ WantedBy=multi-user.target"#;
         <string>root</string>
         <key>Program</key>
         <string>/usr/local/bin/rrdb</string>
+        <key>ProgramArguments</key>
+        <array>
+            <string>run</string>
+        </array>
         <key>RunAtLoad</key>
         <true/>
         <key>StandardOutPath</key>
