@@ -138,6 +138,11 @@ WantedBy=multi-user.target"#;
         self.write_and_check_err(base_path, script).await
     }
 
+    #[cfg(target_os = "windows")]
+    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+        todo!();
+    }
+
     async fn write_and_check_err(
         &self,
         base_path: PathBuf,
@@ -149,11 +154,6 @@ WantedBy=multi-user.target"#;
             }
         }
         Ok(())
-    }
-
-    #[cfg(other)]
-    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        todo!();
     }
 
     async fn start_daemon(&self) -> Result<(), RRDBError> {
@@ -173,7 +173,7 @@ WantedBy=multi-user.target"#;
         ("launchctl", vec!["load", LAUNCHD_PLIST_PATH])
     }
 
-    #[cfg(other)]
+    #[cfg(target_os = "windows")]
     fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
         todo!()
     }
