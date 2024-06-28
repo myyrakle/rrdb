@@ -17,7 +17,7 @@ impl std::default::Default for GlobalConfig {
         let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
 
         Self {
-            port: 55555,
+            port: 22208,
             host: "0.0.0.0".to_string(),
             data_directory: base_path
                 .join(DEFAULT_DATA_DIRNAME)
