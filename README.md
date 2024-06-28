@@ -58,7 +58,7 @@ cargo run --bin rrdb run
 #### Client
 
 ```
-psql -U rrdb -p 55555 --host 0.0.0.0
+psql -U rrdb -p 22208 --host 0.0.0.0
 ```
 
 ---
