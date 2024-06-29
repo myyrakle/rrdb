@@ -1,0 +1,18 @@
+name: Review/Comment 14 day Stats
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run pull request stats
+        uses: flowwer-dev/pull-request-stats@master
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          period: 14
+          limit: 7
+          charts: true
+          disable-links: true
