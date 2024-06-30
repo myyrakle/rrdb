@@ -144,7 +144,7 @@ WantedBy=multi-user.target"#;
 
     #[cfg(target_os = "windows")]
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        let output = Command::new("sc.exe").args(["create", "rrdb", "binpath=", "'C:\Program Files\rrdb\rrdb.exe'"]).output();
+        let output = Command::new("sc.exe").args(["create", "rrdb", "binpath=", r"'C:\Program Files\rrdb\rrdb.exe'"]).output();
 
         self.check_output_status(output)
     }
