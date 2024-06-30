@@ -1,0 +1,90 @@
+name: Test & Coverage
+
+on:
+  pull_request:
+
+permissions:                # Job-level permissions configuration starts here
+  contents: write           # 'write' access to repository contents
+  pull-requests: write      # 'write' access to pull requests
+
+jobs:
+  check:
+    name: Rust project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with: 
+          persist-credentials: false 
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo's directories
+        uses: actions/cache@v4
+        with:
+          save-always: true
+          key: ${{ runner.os }}-coverage-${{ hashFiles('Cargo.lock') }}
+          path: |
+            ./target
+            ~/.cargo
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Run cargo-tarpaulin
+        run: |
+          cargo tarpaulin -l --out Html | tail -n 1 | grep -o '[^+][0-9]\+\.[0-9]\+%' > coverage_total_percent.txt
+
+      - name: Set coverage env variable
+        run: |
+          echo "COVERAGE=$(cat coverage_total_percent.txt)" >> $GITHUB_ENV
+
+      - name: Clone html_reports repository
+        run: |
+          git clone https://github.com/myyrakle/html_reports
+
+      - name: Generate Random Name 
+        run: |
+          echo "REPORT_NAME=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Copy coverage report
+        run: |
+          cp ./tarpaulin-report.html ./html_reports/${{ env.REPORT_NAME }}.html | 
+          cd ./html_reports 
+
+      - name: Add
+        working-directory: html_reports
+        run: |
+          git add . 
+
+      - name: Commit
+        working-directory: html_reports
+        run: |
+          git config --global user.email "sssang97@naver.com" | 
+          git config --global user.name "myyrakle" | 
+          git commit -m "Add report" 
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          directory: html_reports
+          repository: myyrakle/html_reports
+          force: true
+          ref: master
+
+      - name: Add comment to PR
+        uses: thollander/actions-comment-pull-request@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          message: |
+            ✅ **Total Coverage**: ${{ env.COVERAGE }}  
+            🔗 [Coverage View](https://myyrakle.github.io/html_reports/${{ env.REPORT_NAME }}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub> 

@@ -17,3 +17,5 @@ Cargo.lock
 .rrdb.config
 
 .vscode
+
+tarpaulin-report.html
