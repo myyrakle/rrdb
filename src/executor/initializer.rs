@@ -47,7 +47,7 @@ impl Executor {
         let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
 
         if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
                 println!("path {:?}", base_path.clone());
                 println!("error: {:?}", error.to_string());
                 return Err(ExecuteError::wrap(error.to_string()));
