@@ -144,7 +144,9 @@ WantedBy=multi-user.target"#;
 
     #[cfg(target_os = "windows")]
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        let output = Command::new("sc.exe").args(["create", "rrdb", "binpath=", r"'C:\Program Files\rrdb\rrdb.exe'"]).output();
+        Command::new("winget").args(["install", "--accept-package-agreements", "nssm"]);
+
+        let output = Command::new("nssm.exe").args(["install", "rrdb", "C:\\Program Files\\rrdb\\rrdb.exe", "run"]).output();
 
         self.check_output_status(output)
     }
@@ -181,7 +183,7 @@ WantedBy=multi-user.target"#;
 
     #[cfg(target_os = "windows")]
     fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
-        ("sc.exe", vec!["start", "rrdb", "run"])
+        ("sc.exe", vec!["start", "rrdb"])
     }
 
     fn check_output_status(&self, output: Result<Output, Error>) -> Result<(), RRDBError> {
