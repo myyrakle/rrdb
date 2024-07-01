@@ -47,7 +47,7 @@ impl Executor {
         let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
 
         if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
                 println!("path {:?}", base_path.clone());
                 println!("error: {:?}", error.to_string());
                 return Err(ExecuteError::wrap(error.to_string()));
@@ -144,7 +144,11 @@ WantedBy=multi-user.target"#;
 
     #[cfg(target_os = "windows")]
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        todo!();
+        Command::new("winget").args(["install", "--accept-package-agreements", "nssm"]);
+
+        let output = Command::new("nssm.exe").args(["install", "rrdb", "C:\\Program Files\\rrdb\\rrdb.exe", "run"]).output();
+
+        self.check_output_status(output)
     }
 
     async fn write_and_check_err(
@@ -179,7 +183,7 @@ WantedBy=multi-user.target"#;
 
     #[cfg(target_os = "windows")]
     fn get_daemon_start_command(&self) -> (&'static str, Vec<&'static str>) {
-        todo!()
+        ("sc.exe", vec!["start", "rrdb"])
     }
 
     fn check_output_status(&self, output: Result<Output, Error>) -> Result<(), RRDBError> {
