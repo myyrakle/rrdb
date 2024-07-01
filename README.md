@@ -39,7 +39,9 @@ sudo rrdb init
 powershell을 관리자 권한으로 실행하고 다음 명령어를 수행합니다.
 
 ```
-rrdb init
+mkdir 'C:\Program Files\rrdb'
+cp ~/.cargo/bin/rrdb.exe 'C:\Program Files\rrdb\'
+'C:\Program Files\rrdb\rrdb.exe' init
 ```
 
 ---
