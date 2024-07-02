@@ -7,14 +7,19 @@ use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
 
 use super::config::global::GlobalConfig;
+use super::mocking::{FileSystem, RealFileSystem};
 
 pub struct Executor {
     pub(crate) config: Arc<GlobalConfig>,
+    pub(crate) file_system: Arc<dyn FileSystem + Send + Sync>,
 }
 
 impl Executor {
     pub fn new(config: Arc<GlobalConfig>) -> Self {
-        Self { config }
+        Self {
+            config,
+            file_system: Arc::new(RealFileSystem {}),
+        }
     }
 
     // 쿼리 최적화 및 실행, 결과 반환
