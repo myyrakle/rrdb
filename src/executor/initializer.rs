@@ -44,11 +44,11 @@ impl Executor {
     }
 
     async fn create_top_level_directory_if_not_exists(&self) -> Result<(), RRDBError> {
-        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
+        let base_path = DEFAULT_CONFIG_BASEPATH;
 
-        if let Err(error) = tokio::fs::create_dir(base_path.clone()).await {
+        if let Err(error) = self.file_system.create_dir(base_path).await {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
-                println!("path {:?}", base_path.clone());
+                println!("path {:?}", base_path);
                 println!("error: {:?}", error.to_string());
                 return Err(ExecuteError::wrap(error.to_string()));
             }
@@ -58,22 +58,28 @@ impl Executor {
     }
 
     async fn create_global_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
-
-        let mut global_path = base_path.clone();
-        global_path.push(DEFAULT_CONFIG_FILENAME);
-
-        if let Err(error) = tokio::fs::create_dir(global_path.parent().unwrap().to_path_buf()).await
-        {
+        if let Err(error) = self.file_system.create_dir(DEFAULT_CONFIG_BASEPATH).await {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
         }
 
+        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
+
+        let mut global_path = base_path;
+        global_path.push(DEFAULT_CONFIG_FILENAME);
+
         let global_info = GlobalConfig::default();
         let global_config = toml::to_string(&global_info).unwrap();
 
-        if let Err(error) = tokio::fs::write(global_path, global_config.as_bytes()).await {
+        if let Err(error) = self
+            .file_system
+            .write_file(
+                global_path.to_str().unwrap_or_default(),
+                global_config.as_bytes(),
+            )
+            .await
+        {
             return Err(ExecuteError::wrap(error.to_string()));
         }
 
@@ -83,7 +89,7 @@ impl Executor {
     async fn create_data_directory_if_not_exists(&self) -> Result<(), RRDBError> {
         let data_path = self.config.data_directory.clone();
 
-        if let Err(error) = tokio::fs::create_dir(data_path).await {
+        if let Err(error) = self.file_system.create_dir(&data_path).await {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
@@ -146,7 +152,14 @@ WantedBy=multi-user.target"#;
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
         Command::new("winget").args(["install", "--accept-package-agreements", "nssm"]);
 
-        let output = Command::new("nssm.exe").args(["install", "rrdb", "C:\\Program Files\\rrdb\\rrdb.exe", "run"]).output();
+        let output = Command::new("nssm.exe")
+            .args([
+                "install",
+                "rrdb",
+                "C:\\Program Files\\rrdb\\rrdb.exe",
+                "run",
+            ])
+            .output();
 
         self.check_output_status(output)
     }
@@ -156,7 +169,11 @@ WantedBy=multi-user.target"#;
         base_path: PathBuf,
         contents: &str,
     ) -> Result<(), RRDBError> {
-        if let Err(error) = tokio::fs::write(base_path, contents).await {
+        if let Err(error) = self
+            .file_system
+            .write_file(base_path.to_str().unwrap_or_default(), contents.as_bytes())
+            .await
+        {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
