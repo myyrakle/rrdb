@@ -7,11 +7,12 @@ use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
 
 use super::config::global::GlobalConfig;
-use super::mocking::{FileSystem, RealFileSystem};
+use super::mocking::{CommandRunner, FileSystem, RealCommandRunner, RealFileSystem};
 
 pub struct Executor {
     pub(crate) config: Arc<GlobalConfig>,
     pub(crate) file_system: Arc<dyn FileSystem + Send + Sync>,
+    pub(crate) command_runner: Arc<dyn CommandRunner + Send + Sync>,
 }
 
 impl Executor {
@@ -19,6 +20,7 @@ impl Executor {
         Self {
             config,
             file_system: Arc::new(RealFileSystem {}),
+            command_runner: Arc::new(RealCommandRunner {}),
         }
     }
 

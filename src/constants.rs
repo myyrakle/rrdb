@@ -18,3 +18,19 @@ pub const DEFAULT_CONFIG_BASEPATH: &str = r"C:\Program Files\rrdb";
 pub const DEFAULT_CONFIG_BASEPATH: &str = "/var/lib/rrdb";
 
 pub const LAUNCHD_PLIST_PATH: &str = "/Library/LaunchDaemons/io.github.myyrakle.rrdb.plist";
+
+#[cfg(target_os = "linux")]
+pub const SYSTEMD_DAEMON_SCRIPT: &str = r#"[Unit]
+Description=RRDB
+
+[Service]
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/rrdb run
+RemainAfterExit=on
+User=root
+StandardOutput=file:/var/log/rrdb.stdout.log
+StandardError=file:/var/log/rrdb.stderr.log
+
+[Install]
+WantedBy=multi-user.target"#;
