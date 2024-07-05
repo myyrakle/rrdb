@@ -32,7 +32,8 @@ async fn main() -> Result<(), RRDBError> {
 
             let executor = Executor::new(Arc::new(config));
 
-            executor.init().await?;
+            executor.init_config().await?;
+            executor.init_database().await?;
         }
         SubCommand::Run(run) => {
             let config = GlobalConfig::load_from_path(run.value.config).expect("config load error");
