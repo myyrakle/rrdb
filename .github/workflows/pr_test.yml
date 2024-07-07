@@ -32,3 +32,10 @@ jobs:
 
       - run: cargo build --verbose
       - run: cargo test --verbose
+
+      - name: Upload binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-rrdb${{ runner.os == 'Windows' && '.exe' || ''}}
+          path: target/debug/rrdb${{ runner.os == 'Windows' && '.exe' || ''}}
+          if-no-files-found: error
