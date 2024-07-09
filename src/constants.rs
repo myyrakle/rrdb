@@ -34,3 +34,27 @@ StandardError=file:/var/log/rrdb.stderr.log
 
 [Install]
 WantedBy=multi-user.target"#;
+
+#[cfg(target_os = "macos")]
+pub const LAUNCHD_DAEMON_SCRIPT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>myyrakle.github.io.rrdb</string>
+        <key>UserName</key>
+        <string>root</string>
+        <key>Program</key>
+        <string>/usr/local/bin/rrdb</string>
+        <key>ProgramArguments</key>
+        <array>
+            <string>run</string>
+        </array>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>/var/log/rrdb.stdout.log</string>
+        <key>StandardErrorPath</key>
+        <string>/var/log/rrdb.stderr.log</string>
+</dict>
+</plist>"#;

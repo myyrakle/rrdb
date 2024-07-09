@@ -108,31 +108,12 @@ impl Executor {
 
     #[cfg(target_os = "macos")]
     async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
-        let base_path = PathBuf::from(LAUNCHD_PLIST_PATH);
-        let script = r#"<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-        <key>Label</key>
-        <string>myyrakle.github.io.rrdb</string>
-        <key>UserName</key>
-        <string>root</string>
-        <key>Program</key>
-        <string>/usr/local/bin/rrdb</string>
-        <key>ProgramArguments</key>
-        <array>
-            <string>run</string>
-        </array>
-        <key>RunAtLoad</key>
-        <true/>
-        <key>StandardOutPath</key>
-        <string>/var/log/rrdb.stdout.log</string>
-        <key>StandardErrorPath</key>
-        <string>/var/log/rrdb.stderr.log</string>
-</dict>
-</plist>"#;
+        use crate::constants::LAUNCHD_DAEMON_SCRIPT;
 
-        self.write_and_check_err(base_path, script).await
+        let base_path = PathBuf::from(LAUNCHD_PLIST_PATH);
+
+        self.write_and_check_err(base_path, LAUNCHD_DAEMON_SCRIPT)
+            .await
     }
 
     #[cfg(target_os = "windows")]
