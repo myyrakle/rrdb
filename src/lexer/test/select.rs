@@ -50,15 +50,37 @@ pub fn test_number_literal() {
 }
 
 #[test]
-pub fn select_4() {
-    let text = r#"SELECT 'I''m Sam'"#.to_owned();
+pub fn select_text() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+        expected: Vec<Token>,
+    }
 
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
+    let test_cases = vec![TestCase {
+        name: "문자열: 'I''m Sam'".to_owned(),
+        input: r#"SELECT 'I''m Sam'"#.to_owned(),
+        want_error: false,
+        expected: vec![Token::Select, Token::String("I'm Sam".to_owned())],
+    }];
 
-    assert_eq!(
-        tokens,
-        vec![Token::Select, Token::String("I'm Sam".to_owned())]
-    );
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(tokens) = got {
+            assert_eq!(tokens, t.expected, "{}", t.name);
+        }
+    }
 }
 
 #[test]
