@@ -2,30 +2,51 @@
 use crate::lexer::predule::{Token, Tokenizer};
 
 #[test]
-pub fn select_1() {
-    let text = r#"SELECT 1"#.to_owned();
+pub fn test_number_literal() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+        expected: Vec<Token>,
+    }
 
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
+    let test_cases = vec![
+        TestCase {
+            name: "한자리수 정수".to_owned(),
+            input: "SELECT 1".to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Integer(1)],
+        },
+        TestCase {
+            name: "여러자리 정수".to_owned(),
+            input: "SELECT 1432".to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Integer(1432)],
+        },
+        TestCase {
+            name: "실수: 3.14".to_owned(),
+            input: "SELECT 3.14".to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Float(3.14)],
+        },
+    ];
 
-    assert_eq!(tokens, vec![Token::Select, Token::Integer(1)]);
-}
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
 
-#[test]
-pub fn select_2() {
-    let text = r#"  SELECT 1432"#.to_owned();
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
 
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
-
-    assert_eq!(tokens, vec![Token::Select, Token::Integer(1432)]);
-}
-
-#[test]
-pub fn select_3() {
-    let text = r#"SELECT 3.14"#.to_owned();
-
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
-
-    assert_eq!(tokens, vec![Token::Select, Token::Float(3.14)]);
+        if let Ok(tokens) = got {
+            assert_eq!(tokens, t.expected, "{}", t.name);
+        }
+    }
 }
 
 #[test]
