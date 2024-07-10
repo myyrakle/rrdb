@@ -41,7 +41,7 @@ impl Tokenizer {
     }
 
     pub fn is_special_character(&self) -> bool {
-        ['+', '-', '*', '/', ',', '>', '<', '=', '!', '\\'].contains(&self.last_char)
+        ['+', '-', '*', '/', ',', '>', '<', '=', '!', '\\', '@'].contains(&self.last_char)
     }
 
     pub fn is_quote(&self) -> bool {

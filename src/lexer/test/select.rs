@@ -96,6 +96,34 @@ pub fn select_text() {
 }
 
 #[test]
+pub fn test_errors() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+    }
+
+    let test_cases = vec![TestCase {
+        name: "예상하지 못한 특수문자".to_owned(),
+        input: r#"SELECT @"#.to_owned(),
+        want_error: true,
+    }];
+
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+    }
+}
+
+#[test]
 pub fn select_from_1() {
     let text = r#"SELECT name from person"#.to_owned();
 
