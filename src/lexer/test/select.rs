@@ -24,10 +24,22 @@ pub fn test_number_literal() {
             expected: vec![Token::Select, Token::Integer(1432)],
         },
         TestCase {
+            name: "정수 파싱 실패".to_owned(),
+            input: "SELECT 14@#32".to_owned(),
+            want_error: true,
+            expected: vec![],
+        },
+        TestCase {
             name: "실수: 3.14".to_owned(),
             input: "SELECT 3.14".to_owned(),
             want_error: false,
             expected: vec![Token::Select, Token::Float(3.14)],
+        },
+        TestCase {
+            name: "실수 파싱 실패: 3.1@4".to_owned(),
+            input: "SELECT 3.1@4".to_owned(),
+            want_error: true,
+            expected: vec![],
         },
     ];
 

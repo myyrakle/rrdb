@@ -40,10 +40,6 @@ impl Tokenizer {
         self.last_char == '_'
     }
 
-    pub fn is_backslash(&self) -> bool {
-        self.last_char == '\\'
-    }
-
     pub fn is_special_character(&self) -> bool {
         ['+', '-', '*', '/', ',', '>', '<', '=', '!', '\\'].contains(&self.last_char)
     }
@@ -414,11 +410,5 @@ impl Tokenizer {
         }
 
         Ok(tokens)
-    }
-}
-
-impl std::fmt::Display for Tokenizer {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "Tokenizer: {:?}", self)
     }
 }
