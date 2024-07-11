@@ -40,12 +40,8 @@ impl Tokenizer {
         self.last_char == '_'
     }
 
-    pub fn is_backslash(&self) -> bool {
-        self.last_char == '\\'
-    }
-
     pub fn is_special_character(&self) -> bool {
-        ['+', '-', '*', '/', ',', '>', '<', '=', '!', '\\'].contains(&self.last_char)
+        ['+', '-', '*', '/', ',', '>', '<', '=', '!', '\\', '@'].contains(&self.last_char)
     }
 
     pub fn is_quote(&self) -> bool {
@@ -84,9 +80,7 @@ impl Tokenizer {
 
     // 보관했던 문자 하나를 다시 버퍼에 돌려놓습니다.
     pub fn unread_char(&mut self) {
-        if self.buffer_index == 0 {
-            self.last_char = ' ';
-        } else {
+        if self.buffer_index != 0 {
             self.buffer_index -= 1;
             self.last_char = self.buffer[self.buffer_index];
         }
@@ -316,7 +310,7 @@ impl Tokenizer {
                 let identifier: String = identifier.into_iter().collect::<String>();
 
                 Token::Identifier(identifier)
-            } else if self.last_char == '\'' {
+            } else {
                 let mut string = vec![];
 
                 self.read_char();
@@ -342,8 +336,6 @@ impl Tokenizer {
                 let string: String = string.into_iter().collect::<String>();
 
                 Token::String(string)
-            } else {
-                Token::UnknownCharacter(self.last_char)
             }
         } else if self.is_backtick() {
             let mut string = vec![];
@@ -414,11 +406,5 @@ impl Tokenizer {
         }
 
         Ok(tokens)
-    }
-}
-
-impl std::fmt::Display for Tokenizer {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "Tokenizer: {:?}", self)
     }
 }

@@ -1,43 +1,244 @@
+use crate::lexer::predule::OperatorToken;
 #[cfg(test)]
 use crate::lexer::predule::{Token, Tokenizer};
 
 #[test]
-pub fn select_1() {
-    let text = r#"SELECT 1"#.to_owned();
+pub fn test_number_literal() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+        expected: Vec<Token>,
+    }
 
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
+    let test_cases = vec![
+        TestCase {
+            name: "한자리수 정수".to_owned(),
+            input: "SELECT 1".to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Integer(1)],
+        },
+        TestCase {
+            name: "여러자리 정수".to_owned(),
+            input: "SELECT 1432".to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Integer(1432)],
+        },
+        TestCase {
+            name: "정수 파싱 실패".to_owned(),
+            input: "SELECT 1444444444444444444444444444444444444444444444444444444432".to_owned(),
+            want_error: true,
+            expected: vec![],
+        },
+        TestCase {
+            name: "실수: 3.14".to_owned(),
+            input: "SELECT 3.14".to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Float(3.14)],
+        },
+        TestCase {
+            name: "실수 파싱 실패: 3..14".to_owned(),
+            input: "SELECT 3..14".to_owned(),
+            want_error: true,
+            expected: vec![],
+        },
+    ];
 
-    assert_eq!(tokens, vec![Token::Select, Token::Integer(1)]);
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(tokens) = got {
+            assert_eq!(tokens, t.expected, "{}", t.name);
+        }
+    }
 }
 
 #[test]
-pub fn select_2() {
-    let text = r#"  SELECT 1432"#.to_owned();
+pub fn select_text() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+        expected: Vec<Token>,
+    }
 
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
+    let test_cases = vec![TestCase {
+        name: "문자열: 'I''m Sam'".to_owned(),
+        input: r#"SELECT 'I''m Sam'"#.to_owned(),
+        want_error: false,
+        expected: vec![Token::Select, Token::String("I'm Sam".to_owned())],
+    }];
 
-    assert_eq!(tokens, vec![Token::Select, Token::Integer(1432)]);
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(tokens) = got {
+            assert_eq!(tokens, t.expected, "{}", t.name);
+        }
+    }
 }
 
 #[test]
-pub fn select_3() {
-    let text = r#"SELECT 3.14"#.to_owned();
+pub fn test_errors() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+    }
 
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
+    let test_cases = vec![
+        TestCase {
+            name: "예상하지 못한 특수문자".to_owned(),
+            input: r#"SELECT @"#.to_owned(),
+            want_error: true,
+        },
+        // TestCase {
+        //     name: "예상하지 못한 특수문자: $".to_owned(),
+        //     input: r#"SELECT $"#.to_owned(),
+        //     want_error: true,
+        // },
+        TestCase {
+            name: "예상하지 못한 특수문자: $$$".to_owned(),
+            input: r#"SELECT $$$"#.to_owned(),
+            want_error: true,
+        },
+    ];
 
-    assert_eq!(tokens, vec![Token::Select, Token::Float(3.14)]);
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+    }
 }
 
 #[test]
-pub fn select_4() {
-    let text = r#"SELECT 'I''m Sam'"#.to_owned();
+pub fn test_operators() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+        expected: Vec<Token>,
+    }
 
-    let tokens = Tokenizer::string_to_tokens(text).unwrap();
+    let test_cases = vec![
+        TestCase {
+            name: "연산자: /".to_owned(),
+            input: r#"SELECT 1 / 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Slash),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: <".to_owned(),
+            input: r#"SELECT 1 < 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Lt),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: >".to_owned(),
+            input: r#"SELECT 1 > 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Gt),
+                Token::Integer(2),
+            ],
+        },
+    ];
 
-    assert_eq!(
-        tokens,
-        vec![Token::Select, Token::String("I'm Sam".to_owned())]
-    );
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(tokens) = got {
+            assert_eq!(tokens, t.expected, "{}", t.name);
+        }
+    }
+}
+
+#[test]
+pub fn test_identifier() {
+    struct TestCase {
+        name: String,
+        input: String,
+        want_error: bool,
+        expected: Vec<Token>,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "백틱 파싱".to_owned(),
+            input: r#"SELECT `foo`"#.to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Identifier("foo".to_owned())],
+        },
+        TestCase {
+            name: "백틱 안에 백틱 파싱".to_owned(),
+            input: r#"SELECT `foo``bar`"#.to_owned(),
+            want_error: false,
+            expected: vec![Token::Select, Token::Identifier("foo`bar".to_owned())],
+        },
+    ];
+
+    for t in test_cases {
+        let got = Tokenizer::string_to_tokens(t.input);
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(tokens) = got {
+            assert_eq!(tokens, t.expected, "{}", t.name);
+        }
+    }
 }
 
 #[test]
