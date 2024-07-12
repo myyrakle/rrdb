@@ -182,21 +182,23 @@ impl Executor {
 
 #[cfg(test)]
 mod tests {
-    use mockall::predicate::eq;
-
-    use crate::executor::mocking::{CommandRunner, FileSystem, MockCommandRunner, MockFileSystem};
-
-    use super::*;
-    use std::sync::Arc;
-
-    const CONFIG: &[u8] = br##"port = 22208
-host = "0.0.0.0"
-data_directory = "/var/lib/rrdb/data"
-"##;
-
     #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn test_init_config() {
+        use mockall::predicate::eq;
+
+        use crate::executor::mocking::{
+            CommandRunner, FileSystem, MockCommandRunner, MockFileSystem,
+        };
+
+        use super::*;
+        use std::sync::Arc;
+
+        const CONFIG: &[u8] = br##"port = 22208
+    host = "0.0.0.0"
+    data_directory = "/var/lib/rrdb/data"
+    "##;
+
         use crate::constants::SYSTEMD_DAEMON_SCRIPT;
 
         struct TestCase {
