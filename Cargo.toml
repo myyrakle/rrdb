@@ -1,6 +1,6 @@
 [package]
 name = "rrdb"
-version = "0.0.1" 
+version = "0.0.2" 
 authors = ["myyrakle <sssang97@naver.com>"] 
 description = "ready" 
 keywords = ["db", "database", "sql"] 

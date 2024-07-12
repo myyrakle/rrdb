@@ -195,9 +195,9 @@ mod tests {
         use std::sync::Arc;
 
         const CONFIG: &[u8] = br##"port = 22208
-    host = "0.0.0.0"
-    data_directory = "/var/lib/rrdb/data"
-    "##;
+host = "0.0.0.0"
+data_directory = "/var/lib/rrdb/data"
+"##;
 
         use crate::constants::SYSTEMD_DAEMON_SCRIPT;
 
