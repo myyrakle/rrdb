@@ -1,3 +1,4 @@
+#[cfg(test)]
 use crate::lexer::predule::OperatorToken;
 #[cfg(test)]
 use crate::lexer::predule::{Token, Tokenizer};
