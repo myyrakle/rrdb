@@ -72,3 +72,78 @@ impl TryInto<UnaryOperator> for OperatorToken {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_operator_token_is_binary_operator() {
+        use super::OperatorToken;
+
+        let test_cases = vec![
+            (OperatorToken::Plus, true),
+            (OperatorToken::Minus, true),
+            (OperatorToken::Asterisk, true),
+            (OperatorToken::Slash, true),
+            (OperatorToken::Lt, true),
+            (OperatorToken::Gt, true),
+            (OperatorToken::Lte, true),
+            (OperatorToken::Gte, true),
+            (OperatorToken::Eq, true),
+            (OperatorToken::Neq, true),
+            (OperatorToken::Not, false),
+        ];
+
+        for (input, expected) in test_cases {
+            let got = input.is_binary_operator();
+            assert_eq!(got, expected);
+        }
+    }
+
+    #[test]
+    fn test_operator_token_is_unary_operator() {
+        use super::OperatorToken;
+
+        let test_cases = vec![
+            (OperatorToken::Plus, true),
+            (OperatorToken::Minus, true),
+            (OperatorToken::Asterisk, false),
+            (OperatorToken::Slash, false),
+            (OperatorToken::Lt, false),
+            (OperatorToken::Gt, false),
+            (OperatorToken::Lte, false),
+            (OperatorToken::Gte, false),
+            (OperatorToken::Eq, false),
+            (OperatorToken::Neq, false),
+            (OperatorToken::Not, true),
+        ];
+
+        for (input, expected) in test_cases {
+            let got = input.is_unary_operator();
+            assert_eq!(got, expected);
+        }
+    }
+
+    #[test]
+    fn test_operator_token_try_into_binary_operator() {
+        use super::{BinaryOperator, OperatorToken};
+        use std::convert::TryInto;
+
+        let test_cases = vec![
+            (OperatorToken::Plus, BinaryOperator::Add),
+            (OperatorToken::Minus, BinaryOperator::Sub),
+            (OperatorToken::Asterisk, BinaryOperator::Mul),
+            (OperatorToken::Slash, BinaryOperator::Div),
+            (OperatorToken::Lt, BinaryOperator::Lt),
+            (OperatorToken::Gt, BinaryOperator::Gt),
+            (OperatorToken::Lte, BinaryOperator::Lte),
+            (OperatorToken::Gte, BinaryOperator::Gte),
+            (OperatorToken::Eq, BinaryOperator::Eq),
+            (OperatorToken::Neq, BinaryOperator::Neq),
+        ];
+
+        for (input, expected) in test_cases {
+            let got: BinaryOperator = input.try_into().unwrap();
+            assert_eq!(got, expected);
+        }
+    }
+}
