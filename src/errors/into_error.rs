@@ -6,6 +6,12 @@ pub struct IntoError {
     pub backtrace: std::backtrace::Backtrace,
 }
 
+impl PartialEq for IntoError {
+    fn eq(&self, other: &Self) -> bool {
+        self.message == other.message
+    }
+}
+
 impl IntoError {
     pub fn wrap<T: ToString>(message: T) -> RRDBError {
         RRDBError::IntoError(Self {

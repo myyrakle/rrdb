@@ -6,6 +6,12 @@ pub struct ParsingError {
     pub backtrace: std::backtrace::Backtrace,
 }
 
+impl PartialEq for ParsingError {
+    fn eq(&self, other: &Self) -> bool {
+        self.message == other.message
+    }
+}
+
 impl ParsingError {
     pub fn wrap<T: ToString>(message: T) -> RRDBError {
         RRDBError::ParsingError(Self {

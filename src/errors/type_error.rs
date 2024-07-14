@@ -6,6 +6,12 @@ pub struct TypeError {
     pub backtrace: std::backtrace::Backtrace,
 }
 
+impl PartialEq for TypeError {
+    fn eq(&self, other: &Self) -> bool {
+        self.message == other.message
+    }
+}
+
 impl TypeError {
     pub fn wrap<T: ToString>(message: T) -> RRDBError {
         RRDBError::TypeError(Self {
