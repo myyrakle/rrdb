@@ -269,6 +269,13 @@ mod tests {
                 expected: BinaryOperator::Is,
                 want_error: false,
             },
+            TestCase {
+                name: "Error".into(),
+                first: Token::Select,
+                second: Token::Like,
+                expected: BinaryOperator::Is,
+                want_error: true,
+            },
         ];
 
         for t in test_cases {
