@@ -246,5 +246,9 @@ mod tests {
         let f1 = Float64 { value: 2.0 };
         let f2 = Float64 { value: 1.0 };
         assert_eq!(Ord::cmp(&f1, &f2), std::cmp::Ordering::Greater);
+
+        let f1 = Float64 { value: f64::NAN };
+        let f2 = Float64 { value: f64::NAN };
+        assert_eq!(Ord::cmp(&f1, &f2), std::cmp::Ordering::Less);
     }
 }
