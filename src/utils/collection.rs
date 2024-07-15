@@ -16,3 +16,15 @@ macro_rules! join_vec {
 }
 
 pub(crate) use join_vec;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_join_vec() {
+        let v1 = vec![1, 2, 3];
+        let v2 = vec![4, 5, 6];
+
+        assert_eq!(join_vec!(v1), vec![1, 2, 3]);
+        assert_eq!(join_vec!(v1, v2), vec![1, 2, 3, 4, 5, 6]);
+    }
+}
