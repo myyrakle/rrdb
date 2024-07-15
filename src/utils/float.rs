@@ -108,3 +108,143 @@ impl Ord for Float64 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_float64_hash() {
+        use super::Float64;
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        Float64 { value: 1.0 }.hash(&mut hasher);
+        let hash1 = hasher.finish();
+
+        let mut hasher = DefaultHasher::new();
+        Float64 { value: 1.0 }.hash(&mut hasher);
+        let hash2 = hasher.finish();
+
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_float64_to_string() {
+        use super::Float64;
+
+        let f = Float64 { value: 1.0 };
+        assert_eq!(f.to_string(), "1");
+    }
+
+    #[test]
+    fn test_float64_from_f64() {
+        use super::Float64;
+
+        let f: Float64 = 1.0.into();
+        assert_eq!(f, Float64 { value: 1.0 });
+    }
+
+    #[test]
+    fn test_float64_from_float64() {
+        use super::Float64;
+
+        let f: f64 = Float64 { value: 1.0 }.into();
+        assert_eq!(f, 1.0);
+    }
+
+    #[test]
+    fn test_float64_neg() {
+        use super::Float64;
+
+        let f = Float64 { value: 1.0 };
+        assert_eq!(-f, Float64 { value: -1.0 });
+    }
+
+    #[test]
+    fn test_float64_add() {
+        use super::Float64;
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 2.0 };
+        assert_eq!(f1 + f2, Float64 { value: 3.0 });
+    }
+
+    #[test]
+    fn test_float64_sub() {
+        use super::Float64;
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 2.0 };
+        assert_eq!(f1 - f2, Float64 { value: -1.0 });
+    }
+
+    #[test]
+    fn test_float64_mul() {
+        use super::Float64;
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 2.0 };
+        assert_eq!(f1 * f2, Float64 { value: 2.0 });
+    }
+
+    #[test]
+    fn test_float64_div() {
+        use super::Float64;
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 2.0 };
+        assert_eq!(f1 / f2, Float64 { value: 0.5 });
+    }
+
+    #[test]
+    fn test_float64_eq() {
+        use super::Float64;
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 1.0 };
+        assert_eq!(PartialEq::eq(&f1, &f2), true);
+    }
+
+    #[test]
+    fn test_float64_partial_cmp() {
+        use super::Float64;
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 2.0 };
+        assert_eq!(
+            PartialOrd::partial_cmp(&f1, &f2),
+            Some(std::cmp::Ordering::Less)
+        );
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 1.0 };
+        assert_eq!(
+            PartialOrd::partial_cmp(&f1, &f2),
+            Some(std::cmp::Ordering::Equal)
+        );
+
+        let f1 = Float64 { value: 2.0 };
+        let f2 = Float64 { value: 1.0 };
+        assert_eq!(
+            PartialOrd::partial_cmp(&f1, &f2),
+            Some(std::cmp::Ordering::Greater)
+        );
+    }
+
+    #[test]
+    fn test_float64_cmp() {
+        use super::Float64;
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 2.0 };
+        assert_eq!(Ord::cmp(&f1, &f2), std::cmp::Ordering::Less);
+
+        let f1 = Float64 { value: 1.0 };
+        let f2 = Float64 { value: 1.0 };
+        assert_eq!(Ord::cmp(&f1, &f2), std::cmp::Ordering::Equal);
+
+        let f1 = Float64 { value: 2.0 };
+        let f2 = Float64 { value: 1.0 };
+        assert_eq!(Ord::cmp(&f1, &f2), std::cmp::Ordering::Greater);
+    }
+}
