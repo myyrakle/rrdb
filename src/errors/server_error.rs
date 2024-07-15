@@ -4,6 +4,12 @@ pub struct ServerError {
     pub backtrace: std::backtrace::Backtrace,
 }
 
+impl PartialEq for ServerError {
+    fn eq(&self, other: &Self) -> bool {
+        self.message == other.message
+    }
+}
+
 impl ServerError {
     pub fn new<T: ToString>(message: T) -> Self {
         Self {

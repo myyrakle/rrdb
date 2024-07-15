@@ -6,6 +6,12 @@ pub struct LexingError {
     pub backtrace: std::backtrace::Backtrace,
 }
 
+impl PartialEq for LexingError {
+    fn eq(&self, other: &Self) -> bool {
+        self.message == other.message
+    }
+}
+
 impl LexingError {
     pub fn wrap<T: ToString>(message: T) -> RRDBError {
         RRDBError::LexingError(Self {

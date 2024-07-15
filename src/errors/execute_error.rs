@@ -6,6 +6,12 @@ pub struct ExecuteError {
     pub backtrace: std::backtrace::Backtrace,
 }
 
+impl PartialEq for ExecuteError {
+    fn eq(&self, other: &Self) -> bool {
+        self.message == other.message
+    }
+}
+
 impl ExecuteError {
     pub fn wrap<T: ToString>(message: T) -> RRDBError {
         RRDBError::ExecuteError(Self {
