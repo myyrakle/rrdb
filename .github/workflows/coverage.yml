@@ -68,8 +68,8 @@ jobs:
       - name: Commit
         working-directory: html_reports
         run: |
-          git config --global user.email "sssang97@naver.com" | 
-          git config --global user.name "myyrakle" | 
+          git config --global user.email "sssang97@naver.com" && 
+          git config --global user.name "myyrakle" && 
           git commit -m "Add report" 
 
       - name: Push changes
