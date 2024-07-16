@@ -114,3 +114,111 @@ impl From<UserDefinedFunction> for Function {
 }
 
 impl UserDefinedFunction {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_function_is_aggregate() {
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Sum)).is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Count)).is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Max)).is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Min)).is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Avg)).is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Every)).is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::ArrayAgg))
+                .is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::StringAgg))
+                .is_aggregate(),
+            true
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::NullIf))
+                .is_aggregate(),
+            false
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Coalesce))
+                .is_aggregate(),
+            false
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Greatest))
+                .is_aggregate(),
+            false
+        );
+        assert_eq!(
+            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Least))
+                .is_aggregate(),
+            false
+        );
+        assert_eq!(
+            Function::UserDefined(UserDefinedFunction {
+                database_name: None,
+                function_name: "my_function".into()
+            })
+            .is_aggregate(),
+            false
+        );
+    }
+
+    #[allow(non_snake_case)]
+    #[test]
+    fn test_From_AggregateFunction_for_Function() {
+        assert_eq!(
+            Function::from(AggregateFunction::Sum),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Sum))
+        );
+        assert_eq!(
+            Function::from(AggregateFunction::Count),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Count))
+        );
+        assert_eq!(
+            Function::from(AggregateFunction::Max),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Max))
+        );
+        assert_eq!(
+            Function::from(AggregateFunction::Min),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Min))
+        );
+        assert_eq!(
+            Function::from(AggregateFunction::Avg),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Avg))
+        );
+        assert_eq!(
+            Function::from(AggregateFunction::Every),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Every))
+        );
+        assert_eq!(
+            Function::from(AggregateFunction::ArrayAgg),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::ArrayAgg))
+        );
+        assert_eq!(
+            Function::from(AggregateFunction::StringAgg),
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::StringAgg))
+        );
+    }
+}
