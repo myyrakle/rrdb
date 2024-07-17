@@ -91,3 +91,34 @@ impl ColumnName {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_column_builder() {
+        let column = Column::builder()
+            .set_name("id".into())
+            .set_data_type(DataType::Int)
+            .set_comment("id column".into())
+            .set_default(SQLExpression::Integer(1))
+            .set_not_null(true)
+            .set_primary_key(true)
+            .build();
+
+        assert_eq!(column.name, "id");
+        assert_eq!(column.data_type, DataType::Int);
+        assert_eq!(column.comment, "id column");
+        assert_eq!(column.default, Some(SQLExpression::Integer(1)));
+        assert_eq!(column.not_null, true);
+        assert_eq!(column.primary_key, true);
+    }
+
+    #[test]
+    fn test_column_name() {
+        let column_name = ColumnName::new(Some("table".into()), "column".into());
+        assert_eq!(column_name.table_name, Some("table".into()));
+        assert_eq!(column_name.column_name, "column");
+    }
+}

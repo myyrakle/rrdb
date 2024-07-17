@@ -46,6 +46,7 @@ impl SQLExpression {
         }
     }
 
+    // Select 절의 표현식 목록에서 실제로 DB에서 가져와야하는 대상 컬럼 목록을 추출합니다.
     pub fn get_select_column_list(&self) -> Vec<SelectColumn> {
         Self::get_select_column_list_recursion(self)
     }
@@ -244,4 +245,636 @@ impl From<TableDataFieldType> for SQLExpression {
 #[derive(Debug, Clone, Default, Copy)]
 struct RecursionContext {
     pub in_aggregate: bool,
+}
+
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use crate::ast::{
+        dml::expressions::{
+            between::BetweenExpression,
+            binary::BinaryOperatorExpression,
+            call::CallExpression,
+            not_between::NotBetweenExpression,
+            operators::{BinaryOperator, UnaryOperator},
+            parentheses::ParenthesesExpression,
+            unary::UnaryOperatorExpression,
+        },
+        types::{AggregateFunction, ConditionalFunction, Function, SQLExpression, SelectColumn},
+    };
+
+    #[test]
+    fn test_SQLExpression_get_select_column_list() {
+        struct TestCase {
+            name: String,
+            expression: SQLExpression,
+            expected: Vec<SelectColumn>,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                name: "단일 값 필드".into(),
+                expression: SQLExpression::Integer(4444),
+                expected: vec![],
+            },
+            TestCase {
+                name: "List 필드".into(),
+                expression: SQLExpression::List(
+                    vec![
+                        SQLExpression::Integer(1),
+                        SQLExpression::Integer(2),
+                        SQLExpression::Integer(3),
+                    ]
+                    .into(),
+                ),
+                expected: vec![],
+            },
+            TestCase {
+                name: "유효한 Select 필드".into(),
+                expression: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "유효한 단항연산 필드".into(),
+                expression: SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "유효한 이항연산 필드".into(),
+                expression: SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+                    lhs: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                    rhs: SQLExpression::SelectColumn(SelectColumn::new(None, "name".into())),
+                    operator: BinaryOperator::Add,
+                })),
+                expected: vec![
+                    SelectColumn::new(None, "id".into()),
+                    SelectColumn::new(None, "name".into()),
+                ],
+            },
+            TestCase {
+                name: "유효한 BETWEEN 필드".into(),
+                expression: SQLExpression::Between(Box::new(
+                    crate::ast::dml::expressions::between::BetweenExpression {
+                        a: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                        x: SQLExpression::Integer(1),
+                        y: SQLExpression::Integer(10),
+                    },
+                )),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "유효한 NOT BETWEEN 필드".into(),
+                expression: SQLExpression::NotBetween(Box::new(
+                    crate::ast::dml::expressions::not_between::NotBetweenExpression {
+                        a: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                        x: SQLExpression::Integer(1),
+                        y: SQLExpression::Integer(10),
+                    },
+                )),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "유효한 소괄호 필드".into(),
+                expression: SQLExpression::Parentheses(Box::new(
+                    crate::ast::dml::expressions::parentheses::ParenthesesExpression {
+                        expression: SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        )),
+                    },
+                )),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "유효한 함수호출 필드".into(),
+                expression: SQLExpression::FunctionCall(CallExpression {
+                    function: Function::BuiltIn(AggregateFunction::Count.into()),
+                    arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                        None,
+                        "id".into(),
+                    ))],
+                }),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+        ];
+
+        for test_case in test_cases {
+            assert_eq!(
+                test_case.expression.get_select_column_list(),
+                test_case.expected,
+                "{}",
+                test_case.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_SQLExpression_has_aggregate() {
+        struct TestCase {
+            name: String,
+            expression: SQLExpression,
+            expected: bool,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                name: "단일 값 필드".into(),
+                expression: SQLExpression::Integer(4444),
+                expected: false,
+            },
+            TestCase {
+                name: "단항 연산 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::Integer(4444),
+                })),
+                expected: false,
+            },
+            TestCase {
+                name: "단항 연산 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::Integer(1)],
+                    }),
+                })),
+                expected: true,
+            },
+            TestCase {
+                name: "이항 연산 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+                    lhs: SQLExpression::Integer(1),
+                    rhs: SQLExpression::Integer(2),
+                    operator: BinaryOperator::Add,
+                })),
+                expected: false,
+            },
+            TestCase {
+                name: "이항 연산 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+                    lhs: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::Integer(1)],
+                    }),
+                    rhs: SQLExpression::Integer(2),
+                    operator: BinaryOperator::Add,
+                })),
+                expected: true,
+            },
+            TestCase {
+                name: "BETWEEN 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Between(Box::new(BetweenExpression {
+                    a: SQLExpression::Integer(1),
+                    x: SQLExpression::Integer(2),
+                    y: SQLExpression::Integer(3),
+                })),
+                expected: false,
+            },
+            TestCase {
+                name: "BETWEEN 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Between(Box::new(BetweenExpression {
+                    a: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::Integer(1)],
+                    }),
+                    x: SQLExpression::Integer(2),
+                    y: SQLExpression::Integer(3),
+                })),
+                expected: true,
+            },
+            TestCase {
+                name: "NOT BETWEEN 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::NotBetween(Box::new(NotBetweenExpression {
+                    a: SQLExpression::Integer(1),
+                    x: SQLExpression::Integer(2),
+                    y: SQLExpression::Integer(3),
+                })),
+                expected: false,
+            },
+            TestCase {
+                name: "NOT BETWEEN 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::NotBetween(Box::new(NotBetweenExpression {
+                    a: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::Integer(1)],
+                    }),
+                    x: SQLExpression::Integer(2),
+                    y: SQLExpression::Integer(3),
+                })),
+                expected: true,
+            },
+            TestCase {
+                name: "소괄호 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Parentheses(Box::new(ParenthesesExpression {
+                    expression: SQLExpression::Integer(1),
+                })),
+                expected: false,
+            },
+            TestCase {
+                name: "소괄호 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Parentheses(Box::new(ParenthesesExpression {
+                    expression: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::Integer(1)],
+                    }),
+                })),
+                expected: true,
+            },
+        ];
+
+        for test_case in test_cases {
+            assert_eq!(
+                test_case.expression.has_aggregate(),
+                test_case.expected,
+                "{}",
+                test_case.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_SQLExperssion_find_aggregate_columns() {
+        struct TestCase {
+            name: String,
+            expression: SQLExpression,
+            expected: Vec<SelectColumn>,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                name: "단일 값 필드".into(),
+                expression: SQLExpression::Integer(4444),
+                expected: vec![],
+            },
+            TestCase {
+                name: "단항 연산 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "단항 연산 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "이항 연산 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+                    lhs: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                    rhs: SQLExpression::SelectColumn(SelectColumn::new(None, "name".into())),
+                    operator: BinaryOperator::Add,
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "이항 중첩 연산 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+                    lhs: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                    rhs: SQLExpression::SelectColumn(SelectColumn::new(None, "name".into())),
+                    operator: BinaryOperator::Add,
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "BETWEEN 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Between(Box::new(BetweenExpression {
+                    a: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "BETWEEN 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Between(Box::new(BetweenExpression {
+                    a: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "NOT BETWEEN 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::NotBetween(Box::new(NotBetweenExpression {
+                    a: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "NOT BETWEEN 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::NotBetween(Box::new(NotBetweenExpression {
+                    a: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "소괄호 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Parentheses(Box::new(ParenthesesExpression {
+                    expression: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "소괄호 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Parentheses(Box::new(ParenthesesExpression {
+                    expression: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "함수호출 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::FunctionCall(CallExpression {
+                    function: Function::BuiltIn(ConditionalFunction::NullIf.into()),
+                    arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                        None,
+                        "id".into(),
+                    ))],
+                }),
+                expected: vec![],
+            },
+        ];
+
+        for test_case in test_cases {
+            assert_eq!(
+                test_case.expression.find_aggregate_columns(),
+                test_case.expected,
+                "{}",
+                test_case.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_From_SQLExpression_for_Option_Box_SQLExpression() {
+        let expression = SQLExpression::Integer(1);
+        let expected = Some(Box::new(expression.clone()));
+
+        assert_eq!(Option::<Box<SQLExpression>>::from(expression), expected);
+    }
+
+    #[test]
+    fn test_From_TableDataFieldType_for_SQLExpression() {
+        use crate::executor::config::row::TableDataFieldType;
+
+        struct TestCase {
+            name: String,
+            value: TableDataFieldType,
+            expected: SQLExpression,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                name: "정수형".into(),
+                value: TableDataFieldType::Integer(1),
+                expected: SQLExpression::Integer(1),
+            },
+            TestCase {
+                name: "실수형".into(),
+                value: TableDataFieldType::Float(1.0.into()),
+                expected: SQLExpression::Float(1.0),
+            },
+            TestCase {
+                name: "부울형".into(),
+                value: TableDataFieldType::Boolean(true),
+                expected: SQLExpression::Boolean(true),
+            },
+            TestCase {
+                name: "문자열형".into(),
+                value: TableDataFieldType::String("hello".into()),
+                expected: SQLExpression::String("hello".into()),
+            },
+            TestCase {
+                name: "배열형".into(),
+                value: TableDataFieldType::Array(vec![
+                    TableDataFieldType::Integer(1),
+                    TableDataFieldType::Integer(2),
+                    TableDataFieldType::Integer(3),
+                ]),
+                expected: SQLExpression::List(
+                    vec![
+                        SQLExpression::Integer(1),
+                        SQLExpression::Integer(2),
+                        SQLExpression::Integer(3),
+                    ]
+                    .into(),
+                ),
+            },
+            TestCase {
+                name: "NULL 값".into(),
+                value: TableDataFieldType::Null,
+                expected: SQLExpression::Null,
+            },
+        ];
+
+        for test_case in test_cases {
+            assert_eq!(
+                SQLExpression::from(test_case.value),
+                test_case.expected,
+                "{}",
+                test_case.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_SQLExpression_find_non_aggregate_columns() {
+        struct TestCase {
+            name: String,
+            expression: SQLExpression,
+            expected: Vec<SelectColumn>,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                name: "단일 값 필드".into(),
+                expression: SQLExpression::Integer(4444),
+                expected: vec![],
+            },
+            TestCase {
+                name: "단일 Select 필드".into(),
+                expression: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "단항 연산 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "단항 연산 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "이항 연산 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+                    lhs: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                    rhs: SQLExpression::SelectColumn(SelectColumn::new(None, "name".into())),
+                    operator: BinaryOperator::Add,
+                })),
+                expected: vec![
+                    SelectColumn::new(None, "id".into()),
+                    SelectColumn::new(None, "name".into()),
+                ],
+            },
+            TestCase {
+                name: "이항 중첩 연산 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+                    lhs: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                    rhs: SQLExpression::SelectColumn(SelectColumn::new(None, "name".into())),
+                    operator: BinaryOperator::Add,
+                })),
+                expected: vec![SelectColumn::new(None, "name".into())],
+            },
+            TestCase {
+                name: "BETWEEN 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Between(Box::new(BetweenExpression {
+                    a: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "BETWEEN 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Between(Box::new(BetweenExpression {
+                    a: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "NOT BETWEEN 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::NotBetween(Box::new(NotBetweenExpression {
+                    a: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "NOT BETWEEN 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::NotBetween(Box::new(NotBetweenExpression {
+                    a: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(10),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "소괄호 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::Parentheses(Box::new(ParenthesesExpression {
+                    expression: SQLExpression::SelectColumn(SelectColumn::new(None, "id".into())),
+                })),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+            TestCase {
+                name: "소괄호 필드 (aggregate 있음)".into(),
+                expression: SQLExpression::Parentheses(Box::new(ParenthesesExpression {
+                    expression: SQLExpression::FunctionCall(CallExpression {
+                        function: Function::BuiltIn(AggregateFunction::Count.into()),
+                        arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                            None,
+                            "id".into(),
+                        ))],
+                    }),
+                })),
+                expected: vec![],
+            },
+            TestCase {
+                name: "함수호출 필드 (aggregate 없음)".into(),
+                expression: SQLExpression::FunctionCall(CallExpression {
+                    function: Function::BuiltIn(ConditionalFunction::Coalesce.into()),
+                    arguments: vec![SQLExpression::SelectColumn(SelectColumn::new(
+                        None,
+                        "id".into(),
+                    ))],
+                }),
+                expected: vec![SelectColumn::new(None, "id".into())],
+            },
+        ];
+
+        for test_case in test_cases {
+            assert_eq!(
+                test_case.expression.find_non_aggregate_columns(),
+                test_case.expected,
+                "{}",
+                test_case.name
+            );
+        }
+    }
 }
