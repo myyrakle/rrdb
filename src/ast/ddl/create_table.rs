@@ -74,3 +74,57 @@ impl CreateTableQuery {
         SQLStatement::DDL(DDLStatement::CreateTableQuery(self))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::types::DataType;
+
+    use super::*;
+
+    #[test]
+    fn test_create_table() {
+        let query = CreateTableQuery::builder()
+            .set_table(TableName::new(None, "table_name".into()))
+            .add_column(
+                Column::builder()
+                    .set_name("column_name".into())
+                    .set_data_type(DataType::Int)
+                    .set_not_null(true)
+                    .set_primary_key(true)
+                    .set_comment("comment".into())
+                    .build(),
+            )
+            .set_primary_key(vec!["column_name".into()])
+            .set_table_option(TableOptions {})
+            .add_unique_key(UniqueKey {
+                key_name: "unique_key".into(),
+                database_name: None,
+                columns: vec!["column_name".into()],
+            })
+            .set_if_not_exists(true)
+            .build();
+
+        let expected = SQLStatement::DDL(DDLStatement::CreateTableQuery(CreateTableQuery {
+            table: Some(TableName::new(None, "table_name".into())),
+            columns: vec![Column {
+                name: "column_name".into(),
+                data_type: DataType::Int,
+                comment: "comment".into(),
+                default: None,
+                not_null: true,
+                primary_key: true,
+            }],
+            primary_key: vec!["column_name".into()],
+            foreign_keys: vec![],
+            unique_keys: vec![UniqueKey {
+                key_name: "unique_key".into(),
+                database_name: None,
+                columns: vec!["column_name".into()],
+            }],
+            table_options: Some(TableOptions {}),
+            if_not_exists: true,
+        }));
+
+        assert_eq!(query, expected);
+    }
+}

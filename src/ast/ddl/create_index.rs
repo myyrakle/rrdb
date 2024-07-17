@@ -57,3 +57,39 @@ impl CreateIndexQuery {
         SQLStatement::DDL(DDLStatement::CreateIndexQuery(self))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::types::DataType;
+
+    use super::*;
+
+    #[test]
+    fn test_create_index() {
+        let query = CreateIndexQuery::builder()
+            .set_table(TableName::new(None, "table_name".into()))
+            .set_index_name("index_name".into())
+            .add_column(
+                Column::builder()
+                    .set_name("column_name".into())
+                    .set_data_type(DataType::Boolean)
+                    .build(),
+            )
+            .set_unique(true)
+            .set_if_not_exists(true)
+            .build();
+
+        let expected = SQLStatement::DDL(DDLStatement::CreateIndexQuery(CreateIndexQuery {
+            table: TableName::new(None, "table_name".into()),
+            index_name: "index_name".into(),
+            columns: vec![Column::builder()
+                .set_name("column_name".into())
+                .set_data_type(DataType::Boolean)
+                .build()],
+            is_unique: true,
+            if_not_exists: true,
+        }));
+
+        assert_eq!(query, expected);
+    }
+}
