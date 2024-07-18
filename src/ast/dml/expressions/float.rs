@@ -8,3 +8,14 @@ impl FloatExpression {
         Self { value }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::FloatExpression;
+
+    #[test]
+    fn test_new() {
+        let float = FloatExpression::new(1.0);
+        assert_eq!(float.value, 1.0);
+    }
+}
