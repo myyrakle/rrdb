@@ -53,3 +53,41 @@ impl From<UpdateQuery> for SQLStatement {
         SQLStatement::DML(DMLStatement::UpdateQuery(value))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::types::SQLExpression;
+
+    use super::*;
+
+    #[test]
+    fn test_builder_all() {
+        let update_query = UpdateQuery::builder()
+            .set_target_table(TableName::new(None, "table".into()))
+            .add_update_item(UpdateItem {
+                column: "a".into(),
+                value: SQLExpression::String("b".into()),
+            })
+            .set_where(WhereClause {
+                expression: SQLExpression::String("a".into()),
+            })
+            .set_target_alias("alias".into())
+            .build();
+        assert_eq!(
+            update_query,
+            UpdateQuery {
+                target_table: Some(UpdateTarget {
+                    table: TableName::new(None, "table".into()),
+                    alias: Some("alias".into()),
+                }),
+                where_clause: Some(WhereClause {
+                    expression: SQLExpression::String("a".into()),
+                }),
+                update_items: vec![UpdateItem {
+                    column: "a".into(),
+                    value: SQLExpression::String("b".into()),
+                }],
+            }
+        );
+    }
+}
