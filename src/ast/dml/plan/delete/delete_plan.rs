@@ -24,3 +24,38 @@ impl From<DeleteFromPlan> for DeletePlanItem {
         DeletePlanItem::DeleteFrom(value)
     }
 }
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+    use crate::ast::{
+        dml::plan::select::scan::ScanType,
+        types::{SQLExpression, TableName},
+    };
+
+    use super::*;
+
+    #[test]
+    fn From_FilterPlan_for_DeletePlanItem() {
+        use super::DeletePlanItem;
+
+        let filter = FilterPlan {
+            expression: SQLExpression::String("a".into()),
+        };
+        let delete_plan_item: DeletePlanItem = filter.clone().into();
+        assert_eq!(delete_plan_item, DeletePlanItem::Filter(filter));
+    }
+
+    #[test]
+    fn From_DeleteFromPlan_for_DeletePlanItem() {
+        use super::DeleteFromPlan;
+
+        let delete_from = DeleteFromPlan {
+            table_name: TableName::new(None, "table".into()),
+            alias: None,
+            scan: ScanType::FullScan,
+        };
+        let delete_plan_item: DeletePlanItem = delete_from.clone().into();
+        assert_eq!(delete_plan_item, DeletePlanItem::DeleteFrom(delete_from));
+    }
+}
