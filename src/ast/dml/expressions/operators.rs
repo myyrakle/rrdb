@@ -56,3 +56,30 @@ impl BinaryOperator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::BinaryOperator;
+
+    #[test]
+    fn test_get_precedence() {
+        assert_eq!(BinaryOperator::Add.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Sub.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Mul.get_precedence(), 40);
+        assert_eq!(BinaryOperator::Div.get_precedence(), 40);
+        assert_eq!(BinaryOperator::And.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Or.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Lt.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Gt.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Lte.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Gte.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Eq.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Neq.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Like.get_precedence(), 10);
+        assert_eq!(BinaryOperator::NotLike.get_precedence(), 10);
+        assert_eq!(BinaryOperator::In.get_precedence(), 10);
+        assert_eq!(BinaryOperator::NotIn.get_precedence(), 10);
+        assert_eq!(BinaryOperator::Is.get_precedence(), 10);
+        assert_eq!(BinaryOperator::IsNot.get_precedence(), 10);
+    }
+}

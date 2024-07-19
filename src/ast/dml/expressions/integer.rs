@@ -8,3 +8,14 @@ impl IntegerExpression {
         Self { value }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::IntegerExpression;
+
+    #[test]
+    fn test_new() {
+        let integer = IntegerExpression::new(1);
+        assert_eq!(integer.value, 1);
+    }
+}

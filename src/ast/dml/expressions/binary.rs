@@ -39,3 +39,30 @@ impl From<BinaryOperatorExpression> for Option<Box<SQLExpression>> {
         Some(Box::new(SQLExpression::Binary(Box::new(value))))
     }
 }
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+    use crate::ast::dml::expressions::operators::BinaryOperator;
+
+    #[test]
+    fn test_From_BinaryOperatorExpression_for_Option_Box_SQLExpression() {
+        use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
+        use crate::ast::types::SQLExpression;
+        use std::convert::From;
+
+        let binary_operator_expression = BinaryOperatorExpression {
+            operator: BinaryOperator::Add,
+            lhs: SQLExpression::Integer(1),
+            rhs: SQLExpression::Integer(2),
+        };
+        let res: Option<Box<SQLExpression>> = From::from(binary_operator_expression.clone());
+
+        assert_eq!(
+            res,
+            Some(Box::new(SQLExpression::Binary(Box::new(
+                binary_operator_expression
+            ))))
+        );
+    }
+}

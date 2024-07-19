@@ -46,3 +46,34 @@ impl From<DeleteQuery> for SQLStatement {
         SQLStatement::DML(DMLStatement::DeleteQuery(value))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::types::SQLExpression;
+
+    use super::*;
+
+    #[test]
+    fn test_builder_all() {
+        let delete_query = DeleteQuery::builder()
+            .set_from_table(TableName::new(None, "table".into()))
+            .set_where(WhereClause {
+                expression: SQLExpression::String("a".into()),
+            })
+            .set_from_alias("alias".into())
+            .build();
+
+        assert_eq!(
+            delete_query,
+            DeleteQuery {
+                from_table: Some(UpdateTarget {
+                    table: TableName::new(None, "table".into()),
+                    alias: Some("alias".into()),
+                }),
+                where_clause: Some(WhereClause {
+                    expression: SQLExpression::String("a".into()),
+                }),
+            }
+        );
+    }
+}
