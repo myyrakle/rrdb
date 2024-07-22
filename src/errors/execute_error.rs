@@ -28,3 +28,22 @@ impl std::fmt::Display for ExecuteError {
         write!(formatter, "{}", self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_execute_error_eq() {
+        let error1 = ExecuteError::wrap("test");
+        let error2 = ExecuteError::wrap("test");
+        assert_eq!(error1, error2);
+    }
+
+    #[test]
+    fn test_execute_error_display() {
+        let error = ExecuteError::wrap("test");
+
+        assert!(error.to_string().contains("test"));
+    }
+}
