@@ -28,3 +28,22 @@ impl std::fmt::Display for ParsingError {
         write!(formatter, "parsing error: {}", self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parsing_error_eq() {
+        let error1 = ParsingError::wrap("test");
+        let error2 = ParsingError::wrap("test");
+        assert_eq!(error1, error2);
+    }
+
+    #[test]
+    fn test_parsing_error_display() {
+        let error = ParsingError::wrap("test");
+
+        assert!(error.to_string().contains("parsing error: test"));
+    }
+}
