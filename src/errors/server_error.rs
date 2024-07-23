@@ -1,3 +1,5 @@
+use super::RRDBError;
+
 #[derive(Debug)]
 pub struct ServerError {
     pub message: String,
@@ -20,6 +22,15 @@ impl ServerError {
 
     pub fn boxed<T: ToString>(message: T) -> Box<Self> {
         Box::new(Self::new(message))
+    }
+}
+
+impl ServerError {
+    pub fn wrap<T: ToString>(message: T) -> RRDBError {
+        RRDBError::ServerError(Self {
+            message: message.to_string(),
+            backtrace: std::backtrace::Backtrace::capture(),
+        })
     }
 }
 

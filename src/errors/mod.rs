@@ -28,3 +28,31 @@ impl ToString for RRDBError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use predule::{ExecuteError, IntoError, LexingError, ParsingError, ServerError, TypeError};
+
+    use super::*;
+
+    #[test]
+    fn test_rrdb_error_to_string() {
+        let error = ExecuteError::wrap("test");
+        assert!(error.to_string().contains("test"));
+
+        let error = IntoError::wrap("test");
+        assert!(error.to_string().contains("test"));
+
+        let error = LexingError::wrap("test");
+        assert!(error.to_string().contains("test"));
+
+        let error = ParsingError::wrap("test");
+        assert!(error.to_string().contains("test"));
+
+        let error = ServerError::wrap("test");
+        assert!(error.to_string().contains("test"));
+
+        let error = TypeError::wrap("test");
+        assert!(error.to_string().contains("test"));
+    }
+}
