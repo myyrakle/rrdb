@@ -28,3 +28,22 @@ impl std::fmt::Display for LexingError {
         write!(formatter, "lexing error: {}", self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lexing_error_eq() {
+        let error1 = LexingError::wrap("test");
+        let error2 = LexingError::wrap("test");
+        assert_eq!(error1, error2);
+    }
+
+    #[test]
+    fn test_lexing_error_display() {
+        let error = LexingError::wrap("test");
+
+        assert!(error.to_string().contains("lexing error: test"));
+    }
+}
