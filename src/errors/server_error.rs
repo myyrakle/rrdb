@@ -41,3 +41,36 @@ impl std::fmt::Display for ServerError {
         write!(formatter, "server error: {}", self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_server_error_eq() {
+        let error1 = ServerError::wrap("test");
+        let error2 = ServerError::wrap("test");
+        assert_eq!(error1, error2);
+    }
+
+    #[test]
+    fn test_server_error_display() {
+        let error = ServerError::wrap("test");
+
+        assert!(error.to_string().contains("server error: test"));
+    }
+
+    #[test]
+    fn test_server_error_new() {
+        let error = ServerError::new("test");
+
+        assert_eq!(error.message, "test");
+    }
+
+    #[test]
+    fn test_server_error_boxed() {
+        let error = ServerError::boxed("test");
+
+        assert_eq!(error.message, "test");
+    }
+}
