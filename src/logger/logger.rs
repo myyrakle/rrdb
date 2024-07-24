@@ -11,3 +11,18 @@ impl Logger {
         println!("{}", format!("@@[INFO] {}", text.into()).green());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error() {
+        Logger::error("This is an error message");
+    }
+
+    #[test]
+    fn test_info() {
+        Logger::info("This is an info message");
+    }
+}
