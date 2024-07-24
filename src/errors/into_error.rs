@@ -28,3 +28,24 @@ impl std::fmt::Display for IntoError {
         write!(formatter, "parsing error(into error): {}", self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_into_error_eq() {
+        let error1 = IntoError::wrap("test");
+        let error2 = IntoError::wrap("test");
+        assert_eq!(error1, error2);
+    }
+
+    #[test]
+    fn test_into_error_display() {
+        let error = IntoError::wrap("test");
+
+        assert!(error
+            .to_string()
+            .contains("parsing error(into error): test"));
+    }
+}

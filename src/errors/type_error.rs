@@ -28,3 +28,22 @@ impl std::fmt::Display for TypeError {
         write!(formatter, "parsing error: {}", self.message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_type_error_eq() {
+        let error1 = TypeError::wrap("test");
+        let error2 = TypeError::wrap("test");
+        assert_eq!(error1, error2);
+    }
+
+    #[test]
+    fn test_type_error_display() {
+        let error = TypeError::wrap("test");
+
+        assert!(error.to_string().contains("parsing error: test"));
+    }
+}
