@@ -2,7 +2,7 @@ use crate::ast::{types::TableName, DMLStatement, SQLStatement};
 
 use super::parts::{_where::WhereClause, target::UpdateTarget};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct DeleteQuery {
     pub from_table: Option<UpdateTarget>,
     pub where_clause: Option<WhereClause>,

@@ -7,7 +7,6 @@ use crate::ast::dml::parts::_where::WhereClause;
 use crate::ast::types::{SQLExpression, SelectColumn, TableName};
 use crate::lexer::predule::OperatorToken;
 use crate::lexer::tokens::Token;
-use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 
 #[test]
@@ -66,12 +65,62 @@ pub fn test_delete_query() {
                 .build(),
             want_error: false,
         },
+        TestCase {
+            name: "성공: DELETE FROM foo.bar as f".into(),
+            input: vec![
+                Token::Delete,
+                Token::From,
+                Token::Identifier("foo".into()),
+                Token::Period,
+                Token::Identifier("bar".into()),
+                Token::As,
+                Token::Identifier("f".into()),
+            ],
+            expected: DeleteQuery::builder()
+                .set_from_table(TableName {
+                    database_name: Some("foo".into()),
+                    table_name: "bar".into(),
+                })
+                .set_from_alias("f".into())
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: "실패: 토큰이 하나도 없음".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: DELETE가 아님".into(),
+            input: vec![Token::Select],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: DELETE밖에 없음".into(),
+            input: vec![Token::Delete],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: DELETE INTO".into(),
+            input: vec![Token::Delete, Token::Into],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: DELETE FROM".into(),
+            input: vec![Token::Delete, Token::From],
+            expected: Default::default(),
+            want_error: true,
+        },
     ];
 
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got = parser.parse(ParserContext::default());
+        let got = parser.handle_delete_query(Default::default());
 
         assert_eq!(
             got.is_err(),
@@ -83,7 +132,7 @@ pub fn test_delete_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, vec![t.expected.into()], "TC: {}", t.name);
+            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
         }
     }
 }
