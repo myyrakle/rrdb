@@ -9,53 +9,63 @@ use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 
 #[test]
-pub fn delete_from_1() {
-    let text = r#"
-        DELETE FROM foo.bar
-    "#
-    .to_owned();
+pub fn test_delete_query() {
+    struct TestCase {
+        name: String,
+        input: String,
+        expected: DeleteQuery,
+        want_error: bool,
+    }
 
-    let mut parser = Parser::new(text).unwrap();
+    let test_cases = vec![
+        TestCase {
+            name: "where 없는 delete".into(),
+            input: "DELETE FROM foo.bar".to_owned(),
+            expected: DeleteQuery::builder()
+                .set_from_table(TableName {
+                    database_name: Some("foo".into()),
+                    table_name: "bar".into(),
+                })
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: "where 있는 delete".into(),
+            input: "DELETE FROM foo.bar WHERE name = 'asdf'".to_owned(),
+            expected: DeleteQuery::builder()
+                .set_from_table(TableName {
+                    database_name: Some("foo".into()),
+                    table_name: "bar".into(),
+                })
+                .set_where(WhereClause {
+                    expression: BinaryOperatorExpression {
+                        operator: BinaryOperator::Eq,
+                        lhs: SelectColumn::new(None, "name".into()).into(),
+                        rhs: SQLExpression::String("asdf".into()),
+                    }
+                    .into(),
+                })
+                .build(),
+            want_error: false,
+        },
+    ];
 
-    let expected = DeleteQuery::builder()
-        .set_from_table(TableName {
-            database_name: Some("foo".into()),
-            table_name: "bar".into(),
-        })
-        .build();
+    for t in test_cases {
+        let mut parser = Parser::new(t.input).unwrap();
 
-    assert_eq!(
-        parser.parse(ParserContext::default()).unwrap(),
-        vec![expected.into()],
-    );
-}
+        let got = parser.parse(ParserContext::default());
 
-#[test]
-pub fn delete_from_where_1() {
-    let text = r#"
-        DELETE FROM foo.bar WHERE name = 'asdf'
-    "#
-    .to_owned();
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
 
-    let mut parser = Parser::new(text).unwrap();
-
-    let expected = DeleteQuery::builder()
-        .set_from_table(TableName {
-            database_name: Some("foo".into()),
-            table_name: "bar".into(),
-        })
-        .set_where(WhereClause {
-            expression: BinaryOperatorExpression {
-                operator: BinaryOperator::Eq,
-                lhs: SelectColumn::new(None, "name".into()).into(),
-                rhs: SQLExpression::String("asdf".into()),
-            }
-            .into(),
-        })
-        .build();
-
-    assert_eq!(
-        parser.parse(ParserContext::default()).unwrap(),
-        vec![expected.into()],
-    );
+        if let Ok(statements) = got {
+            assert_eq!(statements, vec![t.expected.into()], "TC: {}", t.name);
+        }
+    }
 }
