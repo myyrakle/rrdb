@@ -5,6 +5,8 @@ use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
 use crate::ast::dml::expressions::operators::BinaryOperator;
 use crate::ast::dml::parts::_where::WhereClause;
 use crate::ast::types::{SQLExpression, SelectColumn, TableName};
+use crate::lexer::predule::OperatorToken;
+use crate::lexer::tokens::Token;
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 
@@ -12,15 +14,21 @@ use crate::parser::predule::Parser;
 pub fn test_delete_query() {
     struct TestCase {
         name: String,
-        input: String,
+        input: Vec<Token>,
         expected: DeleteQuery,
         want_error: bool,
     }
 
     let test_cases = vec![
         TestCase {
-            name: "where 없는 delete".into(),
-            input: "DELETE FROM foo.bar".to_owned(),
+            name: "성공: delete from foo.bar".into(),
+            input: vec![
+                Token::Delete,
+                Token::From,
+                Token::Identifier("foo".into()),
+                Token::Period,
+                Token::Identifier("bar".into()),
+            ],
             expected: DeleteQuery::builder()
                 .set_from_table(TableName {
                     database_name: Some("foo".into()),
@@ -30,8 +38,18 @@ pub fn test_delete_query() {
             want_error: false,
         },
         TestCase {
-            name: "where 있는 delete".into(),
-            input: "DELETE FROM foo.bar WHERE name = 'asdf'".to_owned(),
+            name: "성공: DELETE FROM foo.bar WHERE name = 'asdf'".into(),
+            input: vec![
+                Token::Delete,
+                Token::From,
+                Token::Identifier("foo".into()),
+                Token::Period,
+                Token::Identifier("bar".into()),
+                Token::Where,
+                Token::Identifier("name".into()),
+                Token::Operator(OperatorToken::Eq),
+                Token::String("asdf".into()),
+            ],
             expected: DeleteQuery::builder()
                 .set_from_table(TableName {
                     database_name: Some("foo".into()),
@@ -51,7 +69,7 @@ pub fn test_delete_query() {
     ];
 
     for t in test_cases {
-        let mut parser = Parser::with_string(t.input).unwrap();
+        let mut parser = Parser::new(t.input);
 
         let got = parser.parse(ParserContext::default());
 
