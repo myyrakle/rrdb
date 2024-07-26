@@ -39,7 +39,7 @@ pub fn begin_transaction() {
     ];
 
     for tc in test_cases {
-        let mut parser = Parser::new(tc.input).unwrap();
+        let mut parser = Parser::with_string(tc.input).unwrap();
 
         let result = parser.parse(ParserContext::default());
 
@@ -74,7 +74,7 @@ pub fn commit() {
     }];
 
     for tc in test_cases {
-        let mut parser = Parser::new(tc.input).unwrap();
+        let mut parser = Parser::with_string(tc.input).unwrap();
 
         let result = parser.parse(ParserContext::default());
 
@@ -109,7 +109,7 @@ pub fn rollback() {
     }];
 
     for tc in test_cases {
-        let mut parser = Parser::new(tc.input).unwrap();
+        let mut parser = Parser::with_string(tc.input).unwrap();
 
         let result = parser.parse(ParserContext::default());
 

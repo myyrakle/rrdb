@@ -13,7 +13,15 @@ pub struct Parser {
 
 impl Parser {
     // 파서 객체 생성
-    pub fn new(text: String) -> Result<Self, RRDBError> {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self {
+            current_token: Token::EOF,
+            tokens: VecDeque::from(tokens),
+        }
+    }
+
+    // deorecated
+    pub fn with_string(text: String) -> Result<Self, RRDBError> {
         Ok(Self {
             current_token: Token::EOF,
             tokens: VecDeque::from(Tokenizer::string_to_tokens(text)?),

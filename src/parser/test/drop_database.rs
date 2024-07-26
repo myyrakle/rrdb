@@ -10,7 +10,7 @@ pub fn drop_database() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = DropDatabaseQuery::builder()
         .set_name("test_db".to_owned())

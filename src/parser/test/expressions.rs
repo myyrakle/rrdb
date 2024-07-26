@@ -21,7 +21,7 @@ pub fn unary_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -51,7 +51,7 @@ pub fn unary_expression_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -81,7 +81,7 @@ pub fn arithmetic_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -112,7 +112,7 @@ pub fn arithmetic_expression_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -148,7 +148,7 @@ pub fn arithmetic_expression_3() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -184,7 +184,7 @@ pub fn arithmetic_expression_4() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -225,7 +225,7 @@ pub fn arithmetic_expression_5() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -263,7 +263,7 @@ pub fn arithmetic_expression_6() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -298,7 +298,7 @@ pub fn function_call_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -332,7 +332,7 @@ pub fn function_call_expression_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -362,7 +362,7 @@ pub fn between_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -393,7 +393,7 @@ pub fn between_expression_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -429,7 +429,7 @@ pub fn between_expression_3() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -465,7 +465,7 @@ pub fn not_between_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -496,7 +496,7 @@ pub fn list_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -529,7 +529,7 @@ pub fn in_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -567,7 +567,7 @@ pub fn not_in_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -605,7 +605,7 @@ pub fn complex_expression_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(

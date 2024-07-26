@@ -51,7 +51,7 @@ pub fn test_delete_query() {
     ];
 
     for t in test_cases {
-        let mut parser = Parser::new(t.input).unwrap();
+        let mut parser = Parser::with_string(t.input).unwrap();
 
         let got = parser.parse(ParserContext::default());
 

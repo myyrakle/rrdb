@@ -15,7 +15,7 @@ pub fn show_databases_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = ShowDatabasesQuery {};
 
@@ -32,7 +32,7 @@ pub fn show_databases_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = ShowDatabasesQuery {};
 
@@ -49,7 +49,7 @@ pub fn use_databases_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = UseDatabaseQuery {
         database_name: "asdf".into(),
@@ -68,7 +68,7 @@ pub fn desc_table_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = DescTableQuery {
         table_name: TableName {
@@ -90,7 +90,7 @@ pub fn show_tables_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = ShowTablesQuery {
         database: "rrdb".into(),

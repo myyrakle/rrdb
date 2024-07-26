@@ -18,7 +18,7 @@ pub fn update_set_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = UpdateQuery::builder()
         .set_target_table(TableName {
@@ -47,7 +47,7 @@ pub fn update_set_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = UpdateQuery::builder()
         .set_target_table(TableName {
@@ -80,7 +80,7 @@ pub fn update_set_where_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = UpdateQuery::builder()
         .set_target_table(TableName {

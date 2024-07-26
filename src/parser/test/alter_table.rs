@@ -19,7 +19,7 @@ pub fn alter_table_rename_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -42,7 +42,7 @@ pub fn alter_table_add_column_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -73,7 +73,7 @@ pub fn alter_table_add_column_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -104,7 +104,7 @@ pub fn alter_table_rename_column_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -133,7 +133,7 @@ pub fn alter_table_rename_column_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -162,7 +162,7 @@ pub fn alter_table_alter_column_drop_not_null_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -191,7 +191,7 @@ pub fn alter_table_alter_column_set_not_null_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -220,7 +220,7 @@ pub fn alter_table_alter_column_set_type_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -252,7 +252,7 @@ pub fn alter_table_alter_column_set_type_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -284,7 +284,7 @@ pub fn alter_table_alter_column_set_default_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -316,7 +316,7 @@ pub fn alter_table_alter_column_drop_default_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -345,7 +345,7 @@ pub fn alter_table_drop_column_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {
@@ -373,7 +373,7 @@ pub fn alter_table_drop_column_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterTableQuery::builder()
         .set_table(TableName {

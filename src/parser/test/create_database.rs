@@ -10,7 +10,7 @@ pub fn create_database_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = CreateDatabaseQuery::builder()
         .set_name("test_db".to_owned())
@@ -30,7 +30,7 @@ pub fn create_database_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = CreateDatabaseQuery::builder()
         .set_name("test_db".to_owned())
