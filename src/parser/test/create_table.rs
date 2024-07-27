@@ -17,7 +17,7 @@ pub fn create_table() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = CreateTableQuery::builder()
         .set_table(TableName::new(

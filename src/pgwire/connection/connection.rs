@@ -8,6 +8,7 @@ use tokio_util::codec::Framed;
 use crate::{
     ast::{OtherStatement, SQLStatement},
     executor::{config::global::GlobalConfig, executor::Executor},
+    lexer::predule::Tokenizer,
     logger::predule::Logger,
     parser::{context::ParserContext, predule::Parser},
     pgwire::{
@@ -75,8 +76,14 @@ impl Connection {
     }
 
     fn parse_statement(&mut self, text: &str) -> Result<Option<SQLStatement>, ErrorResponse> {
-        let mut parser = Parser::new(text.into())
-            .map_err(|e| ErrorResponse::error(SqlState::SYNTAX_ERROR, e.to_string()))?;
+        let tokens = match Tokenizer::string_to_tokens(text.into()) {
+            Ok(tokens) => tokens,
+            Err(e) => {
+                return Err(ErrorResponse::error(SqlState::SYNTAX_ERROR, e.to_string()));
+            }
+        };
+
+        let mut parser = Parser::new(tokens);
 
         let statements = parser
             .parse(

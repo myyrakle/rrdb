@@ -12,7 +12,7 @@ pub fn alter_database_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterDatabaseQuery::builder()
         .set_name("foo".to_owned())
@@ -34,7 +34,7 @@ pub fn alter_database_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = AlterDatabaseQuery::builder()
         .set_name("foo".to_owned())

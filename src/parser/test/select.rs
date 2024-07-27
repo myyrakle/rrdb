@@ -21,7 +21,7 @@ pub fn select_from_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -50,7 +50,7 @@ pub fn select_from_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -83,7 +83,7 @@ pub fn select_from_3() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -125,7 +125,7 @@ pub fn select_from_4() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_wildcard(SelectWildCard { alias: None })
@@ -153,7 +153,7 @@ pub fn select_inner_join_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -204,7 +204,7 @@ pub fn select_inner_join_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -255,7 +255,7 @@ pub fn select_left_join_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -306,7 +306,7 @@ pub fn select_left_join_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -357,7 +357,7 @@ pub fn select_right_join_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -408,7 +408,7 @@ pub fn select_right_join_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -459,7 +459,7 @@ pub fn select_full_join_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -510,7 +510,7 @@ pub fn select_full_join_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -559,7 +559,7 @@ pub fn select_where_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -599,7 +599,7 @@ pub fn select_order_by_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -636,7 +636,7 @@ pub fn select_order_by_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -678,7 +678,7 @@ pub fn select_order_by_3() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -715,7 +715,7 @@ pub fn select_order_by_4() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -752,7 +752,7 @@ pub fn select_group_by_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -787,7 +787,7 @@ pub fn select_group_by_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -827,7 +827,7 @@ pub fn error_select_group_by_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     assert!(parser.parse(ParserContext::default()).is_err());
 }
@@ -843,7 +843,7 @@ pub fn select_group_by_having_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -886,7 +886,7 @@ pub fn select_offset_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -919,7 +919,7 @@ pub fn select_limit_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -953,7 +953,7 @@ pub fn select_offset_limit_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -988,7 +988,7 @@ pub fn select_limit_offset_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(
@@ -1026,7 +1026,7 @@ pub fn select_subquery_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = SelectQuery::builder()
         .add_select_item(

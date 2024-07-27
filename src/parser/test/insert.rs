@@ -16,7 +16,7 @@ pub fn insert_into_values_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = InsertQuery::builder()
         .set_into_table(TableName {
@@ -47,7 +47,7 @@ pub fn insert_into_values_2() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = InsertQuery::builder()
         .set_into_table(TableName {
@@ -87,7 +87,7 @@ pub fn insert_into_values_3() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = InsertQuery::builder()
         .set_into_table(TableName {
@@ -127,7 +127,7 @@ pub fn insert_into_select_1() {
     "#
     .to_owned();
 
-    let mut parser = Parser::new(text).unwrap();
+    let mut parser = Parser::with_string(text).unwrap();
 
     let expected = InsertQuery::builder()
         .set_into_table(TableName {
