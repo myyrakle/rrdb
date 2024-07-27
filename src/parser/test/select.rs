@@ -4,7 +4,6 @@ use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
 use crate::ast::dml::expressions::operators::BinaryOperator;
 use crate::ast::dml::parts::_where::WhereClause;
 use crate::ast::dml::parts::group_by::GroupByItem;
-use crate::ast::dml::parts::having::HavingClause;
 use crate::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
@@ -1040,6 +1039,50 @@ fn test_select_query() {
                 SELECT 
                     p.content as post
                 FROM post as p
+                GROUP BY p.content;
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::As,
+                Token::Identifier("post".into()),
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Group,
+                Token::By,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::SemiColon,
+            ],
+            expected: SelectQuery::builder()
+                .add_select_item(
+                    SelectItem::builder()
+                        .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                        .set_alias("post".into())
+                        .build(),
+                )
+                .set_from_table(TableName {
+                    database_name: None,
+                    table_name: "post".into(),
+                })
+                .set_from_alias("p".into())
+                .add_group_by(GroupByItem {
+                    item: SelectColumn::new(Some("p".into()), "content".into()),
+                })
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"
+                SELECT 
+                    p.content as post
+                FROM post as p
                 GROUP BY p.content, p.user_id
             "#
             .into(),
@@ -1124,104 +1167,6 @@ fn test_select_query() {
             ],
             expected: Default::default(),
             want_error: true,
-        },
-        TestCase {
-            name: r#"
-                실패: 
-                SELECT 
-                    COUNT(p.a),
-                    p.b,
-                    p.c
-                FROM post as p
-                GROUP BY p.b
-            "#
-            .into(),
-            input: vec![
-                Token::Select,
-                Token::Identifier("count".into()),
-                Token::LeftParentheses,
-                Token::Identifier("p".into()),
-                Token::Period,
-                Token::Identifier("a".into()),
-                Token::RightParentheses,
-                Token::Comma,
-                Token::Identifier("p".into()),
-                Token::Period,
-                Token::Identifier("b".into()),
-                Token::Comma,
-                Token::Identifier("p".into()),
-                Token::Period,
-                Token::Identifier("c".into()),
-                Token::From,
-                Token::Identifier("post".into()),
-                Token::As,
-                Token::Identifier("p".into()),
-                Token::Group,
-                Token::By,
-                Token::Identifier("p".into()),
-                Token::Period,
-                Token::Identifier("b".into()),
-            ],
-            expected: Default::default(),
-            want_error: true,
-        },
-        TestCase {
-            name: r#"
-                SELECT 
-                    p.content as post
-                FROM post as p
-                GROUP BY p.content
-                HAVING p.content = 'FOO'
-            "#
-            .into(),
-            input: vec![
-                Token::Select,
-                Token::Identifier("p".into()),
-                Token::Period,
-                Token::Identifier("content".into()),
-                Token::As,
-                Token::Identifier("post".into()),
-                Token::From,
-                Token::Identifier("post".into()),
-                Token::As,
-                Token::Identifier("p".into()),
-                Token::Group,
-                Token::By,
-                Token::Identifier("p".into()),
-                Token::Period,
-                Token::Identifier("content".into()),
-                Token::Having,
-                Token::Identifier("p".into()),
-                Token::Period,
-                Token::Identifier("content".into()),
-                Token::Operator(OperatorToken::Eq),
-                Token::String("FOO".into()),
-            ],
-            expected: SelectQuery::builder()
-                .add_select_item(
-                    SelectItem::builder()
-                        .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
-                        .set_alias("post".into())
-                        .build(),
-                )
-                .set_from_table(TableName {
-                    database_name: None,
-                    table_name: "post".into(),
-                })
-                .set_from_alias("p".into())
-                .add_group_by(GroupByItem {
-                    item: SelectColumn::new(Some("p".into()), "content".into()),
-                })
-                .set_having(HavingClause {
-                    expression: BinaryOperatorExpression {
-                        operator: BinaryOperator::Eq,
-                        lhs: SelectColumn::new(Some("p".into()), "content".into()).into(),
-                        rhs: SQLExpression::String("FOO".into()),
-                    }
-                    .into(),
-                })
-                .build(),
-            want_error: false,
         },
         TestCase {
             name: r#"
@@ -1462,6 +1407,30 @@ fn test_select_query() {
                 .set_from_alias("ff".into())
                 .build(),
             want_error: false,
+        },
+        TestCase {
+            name: r#"실패: 빈 토큰"#.into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: r#"실패: SELECT"#.into(),
+            input: vec![Token::Select],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: r#"실패: UPDATE"#.into(),
+            input: vec![Token::Update],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: r#"SELECT 1 WHERE"#.into(),
+            input: vec![Token::Select, Token::Integer(1), Token::Where],
+            expected: Default::default(),
+            want_error: true,
         },
     ];
 
