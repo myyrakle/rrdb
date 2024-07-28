@@ -804,7 +804,7 @@ fn test_select_query() {
                 SELECT 
                     p.content as post
                 FROM post as p
-                ORDER BY p.user_id ASC
+                ORDER BY p.user_id ASC;
             "#
             .into(),
             input: vec![
@@ -824,6 +824,7 @@ fn test_select_query() {
                 Token::Period,
                 Token::Identifier("user_id".into()),
                 Token::Asc,
+                Token::SemiColon,
             ],
             expected: SelectQuery::builder()
                 .add_select_item(
@@ -844,6 +845,83 @@ fn test_select_query() {
                 })
                 .build(),
             want_error: false,
+        },
+        TestCase {
+            name: r#"
+                SELECT 
+                    p.content as post
+                FROM post as p
+                ORDER BY p.user_id ASC
+                LIMIT 10;
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::As,
+                Token::Identifier("post".into()),
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Order,
+                Token::By,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("user_id".into()),
+                Token::Asc,
+                Token::Limit,
+                Token::Integer(10),
+            ],
+            expected: SelectQuery::builder()
+                .add_select_item(
+                    SelectItem::builder()
+                        .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                        .set_alias("post".into())
+                        .build(),
+                )
+                .set_from_table(TableName {
+                    database_name: None,
+                    table_name: "post".into(),
+                })
+                .set_from_alias("p".into())
+                .add_order_by(OrderByItem {
+                    item: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
+                    order_type: OrderByType::Asc,
+                    nulls: OrderByNulls::First,
+                })
+                .set_limit(10)
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"
+                SELECT 
+                    p.content as post
+                FROM post as p
+                ORDER BY SELECT ASC;
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::As,
+                Token::Identifier("post".into()),
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Order,
+                Token::By,
+                Token::Select,
+                Token::Asc,
+            ],
+            expected: Default::default(),
+            want_error: true,
         },
         TestCase {
             name: r#"
