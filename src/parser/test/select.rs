@@ -5,6 +5,7 @@ use crate::ast::dml::expressions::call::CallExpression;
 use crate::ast::dml::expressions::operators::BinaryOperator;
 use crate::ast::dml::parts::_where::WhereClause;
 use crate::ast::dml::parts::group_by::GroupByItem;
+use crate::ast::dml::parts::having::HavingClause;
 use crate::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
@@ -1589,6 +1590,101 @@ fn test_select_query() {
                 Token::Identifier("p".into()),
                 Token::Period,
                 Token::Identifier("a".into()),
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: r#"
+                SELECT 
+                    p.content as post
+                FROM post as p
+                GROUP BY p.content, p.user_id
+                HAVING p.user_id > 1
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::As,
+                Token::Identifier("post".into()),
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Group,
+                Token::By,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::Comma,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("user_id".into()),
+                Token::Having,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("user_id".into()),
+                Token::Operator(OperatorToken::Gt),
+                Token::Integer(1),
+            ],
+            expected: SelectQuery::builder()
+                .add_select_item(
+                    SelectItem::builder()
+                        .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                        .set_alias("post".into())
+                        .build(),
+                )
+                .set_from_table(TableName {
+                    database_name: None,
+                    table_name: "post".into(),
+                })
+                .set_from_alias("p".into())
+                .add_group_by(GroupByItem {
+                    item: SelectColumn::new(Some("p".into()), "content".into()),
+                })
+                .add_group_by(GroupByItem {
+                    item: SelectColumn::new(Some("p".into()), "user_id".into()),
+                })
+                .set_having(HavingClause {
+                    expression: BinaryOperatorExpression {
+                        operator: BinaryOperator::Gt,
+                        lhs: SelectColumn::new(Some("p".into()), "user_id".into()).into(),
+                        rhs: SQLExpression::Integer(1),
+                    }
+                    .into(),
+                })
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"
+                실패: GROUP BY 없는 HAVING 절
+                SELECT 
+                    p.content as post
+                FROM post as p
+                HAVING p.user_id > 1
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::As,
+                Token::Identifier("post".into()),
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Having,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("user_id".into()),
+                Token::Operator(OperatorToken::Gt),
+                Token::Integer(1),
             ],
             expected: Default::default(),
             want_error: true,
