@@ -92,10 +92,11 @@ impl Parser {
                 }
             }
             _ => {
-                return Err(ParsingError::wrap(format!(
-                    "E0304 expected 'FROM' clause. but your input word is '{:?}'",
+                // From이어야만 이전 루프를 탈출하기 때문에, From이 아닐 수 없음
+                unreachable!(
+                    "expected 'FROM' clause. but your input word is '{:?}'",
                     current_token
-                )));
+                );
             }
         }
 

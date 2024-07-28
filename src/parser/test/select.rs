@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use crate::ast::dml::expressions::binary::BinaryOperatorExpression;
+use crate::ast::dml::expressions::call::CallExpression;
 use crate::ast::dml::expressions::operators::BinaryOperator;
 use crate::ast::dml::parts::_where::WhereClause;
 use crate::ast::dml::parts::group_by::GroupByItem;
@@ -8,7 +9,9 @@ use crate::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
 use crate::ast::dml::select::SelectQuery;
-use crate::ast::types::{SQLExpression, SelectColumn, TableName};
+use crate::ast::types::{
+    AggregateFunction, BuiltInFunction, Function, SQLExpression, SelectColumn, TableName,
+};
 use crate::lexer::predule::OperatorToken;
 use crate::lexer::tokens::Token;
 use crate::parser::predule::Parser;
@@ -1083,6 +1086,81 @@ fn test_select_query() {
                 SELECT 
                     p.content as post
                 FROM post as p
+                GROUP BY SELECT;
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::As,
+                Token::Identifier("post".into()),
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Group,
+                Token::By,
+                Token::Select,
+                Token::SemiColon,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: r#"
+                SELECT 
+                    p.content as post
+                FROM post as p
+                GROUP BY p.content
+                LIMIT 5;
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::As,
+                Token::Identifier("post".into()),
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Group,
+                Token::By,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("content".into()),
+                Token::Limit,
+                Token::Integer(5),
+                Token::SemiColon,
+            ],
+            expected: SelectQuery::builder()
+                .add_select_item(
+                    SelectItem::builder()
+                        .set_item(SelectColumn::new(Some("p".into()), "content".into()).into())
+                        .set_alias("post".into())
+                        .build(),
+                )
+                .set_from_table(TableName {
+                    database_name: None,
+                    table_name: "post".into(),
+                })
+                .set_from_alias("p".into())
+                .add_group_by(GroupByItem {
+                    item: SelectColumn::new(Some("p".into()), "content".into()),
+                })
+                .set_limit(5)
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"
+                SELECT 
+                    p.content as post
+                FROM post as p
                 GROUP BY p.content, p.user_id
             "#
             .into(),
@@ -1167,6 +1245,46 @@ fn test_select_query() {
             ],
             expected: Default::default(),
             want_error: true,
+        },
+        TestCase {
+            name: r#"
+                SELECT 
+                    COUNT(p.a)
+                FROM post as p
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("count".into()),
+                Token::LeftParentheses,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("a".into()),
+                Token::RightParentheses,
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+            ],
+            expected: SelectQuery::builder()
+                .add_select_item(
+                    SelectItem::builder()
+                        .set_item(SQLExpression::FunctionCall(CallExpression {
+                            function: Function::BuiltIn(BuiltInFunction::Aggregate(
+                                AggregateFunction::Count,
+                            )),
+                            arguments: vec![SelectColumn::new(Some("p".into()), "a".into()).into()],
+                        }))
+                        .build(),
+                )
+                .set_has_aggregate(true)
+                .set_from_table(TableName {
+                    database_name: None,
+                    table_name: "post".into(),
+                })
+                .set_from_alias("p".into())
+                .build(),
+            want_error: false,
         },
         TestCase {
             name: r#"
@@ -1443,6 +1561,37 @@ fn test_select_query() {
                 )
                 .build(),
             want_error: false,
+        },
+        TestCase {
+            name: r#"
+                집계함수가 사용된 컬럼이 group by에 있다면 오류
+
+                SELECT 
+                    COUNT(p.a)
+                FROM post as p 
+                GROUP BY p.a
+            "#
+            .into(),
+            input: vec![
+                Token::Select,
+                Token::Identifier("count".into()),
+                Token::LeftParentheses,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("a".into()),
+                Token::RightParentheses,
+                Token::From,
+                Token::Identifier("post".into()),
+                Token::As,
+                Token::Identifier("p".into()),
+                Token::Group,
+                Token::By,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("a".into()),
+            ],
+            expected: Default::default(),
+            want_error: true,
         },
     ];
 
