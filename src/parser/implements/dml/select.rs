@@ -312,6 +312,11 @@ impl Parser {
                 // 현재 select_item은 종료된 것으로 판단.
                 Ok(select_item.build())
             }
+            Token::SemiColon => {
+                self.unget_next_token(current_token);
+                // 현재 select_item은 종료된 것으로 판단.
+                Ok(select_item.build())
+            }
             _ => Err(ParsingError::wrap(format!(
                 "E0308 expected expression. but your input word is '{:?}'",
                 current_token

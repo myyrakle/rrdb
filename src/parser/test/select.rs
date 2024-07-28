@@ -1432,6 +1432,18 @@ fn test_select_query() {
             expected: Default::default(),
             want_error: true,
         },
+        TestCase {
+            name: r#"SELECT 1;"#.into(),
+            input: vec![Token::Select, Token::Integer(1), Token::SemiColon],
+            expected: SelectQuery::builder()
+                .add_select_item(
+                    SelectItem::builder()
+                        .set_item(SQLExpression::Integer(1))
+                        .build(),
+                )
+                .build(),
+            want_error: false,
+        },
     ];
 
     for t in test_cases {
