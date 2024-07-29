@@ -1996,3 +1996,53 @@ fn test_parse_order_by_item() {
         }
     }
 }
+
+#[test]
+fn test_parse_group_by_item() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: GroupByItem,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "p.id".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+            ],
+            expected: GroupByItem {
+                item: SelectColumn::new(Some("p".into()), "id".into()),
+            },
+            want_error: false,
+        },
+        TestCase {
+            name: "실패: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_group_by_item(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
