@@ -2331,6 +2331,18 @@ fn test_parse_offset() {
             want_error: false,
         },
         TestCase {
+            name: "OFFSET -5".into(),
+            input: vec![Token::Offset, Token::Integer(-5)],
+            expected: 0,
+            want_error: true,
+        },
+        TestCase {
+            name: "OFFSET".into(),
+            input: vec![Token::Offset],
+            expected: 0,
+            want_error: true,
+        },
+        TestCase {
             name: "OFFSET SELECT".into(),
             input: vec![Token::Offset, Token::Select],
             expected: 0,
@@ -2391,6 +2403,18 @@ fn test_parse_limit() {
             input: vec![Token::Limit, Token::Integer(5)],
             expected: 5,
             want_error: false,
+        },
+        TestCase {
+            name: "LIMIT -5".into(),
+            input: vec![Token::Limit, Token::Integer(-5)],
+            expected: 0,
+            want_error: true,
+        },
+        TestCase {
+            name: "LIMIT".into(),
+            input: vec![Token::Limit],
+            expected: 0,
+            want_error: true,
         },
         TestCase {
             name: "LIMIT SELECT".into(),
