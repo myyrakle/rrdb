@@ -1859,3 +1859,140 @@ fn test_parse_select_item() {
         }
     }
 }
+
+#[test]
+fn test_parse_order_by_item() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: OrderByItem,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "p.id ASC".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+                Token::Asc,
+            ],
+            expected: OrderByItem {
+                item: SelectColumn::new(Some("p".into()), "id".into()).into(),
+                order_type: OrderByType::Asc,
+                nulls: OrderByNulls::First,
+            },
+            want_error: false,
+        },
+        TestCase {
+            name: "p.id".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+            ],
+            expected: OrderByItem {
+                item: SelectColumn::new(Some("p".into()), "id".into()).into(),
+                order_type: OrderByType::Asc,
+                nulls: OrderByNulls::First,
+            },
+            want_error: false,
+        },
+        TestCase {
+            name: "p.id DESC".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+                Token::Desc,
+            ],
+            expected: OrderByItem {
+                item: SelectColumn::new(Some("p".into()), "id".into()).into(),
+                order_type: OrderByType::Desc,
+                nulls: OrderByNulls::First,
+            },
+            want_error: false,
+        },
+        TestCase {
+            name: "p.id NULLS FIRST".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+                Token::Nulls,
+                Token::First,
+            ],
+            expected: OrderByItem {
+                item: SelectColumn::new(Some("p".into()), "id".into()).into(),
+                order_type: OrderByType::Asc,
+                nulls: OrderByNulls::First,
+            },
+            want_error: false,
+        },
+        TestCase {
+            name: "p.id NULLS LAST".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+                Token::Nulls,
+                Token::Last,
+            ],
+            expected: OrderByItem {
+                item: SelectColumn::new(Some("p".into()), "id".into()).into(),
+                order_type: OrderByType::Asc,
+                nulls: OrderByNulls::Last,
+            },
+            want_error: false,
+        },
+        TestCase {
+            name: "p.id NULLS SELECT".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+                Token::Nulls,
+                Token::Select,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: p.id NULLS".into(),
+            input: vec![
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+                Token::Nulls,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_order_by_item(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
