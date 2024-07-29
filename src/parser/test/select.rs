@@ -1788,3 +1788,74 @@ fn test_select_query() {
         }
     }
 }
+
+#[test]
+fn test_parse_select_item() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SelectItem,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "1".into(),
+            input: vec![Token::Integer(1)],
+            expected: SelectItem::builder()
+                .set_item(SQLExpression::Integer(1))
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: "1 as one".into(),
+            input: vec![
+                Token::Integer(1),
+                Token::As,
+                Token::Identifier("one".into()),
+            ],
+            expected: SelectItem::builder()
+                .set_item(SQLExpression::Integer(1))
+                .set_alias("one".into())
+                .build(),
+            want_error: false,
+        },
+        TestCase {
+            name: "실패: 1 as".into(),
+            input: vec![Token::Integer(1), Token::As],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: 1 as SELECT".into(),
+            input: vec![Token::Integer(1), Token::As, Token::Select],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_select_item(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}

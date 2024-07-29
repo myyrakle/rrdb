@@ -13,7 +13,7 @@ pub struct SelectWildCard {
     pub alias: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub struct SelectItem {
     pub item: Option<SQLExpression>, // select 요소
     pub alias: Option<String>,       // as 절이 있을 경우 alias 정보
