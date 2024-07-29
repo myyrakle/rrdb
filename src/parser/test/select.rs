@@ -2185,3 +2185,67 @@ fn test_parse_join() {
         }
     }
 }
+
+#[test]
+fn test_parse_where() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: WhereClause,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "WHERE p.id = 1".into(),
+            input: vec![
+                Token::Where,
+                Token::Identifier("p".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+                Token::Operator(OperatorToken::Eq),
+                Token::Integer(1),
+            ],
+            expected: WhereClause {
+                expression: BinaryOperatorExpression {
+                    operator: BinaryOperator::Eq,
+                    lhs: SelectColumn::new(Some("p".into()), "id".into()).into(),
+                    rhs: SQLExpression::Integer(1),
+                }
+                .into(),
+            },
+            want_error: false,
+        },
+        TestCase {
+            name: "실패: SELECT".into(),
+            input: vec![Token::Select],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_where(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
