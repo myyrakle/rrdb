@@ -2375,3 +2375,65 @@ fn test_parse_offset() {
         }
     }
 }
+
+#[test]
+fn test_parse_limit() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: u32,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "LIMIT 5".into(),
+            input: vec![Token::Limit, Token::Integer(5)],
+            expected: 5,
+            want_error: false,
+        },
+        TestCase {
+            name: "LIMIT SELECT".into(),
+            input: vec![Token::Limit, Token::Select],
+            expected: 0,
+            want_error: true,
+        },
+        TestCase {
+            name: "LIMIT 5;".into(),
+            input: vec![Token::Limit, Token::Integer(5), Token::SemiColon],
+            expected: 5,
+            want_error: false,
+        },
+        TestCase {
+            name: "실패: SELECT".into(),
+            input: vec![Token::Select],
+            expected: 0,
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: 빈 토큰".into(),
+            input: vec![],
+            expected: 0,
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_limit(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
