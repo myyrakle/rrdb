@@ -2,7 +2,7 @@ use crate::ast::{types::TableName, DMLStatement, SQLStatement};
 
 use super::parts::{_where::WhereClause, target::UpdateTarget, update_item::UpdateItem};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct UpdateQuery {
     pub target_table: Option<UpdateTarget>,
     pub where_clause: Option<WhereClause>,
