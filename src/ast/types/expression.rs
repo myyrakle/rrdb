@@ -37,6 +37,12 @@ pub enum SQLExpression {
     Null,
 }
 
+impl Default for SQLExpression {
+    fn default() -> Self {
+        Self::Null
+    }
+}
+
 impl SQLExpression {
     pub fn is_unary(&self) -> bool {
         #[allow(clippy::match_like_matches_macro)]

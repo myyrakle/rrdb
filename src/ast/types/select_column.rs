@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 // [table_alias.]column_name
 // SELECT시 컬럼 지정을 가리키는 값입니다.
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct SelectColumn {
     pub table_name: Option<String>,
     pub column_name: String,

@@ -7,7 +7,7 @@ pub struct OrderByClause {
     pub order_by_items: Vec<OrderByItem>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub struct OrderByItem {
     pub item: SQLExpression,
     pub order_type: OrderByType,
@@ -20,8 +20,20 @@ pub enum OrderByType {
     Desc,
 }
 
+impl Default for OrderByType {
+    fn default() -> Self {
+        OrderByType::Asc
+    }
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum OrderByNulls {
     First,
     Last,
+}
+
+impl Default for OrderByNulls {
+    fn default() -> Self {
+        OrderByNulls::Last
+    }
 }

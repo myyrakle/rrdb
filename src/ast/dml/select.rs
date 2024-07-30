@@ -19,7 +19,7 @@ use super::{
     },
 };
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub struct SelectQuery {
     pub select_items: Vec<SelectKind>,
     pub has_aggregate: bool,

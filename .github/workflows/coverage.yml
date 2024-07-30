@@ -45,7 +45,7 @@ jobs:
 
       - name: Set coverage env variable
         run: |
-          echo "COVERAGE=$(cat coverage_total_percent.txt)" >> $GITHUB_ENV
+          echo "COVERAGE=$(head -n 1 coverage_total_percent.txt)" >> $GITHUB_ENV
 
       - name: Clone html_reports repository
         run: |
