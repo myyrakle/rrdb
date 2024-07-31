@@ -173,8 +173,10 @@ impl Parser {
             let current_token = self.get_next_token();
 
             if current_token != Token::LeftParentheses {
-                self.unget_next_token(current_token);
-                break;
+                return Err(ParsingError::wrap(format!(
+                    "E0417 expected '('. but your input word is '{:?}'",
+                    current_token
+                )));
             }
 
             if !self.has_next_token() {
