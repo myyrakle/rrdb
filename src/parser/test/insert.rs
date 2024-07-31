@@ -596,6 +596,17 @@ fn test_parse_insert_values() {
             want_error: true,
         },
         TestCase {
+            name: "실패: Values(1,".into(),
+            input: vec![
+                Token::Values,
+                Token::LeftParentheses,
+                Token::Integer(1),
+                Token::Comma,
+            ],
+            expected: vec![],
+            want_error: true,
+        },
+        TestCase {
             name: "실패: Values(".into(),
             input: vec![Token::Values, Token::LeftParentheses],
             expected: vec![],
