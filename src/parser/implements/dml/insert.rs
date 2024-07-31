@@ -23,6 +23,10 @@ impl Parser {
         }
 
         // INTO 토큰 삼키기
+        if !self.has_next_token() {
+            return Err(ParsingError::wrap("E0410 need more tokens"));
+        }
+
         let current_token = self.get_next_token();
         if current_token != Token::Into {
             return Err(ParsingError::wrap("E0403 expected INTO"));
