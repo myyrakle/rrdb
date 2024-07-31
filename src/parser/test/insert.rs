@@ -528,6 +528,44 @@ fn test_parse_insert_values() {
             want_error: false,
         },
         TestCase {
+            name: "VALUES(1, 2, 3), (4,5,6)".into(),
+            input: vec![
+                Token::Values,
+                Token::LeftParentheses,
+                Token::Integer(1),
+                Token::Comma,
+                Token::Integer(2),
+                Token::Comma,
+                Token::Integer(3),
+                Token::RightParentheses,
+                Token::Comma,
+                Token::LeftParentheses,
+                Token::Integer(4),
+                Token::Comma,
+                Token::Integer(5),
+                Token::Comma,
+                Token::Integer(6),
+                Token::RightParentheses,
+            ],
+            expected: vec![
+                InsertValue {
+                    list: vec![
+                        Some(SQLExpression::Integer(1)),
+                        Some(SQLExpression::Integer(2)),
+                        Some(SQLExpression::Integer(3)),
+                    ],
+                },
+                InsertValue {
+                    list: vec![
+                        Some(SQLExpression::Integer(4)),
+                        Some(SQLExpression::Integer(5)),
+                        Some(SQLExpression::Integer(6)),
+                    ],
+                },
+            ],
+            want_error: false,
+        },
+        TestCase {
             name: "실패: SELECT(1, 2, 3)".into(),
             input: vec![
                 Token::Select,
@@ -545,7 +583,7 @@ fn test_parse_insert_values() {
         TestCase {
             name: "실패: Values)1, 2, 3)".into(),
             input: vec![
-                Token::Select,
+                Token::Values,
                 Token::RightParentheses,
                 Token::Integer(1),
                 Token::Comma,
@@ -554,6 +592,12 @@ fn test_parse_insert_values() {
                 Token::Integer(3),
                 Token::RightParentheses,
             ],
+            expected: vec![],
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: Values(".into(),
+            input: vec![Token::Values, Token::LeftParentheses],
             expected: vec![],
             want_error: true,
         },
