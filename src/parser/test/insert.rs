@@ -474,13 +474,101 @@ fn test_parse_insert_columns() {
             expected: vec![],
             want_error: true,
         },
-        
     ];
 
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
         let got = parser.parse_insert_columns(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
+
+#[test]
+fn test_parse_insert_values() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: Vec<InsertValue>,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "VALUES(1, 2, 3)".into(),
+            input: vec![
+                Token::Values,
+                Token::LeftParentheses,
+                Token::Integer(1),
+                Token::Comma,
+                Token::Integer(2),
+                Token::Comma,
+                Token::Integer(3),
+                Token::RightParentheses,
+            ],
+            expected: vec![InsertValue {
+                list: vec![
+                    Some(SQLExpression::Integer(1)),
+                    Some(SQLExpression::Integer(2)),
+                    Some(SQLExpression::Integer(3)),
+                ],
+            }],
+            want_error: false,
+        },
+        TestCase {
+            name: "실패: SELECT(1, 2, 3)".into(),
+            input: vec![
+                Token::Select,
+                Token::LeftParentheses,
+                Token::Integer(1),
+                Token::Comma,
+                Token::Integer(2),
+                Token::Comma,
+                Token::Integer(3),
+                Token::RightParentheses,
+            ],
+            expected: vec![],
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: Values)1, 2, 3)".into(),
+            input: vec![
+                Token::Select,
+                Token::RightParentheses,
+                Token::Integer(1),
+                Token::Comma,
+                Token::Integer(2),
+                Token::Comma,
+                Token::Integer(3),
+                Token::RightParentheses,
+            ],
+            expected: vec![],
+            want_error: true,
+        },
+        TestCase {
+            name: "실패: 빈 토큰".into(),
+            input: vec![],
+            expected: vec![],
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_insert_values(Default::default());
 
         assert_eq!(
             got.is_err(),
