@@ -128,8 +128,7 @@ impl Parser {
                     continue;
                 }
                 Token::RightParentheses => {
-                    self.unget_next_token(current_token);
-                    break;
+                    return Ok(names);
                 }
                 _ => {
                     return Err(ParsingError::wrap(format!(
@@ -139,17 +138,6 @@ impl Parser {
                 }
             }
         }
-
-        let current_token = self.get_next_token();
-
-        if current_token != Token::RightParentheses {
-            return Err(ParsingError::wrap(format!(
-                "E0408 expected ')'. but your input word is '{:?}'",
-                current_token
-            )));
-        }
-
-        Ok(names)
     }
 
     // Values 절 파싱
