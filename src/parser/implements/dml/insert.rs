@@ -220,7 +220,7 @@ impl Parser {
             }
 
             // 쉼표가 있으면 삼키기
-            if self.pick_next_token() == Token::Comma {
+            if self.has_next_token() && self.pick_next_token() == Token::Comma {
                 self.get_next_token();
             }
 
