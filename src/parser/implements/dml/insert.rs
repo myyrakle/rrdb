@@ -23,6 +23,10 @@ impl Parser {
         }
 
         // INTO 토큰 삼키기
+        if !self.has_next_token() {
+            return Err(ParsingError::wrap("E0410 need more tokens"));
+        }
+
         let current_token = self.get_next_token();
         if current_token != Token::Into {
             return Err(ParsingError::wrap("E0403 expected INTO"));
@@ -124,8 +128,7 @@ impl Parser {
                     continue;
                 }
                 Token::RightParentheses => {
-                    self.unget_next_token(current_token);
-                    break;
+                    return Ok(names);
                 }
                 _ => {
                     return Err(ParsingError::wrap(format!(
@@ -135,17 +138,6 @@ impl Parser {
                 }
             }
         }
-
-        let current_token = self.get_next_token();
-
-        if current_token != Token::RightParentheses {
-            return Err(ParsingError::wrap(format!(
-                "E0408 expected ')'. but your input word is '{:?}'",
-                current_token
-            )));
-        }
-
-        Ok(names)
     }
 
     // Values 절 파싱
@@ -181,8 +173,10 @@ impl Parser {
             let current_token = self.get_next_token();
 
             if current_token != Token::LeftParentheses {
-                self.unget_next_token(current_token);
-                break;
+                return Err(ParsingError::wrap(format!(
+                    "E0417 expected '('. but your input word is '{:?}'",
+                    current_token
+                )));
             }
 
             if !self.has_next_token() {
@@ -220,7 +214,7 @@ impl Parser {
             }
 
             // 쉼표가 있으면 삼키기
-            if self.pick_next_token() == Token::Comma {
+            if self.has_next_token() && self.pick_next_token() == Token::Comma {
                 self.get_next_token();
             }
 

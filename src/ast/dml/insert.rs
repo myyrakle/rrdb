@@ -2,7 +2,7 @@ use crate::ast::{types::TableName, DMLStatement, SQLStatement};
 
 use super::{parts::insert_values::InsertValue, select::SelectQuery};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct InsertQuery {
     pub into_table: Option<TableName>,
     pub columns: Vec<String>,
@@ -14,6 +14,12 @@ pub enum InsertData {
     Select(Box<SelectQuery>),
     Values(Vec<InsertValue>),
     None,
+}
+
+impl Default for InsertData {
+    fn default() -> Self {
+        Self::None
+    }
 }
 
 impl InsertQuery {
