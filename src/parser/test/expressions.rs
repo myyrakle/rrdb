@@ -263,6 +263,74 @@ fn test_parse_expression() {
             want_error: false,
         },
         TestCase {
+            name: "3.0 between 1.2 and 5.3".into(),
+            input: vec![
+                Token::Float(3.0),
+                Token::Between,
+                Token::Float(1.2),
+                Token::And,
+                Token::Float(5.3),
+            ],
+            expected: BetweenExpression {
+                a: SQLExpression::Float(3.0),
+                x: SQLExpression::Float(1.2),
+                y: SQLExpression::Float(5.3),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#""foo" between "3" and "4""#.into(),
+            input: vec![
+                Token::String("foo".to_owned()),
+                Token::Between,
+                Token::String("3".to_owned()),
+                Token::And,
+                Token::String("4".to_owned()),
+            ],
+            expected: BetweenExpression {
+                a: SQLExpression::String("foo".to_owned()),
+                x: SQLExpression::String("3".to_owned()),
+                y: SQLExpression::String("4".to_owned()),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"true between false and false"#.into(),
+            input: vec![
+                Token::Boolean(true),
+                Token::Between,
+                Token::Boolean(false),
+                Token::And,
+                Token::Boolean(false),
+            ],
+            expected: BetweenExpression {
+                a: SQLExpression::Boolean(true),
+                x: SQLExpression::Boolean(false),
+                y: SQLExpression::Boolean(false),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"null between null and null"#.into(),
+            input: vec![
+                Token::Null,
+                Token::Between,
+                Token::Null,
+                Token::And,
+                Token::Null,
+            ],
+            expected: BetweenExpression {
+                a: SQLExpression::Null,
+                x: SQLExpression::Null,
+                y: SQLExpression::Null,
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
             name: "3 between 1 and 5 + 1".into(),
             input: vec![
                 Token::Integer(3),
@@ -448,6 +516,78 @@ fn test_parse_expression() {
             }
             .into(),
             want_error: false,
+        },
+        TestCase {
+            name: "3.14 + 4.4".into(),
+            input: vec![
+                Token::Float(3.14),
+                Token::Operator(OperatorToken::Plus),
+                Token::Float(4.4),
+            ],
+            expected: BinaryOperatorExpression {
+                operator: BinaryOperator::Add,
+                lhs: SQLExpression::Float(3.14),
+                rhs: SQLExpression::Float(4.4),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#""3.14" + "4.4""#.into(),
+            input: vec![
+                Token::String("3.14".to_owned()),
+                Token::Operator(OperatorToken::Plus),
+                Token::String("4.4".to_owned()),
+            ],
+            expected: BinaryOperatorExpression {
+                operator: BinaryOperator::Add,
+                lhs: SQLExpression::String("3.14".to_owned()),
+                rhs: SQLExpression::String("4.4".to_owned()),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"true + false"#.into(),
+            input: vec![
+                Token::Boolean(true),
+                Token::Operator(OperatorToken::Plus),
+                Token::Boolean(false),
+            ],
+            expected: BinaryOperatorExpression {
+                operator: BinaryOperator::Add,
+                lhs: SQLExpression::Boolean(true),
+                rhs: SQLExpression::Boolean(false),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"null + null"#.into(),
+            input: vec![
+                Token::Null,
+                Token::Operator(OperatorToken::Plus),
+                Token::Null,
+            ],
+            expected: BinaryOperatorExpression {
+                operator: BinaryOperator::Add,
+                lhs: SQLExpression::Null,
+                rhs: SQLExpression::Null,
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: * 5".into(),
+            input: vec![Token::Operator(OperatorToken::Asterisk), Token::Integer(5)],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: (".into(),
+            input: vec![Token::LeftParentheses],
+            expected: Default::default(),
+            want_error: true,
         },
     ];
 
