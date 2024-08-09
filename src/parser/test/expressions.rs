@@ -1140,3 +1140,89 @@ fn test_parse_function_call_expression() {
         }
     }
 }
+
+#[test]
+fn test_parse_between_expression() {
+    struct TestCase {
+        name: String,
+        a: SQLExpression,
+        input: Vec<Token>,
+        expected: SQLExpression,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "3 BETWEEN 1 AND 5".into(),
+            a: SQLExpression::Integer(3),
+            input: vec![
+                Token::Between,
+                Token::Integer(1),
+                Token::And,
+                Token::Integer(5),
+            ],
+            expected: BetweenExpression {
+                a: SQLExpression::Integer(3),
+                x: SQLExpression::Integer(1),
+                y: SQLExpression::Integer(5),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: 3 NOT".into(),
+            a: SQLExpression::Integer(3),
+            input: vec![Token::Not],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: 3 NOT DROP".into(),
+            a: SQLExpression::Integer(3),
+            input: vec![Token::Not, Token::Drop],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            a: SQLExpression::Integer(3),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: AND".into(),
+            a: SQLExpression::Integer(3),
+            input: vec![Token::And],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: 1".into(),
+            a: SQLExpression::Integer(3),
+            input: vec![Token::Integer(1)],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: Result<SQLExpression, crate::errors::RRDBError> =
+            parser.parse_between_expression(t.a, Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
