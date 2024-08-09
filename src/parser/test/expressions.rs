@@ -865,3 +865,111 @@ fn test_parse_unary_expression() {
         }
     }
 }
+
+#[test]
+fn test_parse_parentheses_expression() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SQLExpression,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "(3)".into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Integer(3),
+                Token::RightParentheses,
+            ],
+            expected: ParenthesesExpression {
+                expression: SQLExpression::Integer(3),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "(3, 4, 5)".into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Integer(3),
+                Token::Comma,
+                Token::Integer(4),
+                Token::Comma,
+                Token::Integer(5),
+                Token::RightParentheses,
+            ],
+            expected: ListExpression {
+                value: vec![
+                    SQLExpression::Integer(3),
+                    SQLExpression::Integer(4),
+                    SQLExpression::Integer(5),
+                ],
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류 (3,".into(),
+            input: vec![Token::LeftParentheses, Token::Integer(3), Token::Comma],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: )".into(),
+            input: vec![Token::RightParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: (".into(),
+            input: vec![Token::LeftParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "(3".into(),
+            input: vec![Token::LeftParentheses, Token::Integer(3)],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "(3;;".into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Integer(3),
+                Token::SemiColon,
+                Token::SemiColon,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: Result<SQLExpression, crate::errors::RRDBError> =
+            parser.parse_parentheses_expression(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
