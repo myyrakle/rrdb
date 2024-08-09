@@ -448,8 +448,10 @@ impl Parser {
 
         // 닫는 괄호가 나올때까지 인자 파싱
         loop {
+            // 닫는 괄호가 나왔다면 종료
             if self.next_token_is_right_parentheses() {
-                break;
+                let _ = self.get_next_token();
+                return Ok(call_expression.into());
             }
 
             // 표현식 파싱
@@ -462,22 +464,6 @@ impl Parser {
                 self.get_next_token();
             }
         }
-
-        if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0209 need more tokens"));
-        }
-
-        // ) 삼킴
-        let current_token = self.get_next_token();
-
-        if current_token != Token::RightParentheses {
-            return Err(ParsingError::wrap(format!(
-                "expected right parentheses. but your input is {:?}",
-                current_token
-            )));
-        }
-
-        Ok(call_expression.into())
     }
 
     /**
