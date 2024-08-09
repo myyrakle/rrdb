@@ -802,3 +802,66 @@ fn test_parse_expression() {
         }
     }
 }
+
+#[test]
+fn test_parse_unary_expression() {
+    struct TestCase {
+        name: String,
+        operator: UnaryOperator,
+        input: Vec<Token>,
+        expected: SQLExpression,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "! 3 BETWEEN 2 AND 5".into(),
+            operator: UnaryOperator::Not,
+            input: vec![
+                Token::Integer(3),
+                Token::Between,
+                Token::Integer(2),
+                Token::And,
+                Token::Integer(5),
+            ],
+            expected: BetweenExpression {
+                a: UnaryOperatorExpression {
+                    operator: UnaryOperator::Not,
+                    operand: SQLExpression::Integer(3),
+                }
+                .into(),
+                x: SQLExpression::Integer(2),
+                y: SQLExpression::Integer(5),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "실패: 빈 토큰".into(),
+            operator: UnaryOperator::Not,
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: Result<SQLExpression, crate::errors::RRDBError> =
+            parser.parse_unary_expression(t.operator, Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
