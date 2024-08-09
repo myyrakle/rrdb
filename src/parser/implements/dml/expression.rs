@@ -19,7 +19,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0201 need more tokens"));
+            return Err(ParsingError::wrap("E0216 need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -493,7 +493,9 @@ impl Parser {
         a: SQLExpression,
         context: ParserContext,
     ) -> Result<SQLExpression, RRDBError> {
-        let context = context.set_in_between_clause(true);
+        let context = context
+            .set_in_between_clause(true)
+            .set_in_parentheses(false);
 
         if !self.has_next_token() {
             return Err(ParsingError::wrap("E0210 need more tokens"));

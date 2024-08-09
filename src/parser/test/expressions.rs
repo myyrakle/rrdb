@@ -265,6 +265,28 @@ fn test_parse_expression() {
             want_error: false,
         },
         TestCase {
+            name: "(3 between 1 and 5)".into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Integer(3),
+                Token::Between,
+                Token::Integer(1),
+                Token::And,
+                Token::Integer(5),
+                Token::RightParentheses,
+            ],
+            expected: ParenthesesExpression {
+                expression: BetweenExpression {
+                    a: SQLExpression::Integer(3),
+                    x: SQLExpression::Integer(1),
+                    y: SQLExpression::Integer(5),
+                }
+                .into(),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
             name: "3.0 between 1.2 and 5.3".into(),
             input: vec![
                 Token::Float(3.0),
@@ -602,6 +624,35 @@ fn test_parse_expression() {
                         .into(),
                 ),
                 rhs: SQLExpression::Integer(10),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"(SELECT 1) BETWEEN 0 AND 5"#.into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Select,
+                Token::Integer(1),
+                Token::RightParentheses,
+                Token::Between,
+                Token::Integer(0),
+                Token::And,
+                Token::Integer(5),
+            ],
+            expected: BetweenExpression {
+                a: SQLExpression::Subquery(
+                    SelectQuery::builder()
+                        .add_select_item(
+                            SelectItem::builder()
+                                .set_item(SQLExpression::Integer(1))
+                                .build(),
+                        )
+                        .build()
+                        .into(),
+                ),
+                x: SQLExpression::Integer(0),
+                y: SQLExpression::Integer(5),
             }
             .into(),
             want_error: false,
