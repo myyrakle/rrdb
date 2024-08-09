@@ -55,6 +55,11 @@ impl Parser {
                     // from 없는 select절로 간주. 종료.
                     return Ok(query_builder.build());
                 }
+                Token::RightParentheses => {
+                    // from 없는 select절로 간주. 종료.
+                    self.unget_next_token(current_token);
+                    return Ok(query_builder.build());
+                }
                 Token::Comma => continue,
                 Token::Operator(OperatorToken::Asterisk) => {
                     query_builder =
@@ -127,6 +132,10 @@ impl Parser {
 
                 match current_token {
                     Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::RightParentheses => {
+                        self.unget_next_token(current_token);
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
@@ -217,6 +226,10 @@ impl Parser {
 
                 match current_token {
                     Token::SemiColon => {
+                        return Ok(query_builder.build());
+                    }
+                    Token::RightParentheses => {
+                        self.unget_next_token(current_token);
                         return Ok(query_builder.build());
                     }
                     Token::Comma => continue,
@@ -313,7 +326,7 @@ impl Parser {
                 // 현재 select_item은 종료된 것으로 판단.
                 Ok(select_item.build())
             }
-            Token::SemiColon => {
+            Token::SemiColon | Token::RightParentheses => {
                 self.unget_next_token(current_token);
                 // 현재 select_item은 종료된 것으로 판단.
                 Ok(select_item.build())

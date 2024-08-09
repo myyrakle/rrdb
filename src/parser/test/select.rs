@@ -28,6 +28,18 @@ fn test_select_query() {
 
     let test_cases = vec![
         TestCase {
+            name: "성공: SELECT 1".into(),
+            input: vec![Token::Select, Token::Integer(1)],
+            expected: SelectQuery::builder()
+                .add_select_item(
+                    SelectItem::builder()
+                        .set_item(SQLExpression::Integer(1))
+                        .build(),
+                )
+                .build(),
+            want_error: false,
+        },
+        TestCase {
             name: "성공: SELECT 1 as asdf FROM foo.bar".into(),
             input: vec![
                 Token::Select,
