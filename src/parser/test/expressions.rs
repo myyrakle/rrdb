@@ -10,7 +10,7 @@ use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
 use crate::ast::dml::parts::select_item::SelectItem;
 use crate::ast::dml::select::SelectQuery;
-use crate::ast::types::{ConditionalFunction, SQLExpression, UserDefinedFunction};
+use crate::ast::types::{ConditionalFunction, SQLExpression, SelectColumn, UserDefinedFunction};
 use crate::lexer::predule::OperatorToken;
 use crate::lexer::tokens::Token;
 use crate::parser::predule::Parser;
@@ -282,6 +282,35 @@ fn test_parse_expression() {
                     y: SQLExpression::Integer(5),
                 }
                 .into(),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "(3 + 1) BETWEEN 2 AND 44".into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Integer(3),
+                Token::Operator(OperatorToken::Plus),
+                Token::Integer(1),
+                Token::RightParentheses,
+                Token::Between,
+                Token::Integer(2),
+                Token::And,
+                Token::Integer(44),
+            ],
+            expected: BetweenExpression {
+                a: ParenthesesExpression {
+                    expression: BinaryOperatorExpression {
+                        operator: BinaryOperator::Add,
+                        lhs: SQLExpression::Integer(3),
+                        rhs: SQLExpression::Integer(1),
+                    }
+                    .into(),
+                }
+                .into(),
+                x: SQLExpression::Integer(2),
+                y: SQLExpression::Integer(44),
             }
             .into(),
             want_error: false,
@@ -658,6 +687,77 @@ fn test_parse_expression() {
             want_error: false,
         },
         TestCase {
+            name: r#"foo between 1 and 5"#.into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Between,
+                Token::Integer(1),
+                Token::And,
+                Token::Integer(5),
+            ],
+            expected: BetweenExpression {
+                a: SQLExpression::SelectColumn(SelectColumn::new(None, "foo".to_owned())),
+                x: SQLExpression::Integer(1),
+                y: SQLExpression::Integer(5),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"foo(1) + 10"#.into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::LeftParentheses,
+                Token::Integer(1),
+                Token::RightParentheses,
+                Token::Operator(OperatorToken::Plus),
+                Token::Integer(10),
+            ],
+            expected: BinaryOperatorExpression {
+                operator: BinaryOperator::Add,
+                lhs: CallExpression {
+                    function: UserDefinedFunction {
+                        database_name: None,
+                        function_name: "foo".into(),
+                    }
+                    .into(),
+                    arguments: vec![SQLExpression::Integer(1)],
+                }
+                .into(),
+                rhs: SQLExpression::Integer(10),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"foo(1) BETWEEN 1 and 5"#.into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::LeftParentheses,
+                Token::Integer(1),
+                Token::RightParentheses,
+                Token::Between,
+                Token::Integer(1),
+                Token::And,
+                Token::Integer(5),
+            ],
+            expected: BetweenExpression {
+                a: CallExpression {
+                    function: UserDefinedFunction {
+                        database_name: None,
+                        function_name: "foo".into(),
+                    }
+                    .into(),
+                    arguments: vec![SQLExpression::Integer(1)],
+                }
+                .into(),
+                x: SQLExpression::Integer(1),
+                y: SQLExpression::Integer(5),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
             name: "오류: * 5".into(),
             input: vec![Token::Operator(OperatorToken::Asterisk), Token::Integer(5)],
             expected: Default::default(),
@@ -666,6 +766,18 @@ fn test_parse_expression() {
         TestCase {
             name: "오류: (".into(),
             input: vec![Token::LeftParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: )".into(),
+            input: vec![Token::RightParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: DELETE".into(),
+            input: vec![Token::Delete],
             expected: Default::default(),
             want_error: true,
         },
