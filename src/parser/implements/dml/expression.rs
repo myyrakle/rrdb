@@ -361,14 +361,9 @@ impl Parser {
 
                     // 단항연산식일 경우
                     if lhs.is_unary() {
-                        let new_lhs = BinaryOperatorExpression {
-                            lhs,
-                            rhs: rhs_binary.lhs,
-                            operator,
-                        };
                         Ok(BinaryOperatorExpression {
-                            lhs: new_lhs.into(),
-                            rhs: rhs_binary.rhs,
+                            lhs: lhs,
+                            rhs: rhs,
                             operator: rhs_binary.operator,
                         }
                         .into())

@@ -998,6 +998,38 @@ fn test_parse_binary_expression() {
             want_error: false,
         },
         TestCase {
+            name: "-3 * 5 + 2".into(),
+            lhs: UnaryOperatorExpression {
+                operator: UnaryOperator::Neg,
+                operand: SQLExpression::Integer(3),
+            }
+            .into(),
+            input: vec![
+                Token::Operator(OperatorToken::Asterisk),
+                Token::LeftParentheses,
+                Token::Integer(5),
+                Token::Operator(OperatorToken::Plus),
+                Token::Integer(2),
+                Token::RightParentheses,
+            ],
+            expected: BinaryOperatorExpression {
+                operator: BinaryOperator::Add,
+                lhs: UnaryOperatorExpression {
+                    operator: UnaryOperator::Neg,
+                    operand: SQLExpression::Integer(3),
+                }
+                .into(),
+                rhs: BinaryOperatorExpression {
+                    operator: BinaryOperator::Add,
+                    lhs: SQLExpression::Integer(5),
+                    rhs: SQLExpression::Integer(2),
+                }
+                .into(),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
             name: "실패: 빈 토큰".into(),
             lhs: SQLExpression::Integer(3),
             input: vec![],
