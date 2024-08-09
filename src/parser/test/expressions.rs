@@ -8,6 +8,8 @@ use crate::ast::dml::expressions::not_between::NotBetweenExpression;
 use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
 use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
+use crate::ast::dml::parts::select_item::SelectItem;
+use crate::ast::dml::select::SelectQuery;
 use crate::ast::types::{ConditionalFunction, SQLExpression, UserDefinedFunction};
 use crate::lexer::predule::OperatorToken;
 use crate::lexer::tokens::Token;
@@ -573,6 +575,33 @@ fn test_parse_expression() {
                 operator: BinaryOperator::Add,
                 lhs: SQLExpression::Null,
                 rhs: SQLExpression::Null,
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: r#"(SELECT 1) + 10"#.into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Select,
+                Token::Integer(1),
+                Token::RightParentheses,
+                Token::Operator(OperatorToken::Plus),
+                Token::Integer(10),
+            ],
+            expected: BinaryOperatorExpression {
+                operator: BinaryOperator::Add,
+                lhs: SQLExpression::Subquery(
+                    SelectQuery::builder()
+                        .add_select_item(
+                            SelectItem::builder()
+                                .set_item(SQLExpression::Integer(1))
+                                .build(),
+                        )
+                        .build()
+                        .into(),
+                ),
+                rhs: SQLExpression::Integer(10),
             }
             .into(),
             want_error: false,
