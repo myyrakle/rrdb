@@ -1036,6 +1036,13 @@ fn test_parse_binary_expression() {
             expected: Default::default(),
             want_error: true,
         },
+        TestCase {
+            name: "실패: DELETE".into(),
+            lhs: SQLExpression::Integer(3),
+            input: vec![Token::Delete],
+            expected: Default::default(),
+            want_error: true,
+        },
     ];
 
     for t in test_cases {
