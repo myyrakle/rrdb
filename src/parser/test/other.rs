@@ -38,6 +38,20 @@ fn test_parse_show_query() {
             .into(),
             want_error: false,
         },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            context: Default::default(),
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: DELETe".into(),
+            input: vec![Token::Delete],
+            context: Default::default(),
+            expected: Default::default(),
+            want_error: true,
+        },
     ];
 
     for t in test_cases {
