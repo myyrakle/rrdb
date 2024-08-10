@@ -178,7 +178,7 @@ fn test_parse_backslash_query() {
         },
         TestCase {
             name: "오류: 빈 토큰".into(),
-            input: vec![Token::Backslash],
+            input: vec![],
             context: Default::default(),
             expected: Default::default(),
             want_error: true,
@@ -213,20 +213,54 @@ fn test_parse_backslash_query() {
 }
 
 #[test]
-pub fn use_databases_1() {
-    let text = r#"
-        Use asdf;
-    "#
-    .to_owned();
+fn test_parse_use_query() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SQLStatement,
+        want_error: bool,
+    }
 
-    let mut parser = Parser::with_string(text).unwrap();
+    let test_cases = vec![
+        TestCase {
+            name: "Use Database".into(),
+            input: vec![Token::Identifier("asdf".into())],
+            expected: UseDatabaseQuery {
+                database_name: "asdf".into(),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: DELETe".into(),
+            input: vec![Token::Delete],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
 
-    let expected = UseDatabaseQuery {
-        database_name: "asdf".into(),
-    };
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
 
-    assert_eq!(
-        parser.parse(ParserContext::default()).unwrap(),
-        vec![expected.into()],
-    );
+        let got = parser.parse_use_query(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+        }
+    }
 }
