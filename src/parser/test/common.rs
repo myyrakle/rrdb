@@ -213,6 +213,67 @@ fn test_parse_data_type() {
             expected: Default::default(),
             want_error: true,
         },
+        TestCase {
+            name: "오류: VARCHAR".into(),
+            input: vec![Token::Identifier("VARCHAR".into())],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: VARCHAR)".into(),
+            input: vec![Token::Identifier("VARCHAR".into()), Token::RightParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: VARCHAR(".into(),
+            input: vec![Token::Identifier("VARCHAR".into()), Token::LeftParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: VARCHAR(TRUE".into(),
+            input: vec![
+                Token::Identifier("VARCHAR".into()),
+                Token::LeftParentheses,
+                Token::Boolean(true),
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: VARCHAR(444".into(),
+            input: vec![
+                Token::Identifier("VARCHAR".into()),
+                Token::LeftParentheses,
+                Token::Integer(444),
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: VARCHAR(444(".into(),
+            input: vec![
+                Token::Identifier("VARCHAR".into()),
+                Token::LeftParentheses,
+                Token::Integer(444),
+                Token::LeftParentheses,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: asdf".into(),
+            input: vec![Token::Identifier("asdf".into())],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: DELETE".into(),
+            input: vec![Token::Delete],
+            expected: Default::default(),
+            want_error: true,
+        },
     ];
 
     for t in test_cases {
