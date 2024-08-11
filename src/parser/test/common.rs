@@ -190,3 +190,47 @@ fn test_parse_table_column() {
         }
     }
 }
+
+#[test]
+fn test_parse_data_type() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: DataType,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "INT".into(),
+            input: vec![Token::Identifier("INT".into())],
+            expected: DataType::Int,
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: Result<_, crate::errors::RRDBError> = parser.parse_data_type();
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
