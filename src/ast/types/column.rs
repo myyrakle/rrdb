@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::expression::SQLExpression;
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub struct Column {
     pub name: String,
     pub data_type: DataType,
