@@ -435,3 +435,65 @@ fn test_has_if_not_exists() {
         }
     }
 }
+
+#[test]
+fn test_has_if_exists() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: bool,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "IF EXISTS".into(),
+            input: vec![Token::If, Token::Exists],
+            expected: true,
+            want_error: false,
+        },
+        TestCase {
+            name: "IF DELETE".into(),
+            input: vec![Token::If, Token::Delete],
+            expected: false,
+            want_error: true,
+        },
+        TestCase {
+            name: "IF".into(),
+            input: vec![Token::If],
+            expected: false,
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: false,
+            want_error: true,
+        },
+        TestCase {
+            name: "DELETE".into(),
+            input: vec![Token::Delete],
+            expected: false,
+            want_error: false,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: Result<_, crate::errors::RRDBError> = parser.has_if_exists();
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
