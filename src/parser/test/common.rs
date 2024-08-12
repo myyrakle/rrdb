@@ -1,6 +1,9 @@
 #![cfg(test)]
+use crate::ast::dml::expressions::subquery::SubqueryExpression;
 use crate::ast::dml::parts::join::JoinType;
-use crate::ast::types::{Column, DataType, SelectColumn, TableName};
+use crate::ast::dml::parts::select_item::SelectItem;
+use crate::ast::dml::select::SelectQuery;
+use crate::ast::types::{Column, DataType, SQLExpression, SelectColumn, TableName};
 use crate::lexer::tokens::Token;
 use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
@@ -1236,6 +1239,86 @@ fn test_parse_table_alias() {
 
         if let Ok(alias) = got {
             assert_eq!(alias, t.expected, "TC: {}", t.name);
+        }
+    }
+}
+
+#[test]
+fn test_parse_subquery() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SubqueryExpression,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "(SELECT 1)".into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Select,
+                Token::Integer(1),
+                Token::RightParentheses,
+            ],
+            expected: SubqueryExpression::Select(Box::new(
+                SelectQuery::builder()
+                    .add_select_item(
+                        SelectItem::builder()
+                            .set_item(SQLExpression::Integer(1))
+                            .build(),
+                    )
+                    .build(),
+            )),
+            want_error: false,
+        },
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: )".into(),
+            input: vec![Token::RightParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: (".into(),
+            input: vec![Token::LeftParentheses],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: (SELECT 1".into(),
+            input: vec![Token::LeftParentheses, Token::Select, Token::Integer(1)],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: (SELECT 1;;".into(),
+            input: vec![
+                Token::LeftParentheses,
+                Token::Select,
+                Token::Integer(1),
+                Token::SemiColon,
+                Token::SemiColon,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_subquery(Default::default());
+
+        assert_eq!(got.is_err(), t.want_error, "TC: {}", t.name);
+
+        if let Ok(subquery) = got {
+            assert_eq!(subquery, t.expected, "TC: {}", t.name);
         }
     }
 }
