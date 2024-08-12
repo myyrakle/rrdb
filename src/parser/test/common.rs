@@ -838,3 +838,53 @@ fn test_next_token_is_order_by() {
         assert_eq!(got, t.expected, "TC: {}", t.name);
     }
 }
+
+#[test]
+fn test_next_token_is_group_by() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: false,
+        },
+        TestCase {
+            name: "GROUP".into(),
+            input: vec![Token::Group],
+            expected: false,
+        },
+        TestCase {
+            name: "GROUP BY".into(),
+            input: vec![Token::Group, Token::By],
+            expected: true,
+        },
+        TestCase {
+            name: "GROUP DELETE".into(),
+            input: vec![Token::Group, Token::Delete],
+            expected: false,
+        },
+        TestCase {
+            name: "DELETE".into(),
+            input: vec![Token::Delete],
+            expected: false,
+        },
+        TestCase {
+            name: "foo".into(),
+            input: vec![Token::Identifier("foo".into())],
+            expected: false,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: bool = parser.next_token_is_group_by();
+
+        assert_eq!(got, t.expected, "TC: {}", t.name);
+    }
+}
