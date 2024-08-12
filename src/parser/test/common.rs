@@ -1,5 +1,5 @@
 #![cfg(test)]
-use crate::ast::types::{Column, DataType, TableName};
+use crate::ast::types::{Column, DataType, SelectColumn, TableName};
 use crate::lexer::tokens::Token;
 use crate::parser::predule::Parser;
 
@@ -482,6 +482,76 @@ fn test_has_if_exists() {
         let mut parser = Parser::new(t.input);
 
         let got: Result<_, crate::errors::RRDBError> = parser.has_if_exists();
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
+        }
+    }
+}
+
+#[test]
+fn test_parse_select_column() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SelectColumn,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "id".into(),
+            input: vec![Token::Identifier("id".into())],
+            expected: SelectColumn::new(None, "id".into()),
+            want_error: false,
+        },
+        TestCase {
+            name: "foo.id".into(),
+            input: vec![
+                Token::Identifier("foo".into()),
+                Token::Period,
+                Token::Identifier("id".into()),
+            ],
+            expected: SelectColumn::new(Some("foo".into()), "id".into()),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: foo.DELETE".into(),
+            input: vec![
+                Token::Identifier("foo".into()),
+                Token::Period,
+                Token::Delete,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "DELETE".into(),
+            input: vec![Token::Delete],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: Result<_, crate::errors::RRDBError> = parser.parse_select_column();
 
         assert_eq!(
             got.is_err(),
