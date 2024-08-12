@@ -788,3 +788,53 @@ fn test_next_token_is_table_alias() {
         assert_eq!(got, t.expected, "TC: {}", t.name);
     }
 }
+
+#[test]
+fn test_next_token_is_order_by() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: false,
+        },
+        TestCase {
+            name: "ORDER".into(),
+            input: vec![Token::Order],
+            expected: false,
+        },
+        TestCase {
+            name: "ORDER BY".into(),
+            input: vec![Token::Order, Token::By],
+            expected: true,
+        },
+        TestCase {
+            name: "ORDER DELETE".into(),
+            input: vec![Token::Order, Token::Delete],
+            expected: false,
+        },
+        TestCase {
+            name: "DELETE".into(),
+            input: vec![Token::Delete],
+            expected: false,
+        },
+        TestCase {
+            name: "foo".into(),
+            input: vec![Token::Identifier("foo".into())],
+            expected: false,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: bool = parser.next_token_is_order_by();
+
+        assert_eq!(got, t.expected, "TC: {}", t.name);
+    }
+}
