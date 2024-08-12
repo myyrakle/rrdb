@@ -1,6 +1,7 @@
 #![cfg(test)]
 use crate::ast::types::{Column, DataType, SelectColumn, TableName};
 use crate::lexer::tokens::Token;
+use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 
 #[test]
@@ -565,5 +566,50 @@ fn test_parse_select_column() {
         if let Ok(statements) = got {
             assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
+    }
+}
+
+#[test]
+fn test_next_token_is_binary_operator() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: bool,
+        context: ParserContext,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: false,
+            context: Default::default(),
+        },
+        TestCase {
+            name: "AND".into(),
+            input: vec![Token::And],
+            expected: true,
+            context: Default::default(),
+        },
+        TestCase {
+            name: "IS".into(),
+            input: vec![Token::Is],
+            expected: true,
+            context: Default::default(),
+        },
+        TestCase {
+            name: "NOT".into(),
+            input: vec![Token::Not],
+            expected: false,
+            context: Default::default(),
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: bool = parser.next_token_is_binary_operator(t.context);
+
+        assert_eq!(got, t.expected, "TC: {}", t.name);
     }
 }
