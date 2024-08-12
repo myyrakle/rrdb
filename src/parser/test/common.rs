@@ -613,3 +613,43 @@ fn test_next_token_is_binary_operator() {
         assert_eq!(got, t.expected, "TC: {}", t.name);
     }
 }
+
+#[test]
+fn test_next_token_is_right_parentheses() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: false,
+        },
+        TestCase {
+            name: ")".into(),
+            input: vec![Token::RightParentheses],
+            expected: true,
+        },
+        TestCase {
+            name: "(".into(),
+            input: vec![Token::LeftParentheses],
+            expected: false,
+        },
+        TestCase {
+            name: "DELETE".into(),
+            input: vec![Token::Delete],
+            expected: false,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: bool = parser.next_token_is_right_parentheses();
+
+        assert_eq!(got, t.expected, "TC: {}", t.name);
+    }
+}
