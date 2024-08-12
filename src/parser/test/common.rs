@@ -402,6 +402,12 @@ fn test_has_if_not_exists() {
             want_error: true,
         },
         TestCase {
+            name: "IF NULL".into(),
+            input: vec![Token::If, Token::Null],
+            expected: false,
+            want_error: true,
+        },
+        TestCase {
             name: "IF".into(),
             input: vec![Token::If],
             expected: false,
@@ -1177,6 +1183,11 @@ fn test_get_next_join_type() {
             input: vec![Token::Full, Token::Outer, Token::Select],
             expected: None,
         },
+        TestCase {
+            name: "Full Delete".into(),
+            input: vec![Token::Full, Token::Delete],
+            expected: None,
+        },
     ];
 
     for t in test_cases {
@@ -1225,6 +1236,12 @@ fn test_parse_table_alias() {
         TestCase {
             name: "As foo".into(),
             input: vec![Token::As, Token::Identifier("foo".into())],
+            expected: "foo".into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "foo".into(),
+            input: vec![Token::Identifier("foo".into())],
             expected: "foo".into(),
             want_error: false,
         },
