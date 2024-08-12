@@ -1,4 +1,5 @@
 #![cfg(test)]
+use crate::ast::dml::parts::join::JoinType;
 use crate::ast::types::{Column, DataType, SelectColumn, TableName};
 use crate::lexer::tokens::Token;
 use crate::parser::context::ParserContext;
@@ -1054,6 +1055,131 @@ fn test_next_token_is_default() {
         let mut parser = Parser::new(t.input);
 
         let got: bool = parser.next_token_is_default();
+
+        assert_eq!(got, t.expected, "TC: {}", t.name);
+    }
+}
+
+#[test]
+fn test_get_next_join_type() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: Option<JoinType>,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: None,
+        },
+        TestCase {
+            name: "Inner".into(),
+            input: vec![Token::Inner],
+            expected: None,
+        },
+        TestCase {
+            name: "Inner DELETE".into(),
+            input: vec![Token::Inner, Token::Delete],
+            expected: None,
+        },
+        TestCase {
+            name: "Inner Join".into(),
+            input: vec![Token::Inner, Token::Join],
+            expected: Some(JoinType::InnerJoin),
+        },
+        TestCase {
+            name: "Left".into(),
+            input: vec![Token::Left],
+            expected: None,
+        },
+        TestCase {
+            name: "Left Join".into(),
+            input: vec![Token::Left, Token::Join],
+            expected: Some(JoinType::LeftOuterJoin),
+        },
+        TestCase {
+            name: "Left Outer Join".into(),
+            input: vec![Token::Left, Token::Outer, Token::Join],
+            expected: Some(JoinType::LeftOuterJoin),
+        },
+        TestCase {
+            name: "Left Outer Delete".into(),
+            input: vec![Token::Left, Token::Outer, Token::Delete],
+            expected: None,
+        },
+        TestCase {
+            name: "Left Outer".into(),
+            input: vec![Token::Left, Token::Outer],
+            expected: None,
+        },
+        TestCase {
+            name: "Left Delete".into(),
+            input: vec![Token::Left, Token::Delete],
+            expected: None,
+        },
+        TestCase {
+            name: "Right".into(),
+            input: vec![Token::Right],
+            expected: None,
+        },
+        TestCase {
+            name: "Right Join".into(),
+            input: vec![Token::Right, Token::Join],
+            expected: Some(JoinType::RightOuterJoin),
+        },
+        TestCase {
+            name: "Right Outer Join".into(),
+            input: vec![Token::Right, Token::Outer, Token::Join],
+            expected: Some(JoinType::RightOuterJoin),
+        },
+        TestCase {
+            name: "Right Outer".into(),
+            input: vec![Token::Right, Token::Outer],
+            expected: None,
+        },
+        TestCase {
+            name: "Right Outer Delete".into(),
+            input: vec![Token::Right, Token::Outer, Token::Delete],
+            expected: None,
+        },
+        TestCase {
+            name: "Right Delete".into(),
+            input: vec![Token::Right, Token::Delete],
+            expected: None,
+        },
+        TestCase {
+            name: "Full".into(),
+            input: vec![Token::Full],
+            expected: None,
+        },
+        TestCase {
+            name: "Full Join".into(),
+            input: vec![Token::Full, Token::Join],
+            expected: Some(JoinType::FullOuterJoin),
+        },
+        TestCase {
+            name: "Full Outer Join".into(),
+            input: vec![Token::Full, Token::Outer, Token::Join],
+            expected: Some(JoinType::FullOuterJoin),
+        },
+        TestCase {
+            name: "Full Outer".into(),
+            input: vec![Token::Full, Token::Outer],
+            expected: None,
+        },
+        TestCase {
+            name: "Full Outer Select".into(),
+            input: vec![Token::Full, Token::Outer, Token::Select],
+            expected: None,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.get_next_join_type();
 
         assert_eq!(got, t.expected, "TC: {}", t.name);
     }
