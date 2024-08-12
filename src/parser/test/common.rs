@@ -693,3 +693,58 @@ fn test_next_token_is_comma() {
         assert_eq!(got, t.expected, "TC: {}", t.name);
     }
 }
+
+#[test]
+fn test_next_token_is_between() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: false,
+        },
+        TestCase {
+            name: "BETWEEN".into(),
+            input: vec![Token::Between],
+            expected: true,
+        },
+        TestCase {
+            name: "NOT BETWEEN".into(),
+            input: vec![Token::Not, Token::Between],
+            expected: true,
+        },
+        TestCase {
+            name: "NOT NULL".into(),
+            input: vec![Token::Not, Token::Null],
+            expected: false,
+        },
+        TestCase {
+            name: "NOT".into(),
+            input: vec![Token::Not],
+            expected: false,
+        },
+        TestCase {
+            name: "(".into(),
+            input: vec![Token::LeftParentheses],
+            expected: false,
+        },
+        TestCase {
+            name: "DELETE".into(),
+            input: vec![Token::Delete],
+            expected: false,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: bool = parser.next_token_is_between();
+
+        assert_eq!(got, t.expected, "TC: {}", t.name);
+    }
+}
