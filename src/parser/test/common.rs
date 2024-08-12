@@ -1184,3 +1184,58 @@ fn test_get_next_join_type() {
         assert_eq!(got, t.expected, "TC: {}", t.name);
     }
 }
+
+#[test]
+fn test_parse_table_alias() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: String,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: "".into(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: Delete".into(),
+            input: vec![Token::Delete],
+            expected: "".into(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: As".into(),
+            input: vec![Token::As],
+            expected: "".into(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: As Delete".into(),
+            input: vec![Token::As, Token::Delete],
+            expected: "".into(),
+            want_error: true,
+        },
+        TestCase {
+            name: "As foo".into(),
+            input: vec![Token::As, Token::Identifier("foo".into())],
+            expected: "foo".into(),
+            want_error: false,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.parse_table_alias();
+
+        assert_eq!(got.is_err(), t.want_error, "TC: {}", t.name);
+
+        if let Ok(alias) = got {
+            assert_eq!(alias, t.expected, "TC: {}", t.name);
+        }
+    }
+}
