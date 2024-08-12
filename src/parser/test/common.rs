@@ -928,3 +928,53 @@ fn test_next_token_is_column() {
         assert_eq!(got, t.expected, "TC: {}", t.name);
     }
 }
+
+#[test]
+fn test_next_token_is_not_null() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "토큰 없음".into(),
+            input: vec![],
+            expected: false,
+        },
+        TestCase {
+            name: "NOT".into(),
+            input: vec![Token::Not],
+            expected: false,
+        },
+        TestCase {
+            name: "NOT NULL".into(),
+            input: vec![Token::Not, Token::Null],
+            expected: true,
+        },
+        TestCase {
+            name: "NOT DELETE".into(),
+            input: vec![Token::Not, Token::Delete],
+            expected: false,
+        },
+        TestCase {
+            name: "DELETE".into(),
+            input: vec![Token::Delete],
+            expected: false,
+        },
+        TestCase {
+            name: "AS".into(),
+            input: vec![Token::As],
+            expected: false,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got: bool = parser.next_token_is_not_null();
+
+        assert_eq!(got, t.expected, "TC: {}", t.name);
+    }
+}
