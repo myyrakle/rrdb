@@ -2,7 +2,12 @@
 
 use crate::{
     ast::{
-        ddl::{create_database::CreateDatabaseQuery, create_table::CreateTableQuery},
+        ddl::{
+            alter_database::{AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo},
+            alter_table::{AlterTableAction, AlterTableQuery, AlterTableRenameColumn},
+            create_database::CreateDatabaseQuery,
+            create_table::CreateTableQuery,
+        },
         types::{Column, DataType, TableName},
         SQLStatement,
     },
@@ -75,6 +80,94 @@ fn test_handle_create_query() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
         let got = parser.handle_create_query(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+        }
+    }
+}
+
+#[test]
+fn test_handle_alter_query() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SQLStatement,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "ALTER DATABASE foo RENAME TO bar".into(),
+            input: vec![
+                Token::Database,
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::To,
+                Token::Identifier("bar".to_owned()),
+            ],
+            expected: AlterDatabaseQuery::builder()
+                .set_name("foo".to_owned())
+                .set_action(AlterDatabaseAction::RenameTo(AlterDatabaseRenameTo {
+                    name: "bar".into(),
+                }))
+                .build()
+                .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "ALTER TABLE foo RENAME a to b".into(),
+            input: vec![
+                Token::Table,
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Identifier("a".to_owned()),
+                Token::To,
+                Token::Identifier("b".to_owned()),
+            ],
+            expected: AlterTableQuery::builder()
+                .set_table(TableName::new(None, "foo".to_owned()))
+                .set_action(AlterTableAction::RenameColumn(AlterTableRenameColumn {
+                    from_name: "a".into(),
+                    to_name: "b".into(),
+                }))
+                .build()
+                .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: NULL".into(),
+            input: vec![
+                Token::Null,
+                Token::Null,
+                Token::Null,
+                Token::Null,
+                Token::Null,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.handle_alter_query(Default::default());
 
         assert_eq!(
             got.is_err(),
