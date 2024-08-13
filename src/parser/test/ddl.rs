@@ -767,6 +767,12 @@ fn test_handle_drop_table_query() {
             want_error: true,
         },
         TestCase {
+            name: "오류: DROP TABLE IF EXISTS".into(),
+            input: vec![Token::If, Token::Exists],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
             name: "오류: 빈 토큰".into(),
             input: vec![],
             expected: Default::default(),
