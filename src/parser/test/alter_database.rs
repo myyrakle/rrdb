@@ -4,7 +4,6 @@ use crate::ast::ddl::alter_database::{
 };
 use crate::ast::SQLStatement;
 use crate::lexer::tokens::Token;
-use crate::parser::context::ParserContext;
 use crate::parser::predule::Parser;
 
 #[test]
@@ -36,6 +35,23 @@ fn test_handle_alter_database_query() {
             want_error: false,
         },
         TestCase {
+            name: "ALTER DATABASE foo RENAME TO bar".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::To,
+                Token::Identifier("bar".to_owned()),
+            ],
+            expected: AlterDatabaseQuery::builder()
+                .set_name("foo".to_owned())
+                .set_action(AlterDatabaseAction::RenameTo(AlterDatabaseRenameTo {
+                    name: "bar".into(),
+                }))
+                .build()
+                .into(),
+            want_error: false,
+        },
+        TestCase {
             name: "ALTER DATABASE foo".into(),
             input: vec![Token::Identifier("foo".to_owned())],
             expected: AlterDatabaseQuery::builder()
@@ -43,6 +59,61 @@ fn test_handle_alter_database_query() {
                 .build()
                 .into(),
             want_error: false,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER DATABASE DELETE".into(),
+            input: vec![Token::Delete],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER DATABASE foo RENAME".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::Rename],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER DATABASE foo RENAME CREATE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Create,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER DATABASE foo RENAME TO".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::To,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER DATABASE foo RENAME TO ALTER".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::To,
+                Token::Alter,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER DATABASE foo DELETE".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::Delete],
+            expected: Default::default(),
+            want_error: true,
         },
     ];
 
