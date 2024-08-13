@@ -605,6 +605,120 @@ fn test_handle_alter_table_query() {
             expected: Default::default(),
             want_error: true,
         },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::Alter],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar SET".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+                Token::Set,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar SET DATA TYPE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+                Token::Set,
+                Token::Data,
+                Token::Type,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar SET DEFAULT".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+                Token::Set,
+                Token::Default,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar SET DELETE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+                Token::Set,
+                Token::Delete,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar DROP CREATE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+                Token::Drop,
+                Token::Create,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar TYPE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+                Token::Type,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter bar NULL".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Identifier("bar".to_owned()),
+                Token::Null,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Alter NULL".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Alter,
+                Token::Null,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo NULL".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::Null],
+            expected: Default::default(),
+            want_error: true,
+        },
     ];
 
     for t in test_cases {
