@@ -369,3 +369,228 @@ fn test_handle_create_table_query() {
         }
     }
 }
+
+#[test]
+fn test_handle_alter_table_query() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SQLStatement,
+        want_error: bool,
+    }
+
+    let test_cases = vec![
+        TestCase {
+            name: "ALTER TABLE foo RENAME a to b".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Identifier("a".to_owned()),
+                Token::To,
+                Token::Identifier("b".to_owned()),
+            ],
+            expected: AlterTableQuery::builder()
+                .set_table(TableName::new(None, "foo".to_owned()))
+                .set_action(AlterTableAction::RenameColumn(AlterTableRenameColumn {
+                    from_name: "a".into(),
+                    to_name: "b".into(),
+                }))
+                .build()
+                .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: 빈 토큰".into(),
+            input: vec![],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "ALTER TABLE foo".into(),
+            input: vec![Token::Identifier("foo".to_owned())],
+            expected: AlterTableQuery::builder()
+                .set_table(TableName::new(None, "foo".to_owned()))
+                .build()
+                .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "ALTER TABLE foo;".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::SemiColon],
+            expected: AlterTableQuery::builder()
+                .set_table(TableName::new(None, "foo".to_owned()))
+                .build()
+                .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::Rename],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME TO".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::To,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME TO TO".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::To,
+                Token::To,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME COLUMN".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Column,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME COLUMN COLUMN".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Column,
+                Token::Column,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME COLUMN a".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Column,
+                Token::Identifier("a".to_owned()),
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME COLUMN a DELETE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Column,
+                Token::Identifier("a".to_owned()),
+                Token::Delete,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME COLUMN a TO".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Column,
+                Token::Identifier("a".to_owned()),
+                Token::To,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME COLUMN a TO DELETE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Column,
+                Token::Identifier("a".to_owned()),
+                Token::To,
+                Token::Delete,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME a".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Identifier("a".to_owned()),
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME a NULL".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Identifier("a".to_owned()),
+                Token::Null,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME a TO".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Identifier("a".to_owned()),
+                Token::To,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME a TO CREATE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Identifier("a".to_owned()),
+                Token::To,
+                Token::Create,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo RENAME UPDATE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Rename,
+                Token::Update,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+    ];
+
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
+
+        let got = parser.handle_alter_table_query(Default::default());
+
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "{}: want_error: {}, error: {:?}",
+            t.name,
+            t.want_error,
+            got.err()
+        );
+
+        if let Ok(statements) = got {
+            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+        }
+    }
+}
