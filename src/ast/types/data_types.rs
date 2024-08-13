@@ -9,6 +9,12 @@ pub enum DataType {
     Varchar(i64),
 }
 
+impl Default for DataType {
+    fn default() -> Self {
+        DataType::Int
+    }
+}
+
 impl DataType {
     pub fn type_code(&self) -> isize {
         match self {
