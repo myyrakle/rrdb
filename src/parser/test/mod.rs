@@ -17,3 +17,5 @@ pub(crate) mod other;
 pub(crate) mod tcl;
 
 pub(crate) mod common;
+
+pub(crate) mod ddl;
