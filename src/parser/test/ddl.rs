@@ -573,6 +573,38 @@ fn test_handle_alter_table_query() {
             expected: Default::default(),
             want_error: true,
         },
+        TestCase {
+            name: "오류: ALTER TABLE foo ADD".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::Add],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo ADD DELETE".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Add,
+                Token::Delete,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Drop".into(),
+            input: vec![Token::Identifier("foo".to_owned()), Token::Drop],
+            expected: Default::default(),
+            want_error: true,
+        },
+        TestCase {
+            name: "오류: ALTER TABLE foo Drop Drop".into(),
+            input: vec![
+                Token::Identifier("foo".to_owned()),
+                Token::Drop,
+                Token::Drop,
+            ],
+            expected: Default::default(),
+            want_error: true,
+        },
     ];
 
     for t in test_cases {
