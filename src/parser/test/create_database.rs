@@ -1,44 +1,61 @@
 #![cfg(test)]
 use crate::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::parser::context::ParserContext;
+use crate::ast::SQLStatement;
+use crate::lexer::tokens::Token;
 use crate::parser::predule::Parser;
 
 #[test]
-pub fn create_database_1() {
-    let text = r#"
-        CREATE DATABASE IF Not exists test_db;
-    "#
-    .to_owned();
+fn test_handle_create_database_query() {
+    struct TestCase {
+        name: String,
+        input: Vec<Token>,
+        expected: SQLStatement,
+        want_error: bool,
+    }
 
-    let mut parser = Parser::with_string(text).unwrap();
+    let test_cases = vec![
+        TestCase {
+            name: "CREATE DATABASE test_db;".into(),
+            input: vec![Token::Identifier("test_db".to_owned()), Token::SemiColon],
+            expected: CreateDatabaseQuery::builder()
+                .set_name("test_db".to_owned())
+                .build()
+                .into(),
+            want_error: false,
+        },
+        TestCase {
+            name: "CREATE DATABASE IF NOT EXISTS test_db;".into(),
+            input: vec![
+                Token::If,
+                Token::Not,
+                Token::Exists,
+                Token::Identifier("test_db".to_owned()),
+                Token::SemiColon,
+            ],
+            expected: CreateDatabaseQuery::builder()
+                .set_name("test_db".to_owned())
+                .set_if_not_exists(true)
+                .build()
+                .into(),
+            want_error: false,
+        },
+    ];
 
-    let expected = CreateDatabaseQuery::builder()
-        .set_name("test_db".to_owned())
-        .set_if_not_exists(true)
-        .build();
+    for t in test_cases {
+        let mut parser = Parser::new(t.input);
 
-    assert_eq!(
-        parser.parse(ParserContext::default()).unwrap(),
-        vec![expected],
-    );
-}
+        let got = parser.handle_create_database_query();
 
-#[test]
-pub fn create_database_2() {
-    let text = r#"
-        CREATE DATABASE test_db;
-    "#
-    .to_owned();
+        assert_eq!(
+            got.is_err(),
+            t.want_error,
+            "TC: {} Error: {:?}",
+            t.name,
+            got.err()
+        );
 
-    let mut parser = Parser::with_string(text).unwrap();
-
-    let expected = CreateDatabaseQuery::builder()
-        .set_name("test_db".to_owned())
-        .set_if_not_exists(false)
-        .build();
-
-    assert_eq!(
-        parser.parse(ParserContext::default()).unwrap(),
-        vec![expected],
-    );
+        if let Ok(alias) = got {
+            assert_eq!(alias, t.expected, "TC: {}", t.name);
+        }
+    }
 }

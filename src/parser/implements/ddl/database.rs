@@ -33,7 +33,9 @@ impl Parser {
             }
             _ => {
                 return Err(ParsingError::wrap(
-                    "not supported command. possible commands: (create database)",
+                    format!(
+                        "not supported command. possible commands: (create database): {current_token:?}",
+                    )
                 ));
             }
         }
@@ -74,9 +76,9 @@ impl Parser {
                 query_builder = query_builder.set_name(identifier);
             }
             _ => {
-                return Err(ParsingError::wrap(
-                    "not supported command. possible commands: (create database)",
-                ));
+                return Err(ParsingError::wrap(format!(
+                    "not supported command. possible commands: (drop database): {current_token:?}",
+                )));
             }
         }
 
