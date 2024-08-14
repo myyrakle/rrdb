@@ -56,7 +56,6 @@ impl Parser {
 
             match current_token {
                 Token::RightParentheses => {
-                    self.unget_next_token(current_token);
                     break;
                 }
                 _ => {
@@ -65,20 +64,6 @@ impl Parser {
                     query_builder = query_builder.add_column(column);
                 }
             }
-        }
-
-        // 닫는 괄호 체크
-        if !self.has_next_token() {
-            return Err(ParsingError::wrap("E1209 need more tokens"));
-        }
-
-        let current_token = self.get_next_token();
-
-        if Token::RightParentheses != current_token {
-            return Err(ParsingError::wrap(format!(
-                "E1210 expected ')'. but your input word is '{:?}'",
-                current_token
-            )));
         }
 
         if !self.has_next_token() {
