@@ -55,6 +55,7 @@ impl From<UpdateQuery> for SQLStatement {
 }
 
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod tests {
     use crate::ast::types::SQLExpression;
 
@@ -88,6 +89,24 @@ mod tests {
                     value: SQLExpression::String("b".into()),
                 }],
             }
+        );
+    }
+
+    #[test]
+    fn test_From_UpdateQuery_for_SQLStatement() {
+        let update_query = UpdateQuery::builder()
+            .set_target_table(TableName::new(None, "table".into()))
+            .add_update_item(UpdateItem {
+                column: "a".into(),
+                value: SQLExpression::String("b".into()),
+            })
+            .set_where(WhereClause {
+                expression: SQLExpression::String("a".into()),
+            })
+            .build();
+        assert_eq!(
+            SQLStatement::from(update_query.clone()),
+            SQLStatement::DML(DMLStatement::UpdateQuery(update_query))
         );
     }
 }
