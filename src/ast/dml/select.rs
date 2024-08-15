@@ -299,8 +299,8 @@ mod tests {
             .build();
 
         assert_eq!(
-            select_query,
-            SelectQuery {
+            SQLStatement::from(select_query),
+            SQLStatement::DML(DMLStatement::SelectQuery(SelectQuery {
                 select_items: vec![SelectKind::SelectItem(SelectItem {
                     item: Some(SQLExpression::String("a".into())),
                     alias: None
@@ -314,7 +314,7 @@ mod tests {
                 limit: None,
                 offset: None,
                 has_aggregate: false,
-            }
+            }))
         );
     }
 }

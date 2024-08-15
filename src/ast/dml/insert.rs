@@ -80,14 +80,14 @@ mod tests {
             .build();
 
         assert_eq!(
-            insert_query,
-            InsertQuery {
+            SQLStatement::from(insert_query),
+            SQLStatement::DML(DMLStatement::InsertQuery(InsertQuery {
                 into_table: Some(TableName::new(None, "table".into())),
                 columns: vec!["a".into(), "b".into()],
                 data: InsertData::Values(vec![InsertValue {
                     list: vec![Some(SQLExpression::String("a".into()))],
                 }]),
-            }
+            }))
         );
     }
 }
