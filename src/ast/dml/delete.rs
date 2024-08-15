@@ -48,6 +48,7 @@ impl From<DeleteQuery> for SQLStatement {
 }
 
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod tests {
     use crate::ast::types::SQLExpression;
 
@@ -74,6 +75,22 @@ mod tests {
                     expression: SQLExpression::String("a".into()),
                 }),
             }
+        );
+    }
+
+    #[test]
+    fn test_From_DeleteQuery_for_SQLStatement() {
+        let delete_query = DeleteQuery::builder()
+            .set_from_table(TableName::new(None, "table".into()))
+            .set_where(WhereClause {
+                expression: SQLExpression::String("a".into()),
+            })
+            .build();
+
+        let sql_statement: SQLStatement = delete_query.clone().into();
+        assert_eq!(
+            sql_statement,
+            SQLStatement::DML(DMLStatement::DeleteQuery(delete_query))
         );
     }
 }
