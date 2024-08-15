@@ -85,6 +85,17 @@ pub fn select_text() {
             want_error: false,
             expected: vec![Token::Select, Token::String("".to_owned())],
         },
+        TestCase {
+            name: "빈 문자열 as foo".to_owned(),
+            input: r#"SELECT '' as foo"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::String("".to_owned()),
+                Token::As,
+                Token::Identifier("foo".to_owned()),
+            ],
+        },
     ];
 
     for t in test_cases {
@@ -277,6 +288,17 @@ pub fn test_identifier() {
             input: r#"SELECT `foo`"#.to_owned(),
             want_error: false,
             expected: vec![Token::Select, Token::Identifier("foo".to_owned())],
+        },
+        TestCase {
+            name: "백틱 파싱 as foo".to_owned(),
+            input: r#"SELECT `foo` as foo"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Identifier("foo".to_owned()),
+                Token::As,
+                Token::Identifier("foo".to_owned()),
+            ],
         },
         TestCase {
             name: "백틱 안에 백틱 파싱".to_owned(),
