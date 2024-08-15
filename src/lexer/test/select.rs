@@ -180,6 +180,60 @@ pub fn test_operators() {
                 Token::Integer(2),
             ],
         },
+        TestCase {
+            name: "연산자: -".to_owned(),
+            input: r#"SELECT 1 - 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Minus),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: +".to_owned(),
+            input: r#"SELECT 1 + 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Plus),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: *".to_owned(),
+            input: r#"SELECT 1 * 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Asterisk),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: =".to_owned(),
+            input: r#"SELECT 1 = 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Eq),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: !".to_owned(),
+            input: r#"SELECT ! True"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Operator(OperatorToken::Not),
+                Token::Boolean(true),
+            ],
+        },
     ];
 
     for t in test_cases {
@@ -322,3 +376,15 @@ pub fn select_from_where_1() {
 //         ]
 //     );
 // }
+
+#[test]
+fn test_command_query() {
+    let text = r#"\l"#.to_owned();
+
+    let tokens = Tokenizer::string_to_tokens(text).unwrap();
+
+    assert_eq!(
+        tokens,
+        vec![Token::Backslash, Token::Identifier("l".to_owned()),]
+    );
+}
