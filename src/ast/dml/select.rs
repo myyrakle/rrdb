@@ -287,4 +287,34 @@ mod tests {
         assert_eq!(aggregate_columns.len(), 1);
         assert_eq!(aggregate_columns[0].column_name, "bar");
     }
+
+    #[test]
+    fn test_From_SelectQuery_for_SQLStatement() {
+        let select_query = SelectQuery::builder()
+            .add_select_item(
+                SelectItem::builder()
+                    .set_item(SQLExpression::String("a".into()))
+                    .build(),
+            )
+            .build();
+
+        assert_eq!(
+            select_query,
+            SelectQuery {
+                select_items: vec![SelectKind::SelectItem(SelectItem {
+                    item: Some(SQLExpression::String("a".into())),
+                    alias: None
+                })],
+                from_table: None,
+                join_clause: vec![],
+                where_clause: None,
+                order_by_clause: None,
+                group_by_clause: None,
+                having_clause: None,
+                limit: None,
+                offset: None,
+                has_aggregate: false,
+            }
+        );
+    }
 }
