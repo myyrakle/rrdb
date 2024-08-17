@@ -244,6 +244,17 @@ pub fn test_operators() {
             ],
         },
         TestCase {
+            name: "연산자: !=".to_owned(),
+            input: r#"SELECT 1 != 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Neq),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
             name: "연산자: !".to_owned(),
             input: r#"SELECT ! True"#.to_owned(),
             want_error: false,
