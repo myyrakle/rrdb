@@ -311,7 +311,19 @@ impl Tokenizer {
                         Token::Operator(OperatorToken::Lt)
                     }
                 }
-                '>' => Token::Operator(OperatorToken::Gt), // TODO: >= 연산자 처리
+                '>' => {
+                    // 다음 문자가 =일 경우 >= 연산자로 처리
+
+                    self.read_char();
+
+                    if self.last_char == '=' {
+                        Token::Operator(OperatorToken::Gte)
+                    } else {
+                        self.unread_char();
+
+                        Token::Operator(OperatorToken::Gt)
+                    }
+                }
                 _ => {
                     return Err(LexingError::wrap(format!(
                         "unexpected operator: {:?}",
