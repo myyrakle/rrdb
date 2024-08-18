@@ -189,6 +189,17 @@ pub fn test_operators() {
             ],
         },
         TestCase {
+            name: "연산자: <=".to_owned(),
+            input: r#"SELECT 1 <= 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Lte),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
             name: "연산자: >".to_owned(),
             input: r#"SELECT 1 > 2"#.to_owned(),
             want_error: false,
@@ -196,6 +207,17 @@ pub fn test_operators() {
                 Token::Select,
                 Token::Integer(1),
                 Token::Operator(OperatorToken::Gt),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: >=".to_owned(),
+            input: r#"SELECT 1 >= 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Gte),
                 Token::Integer(2),
             ],
         },
@@ -240,6 +262,17 @@ pub fn test_operators() {
                 Token::Select,
                 Token::Integer(1),
                 Token::Operator(OperatorToken::Eq),
+                Token::Integer(2),
+            ],
+        },
+        TestCase {
+            name: "연산자: !=".to_owned(),
+            input: r#"SELECT 1 != 2"#.to_owned(),
+            want_error: false,
+            expected: vec![
+                Token::Select,
+                Token::Integer(1),
+                Token::Operator(OperatorToken::Neq),
                 Token::Integer(2),
             ],
         },

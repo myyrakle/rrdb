@@ -132,6 +132,7 @@ impl Executor {
         self.check_output_status(output)
     }
 
+    #[allow(dead_code)]
     async fn write_and_check_err(
         &self,
         base_path: PathBuf,
