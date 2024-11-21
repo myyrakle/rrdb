@@ -5,6 +5,7 @@ pub mod parsing_error;
 pub mod predule;
 pub mod server_error;
 pub mod type_error;
+pub mod wal_errors;
 
 #[derive(Debug, PartialEq)]
 pub enum RRDBError {
@@ -14,6 +15,7 @@ pub enum RRDBError {
     ParsingError(parsing_error::ParsingError),
     ServerError(server_error::ServerError),
     TypeError(type_error::TypeError),
+    WALError(wal_errors::WALError),
 }
 
 impl ToString for RRDBError {
@@ -25,13 +27,14 @@ impl ToString for RRDBError {
             RRDBError::ParsingError(e) => e.to_string(),
             RRDBError::ServerError(e) => e.to_string(),
             RRDBError::TypeError(e) => e.to_string(),
+            RRDBError::WALError(e) => e.to_string(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use predule::{ExecuteError, IntoError, LexingError, ParsingError, ServerError, TypeError};
+    use predule::{ExecuteError, IntoError, LexingError, ParsingError, ServerError, TypeError, WALError};
 
     use super::*;
 

@@ -37,6 +37,7 @@ uuid = "1.1.2"
 itertools = "0.10.5"
 anyhow = "1.0.86"
 mockall = "0.12.1"
+bitcode = "0.6.3"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
