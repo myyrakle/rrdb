@@ -57,5 +57,8 @@ mod tests {
 
         let error = TypeError::wrap("test");
         assert!(error.to_string().contains("test"));
+
+        let error = WALError::wrap("test");
+        assert!(error.to_string().contains("test"));
     }
 }
