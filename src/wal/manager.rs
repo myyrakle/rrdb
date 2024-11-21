@@ -1,3 +1,4 @@
+use std::time::SystemTime;
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[allow(unused_assignments)]
@@ -11,7 +12,7 @@ use super::types::{EntryType, WALEntry};
 
 pub struct WALManager {
     sequence: usize,
-    entries: Vec<WALEntry>,
+    buffers: Vec<WALEntry>,
     page_size: usize,
     directory: PathBuf,
 }
@@ -22,25 +23,70 @@ impl WALManager {
     fn new(sequence: usize, entries: Vec<WALEntry>, page_size: usize, directory: PathBuf) -> Self {
         Self {
             sequence,
-            entries,
+            buffers: entries,
             page_size,
             directory,
         }
     }
 
-    pub fn append(&mut self, entry: WALEntry) -> Result<(), WALError> {
-        todo!()
+    pub fn append(&mut self, entry: WALEntry) -> Result<(), RRDBError> {
+        self.buffers.push(entry);
+
+        self.check_and_mark()?;
+        Ok(())
+    }
+
+    fn check_and_mark(&mut self) -> Result<(), RRDBError> {
+        let size = self.buffers.iter().map(|entry| entry.size()).sum::<usize>();
+
+        if size > self.page_size {
+            self.checkpoint()?;
+        }
+
+        Ok(())
+    }
+
+    fn save_to_file(&mut self) -> Result<(), RRDBError> {
+        let path = self.directory.join(format!("{}.log", self.sequence));
+
+        let encoded = bitcode::encode(&self.buffers);
+
+        fs::write(&path, encoded).map_err(|e| WALError::wrap(e.to_string()))?;
+
+        // fsync 디스크 동기화 보장
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .open(path)
+            .map_err(|e| WALError::wrap(e.to_string()))?;
+        file.sync_all().map_err(|e| WALError::wrap(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn checkpoint(&mut self) -> Result<(), RRDBError> {
+        self.buffers.push(WALEntry {
+            data: None,
+            entry_type: EntryType::Checkpoint,
+            timestamp: WALManager::get_current_secs()?,
+            transaction_id: None,
+        });
+        self.save_to_file()?;
+
+        self.buffers.clear();
+        self.sequence += 1;
+
+        Ok(())
     }
 
     pub fn flush(&mut self) -> Result<(), WALError> {
         todo!()
     }
 
-    fn read_entries<F>(&self, path: &PathBuf, mut callback: F) -> Result<(), WALError>
-    where
-        F: FnMut(&WALEntry) -> Result<(), WALError>,
-    {
-        todo!()
+    fn get_current_secs() -> Result<f64, RRDBError> {
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|e| WALError::wrap(e.to_string()))
+            .map(|duration| duration.as_secs_f64())
     }
 }
 
