@@ -8,9 +8,12 @@ use std::{fs, io::BufWriter, path::PathBuf};
 
 use crate::{errors::{predule::WALError, RRDBError}, executor::config::global::GlobalConfig};
 
-use super::types::{EntryType, WALEntry};
+use super::{endec::{WALDecoder, WALEncoder}, types::{EntryType, WALEntry}};
 
-pub struct WALManager {
+pub struct WALManager<T>
+where
+    T: WALEncoder<Vec<WALEntry>>,
+{
     /// The sequence number of the WAL file
     sequence: usize,
     /// The buffer of the WAL file
@@ -21,19 +24,31 @@ pub struct WALManager {
     directory: PathBuf,
     /// The extension of the WAL file
     extension: String,
+    encoder: T,
 }
 
 // TODO: gz 압축 구현
 // TODO: 대용량 페이지 파일 XLOG_CONTINUATION 처리 구현
 // TODO: 단순히 이름을  wal{}. 형식으로 로깅하지 말고, 체계적인 파일 관리 구현
-impl WALManager {
-    fn new(sequence: usize, entries: Vec<WALEntry>, page_size: usize, directory: PathBuf, extension: String) -> Self {
+impl<T> WALManager<T>
+where
+    T: WALEncoder<Vec<WALEntry>>,
+{
+    fn new(
+        sequence: usize,
+        entries: Vec<WALEntry>,
+        page_size: usize,
+        directory: PathBuf,
+        extension: String,
+        encoder: T,
+    ) -> Self {
         Self {
             sequence,
             buffers: entries,
             page_size,
             directory,
             extension,
+            encoder,
         }
     }
 
@@ -60,7 +75,7 @@ impl WALManager {
     fn save_to_file(&mut self) -> Result<(), RRDBError> {
         let path = self.directory.join(format!("{}.{}", self.sequence, self.extension));
 
-        let encoded = bitcode::encode(&self.buffers);
+        let encoded = self.encoder.encode(&self.buffers)?;
 
         fs::write(&path, encoded).map_err(|e| WALError::wrap(e.to_string()))?;
 
@@ -78,7 +93,7 @@ impl WALManager {
         self.buffers.push(WALEntry {
             data: None,
             entry_type: EntryType::Checkpoint,
-            timestamp: WALManager::get_current_secs()?,
+            timestamp: Self::get_current_secs()?,
             transaction_id: None,
         });
         self.save_to_file()?;
@@ -100,35 +115,49 @@ impl WALManager {
 }
 
 
-pub struct WALBuilder {
-    page_size: usize,
-    directory: PathBuf,
-    extension: String,
+pub struct WALBuilder<'a, T>
+where
+    T: WALDecoder<Vec<WALEntry>>,
+{
+    config: &'a GlobalConfig,
+    decoder: T,
 }
 
-impl WALBuilder {
-    pub fn new(config: &GlobalConfig) -> Self {
+impl<'a, T> WALBuilder<'a, T>
+where
+    T: WALDecoder<Vec<WALEntry>>,
+{
+    pub fn new(config: &'a GlobalConfig, decoder: T) -> Self {
         Self {
-            page_size: config.wal_segment_size as usize,
-            directory: PathBuf::from(config.wal_directory.clone()),
-            extension: config.wal_extension.to_string(),
+            config,
+            decoder,
         }
     }
 
-    pub async fn build(&self) -> Result<WALManager, RRDBError> {
+    pub async fn build<D>(&self, encoder: D) -> Result<WALManager<D>, RRDBError>
+    where
+        D: WALEncoder<Vec<WALEntry>>,
+    {
         let (sequence, entries) = self.load_data().await?;
 
-        Ok(WALManager::new(sequence, entries, self.page_size, self.directory.clone(), self.extension.clone()))
+        Ok(WALManager::new(
+            sequence,
+            entries,
+            self.config.wal_segment_size as usize,
+            PathBuf::from(self.config.wal_directory.clone()),
+            self.config.wal_extension.to_string(),
+            encoder,
+        ))
     }
 
     async fn load_data(&self) -> Result<(usize, Vec<WALEntry>), RRDBError> {
         let mut sequence = 1;
 
         // get all log file entry
-        let logs = std::fs::read_dir(&self.directory)
+        let logs = std::fs::read_dir(&self.config.wal_directory)
             .map_err(|e| WALError::wrap(e.to_string()))?
             .filter_map(|entry| entry.ok())
-            .filter(|entry| entry.path().extension() == Some(self.extension.as_ref()))
+            .filter(|entry| entry.path().extension() == Some(self.config.wal_extension.as_ref()))
             .collect::<Vec<_>>();
 
         let mut entries = Vec::new();
@@ -138,8 +167,7 @@ impl WALBuilder {
 
             let content = std::fs::read(last_log.path())
                 .map_err(|e| WALError::wrap(e.to_string()))?;
-            let saved_entries: Vec<WALEntry> = bitcode::decode(&content)
-                .map_err(|e| WALError::wrap(e.to_string()))?;
+            let saved_entries: Vec<WALEntry> = self.decoder.decode(&content)?;
 
             match saved_entries.last() {
                 Some(entry)
