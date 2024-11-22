@@ -347,6 +347,52 @@ wal_extension = "log"
                 }),
             },
             TestCase {
+                name: "WAL 디렉터리 생성 실패",
+                want_error: true,
+                mock_config: Box::new(|| {
+                    let config = GlobalConfig::default();
+
+                    Arc::new(config)
+                }),
+                mock_file_system: Box::new(move || {
+                    let mut mock = MockFileSystem::new();
+
+                    // 1. 최상위 디렉터리 생성
+                    mock.expect_create_dir()
+                        .times(1)
+                        .with(eq(DEFAULT_CONFIG_BASEPATH))
+                        .returning(|_| Ok(()));
+
+                    // 2. 전역 설정파일 생성
+                    mock.expect_write_file()
+                        .times(1)
+                        .with(
+                            eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_CONFIG_FILENAME),
+                            eq(CONFIG),
+                        )
+                        .returning(|_, _| Ok(()));
+
+                    // 3. 데이터 디렉터리 생성
+                    mock.expect_create_dir()
+                        .times(1)
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME))
+                        .returning(|_| Ok(()));
+
+                    // 4. WAL 디렉터리 생성
+                    mock.expect_create_dir()
+                        .times(1)
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .returning(|_| Err(Error::from_raw_os_error(1)));
+
+                    Arc::new(mock)
+                }),
+                mock_command_runner: Box::new(|| {
+                    let mock = MockCommandRunner::new();
+
+                    Arc::new(mock)
+                }),
+            },
+            TestCase {
                 name: "데몬 설정파일 생성 실패",
                 want_error: true,
                 mock_config: Box::new(|| {
