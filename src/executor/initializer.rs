@@ -26,10 +26,13 @@ impl Executor {
         // 3. 데이터 디렉터리 생성 (없다면)
         self.create_data_directory_if_not_exists().await?;
 
-        // 4. 데몬 설정파일 생성 (없다면)
+        // 4. WAL 디렉터리 생성 (없다면)
+        self.create_wal_directory_if_not_exists().await?;
+
+        // 5. 데몬 설정파일 생성 (없다면)
         self.create_daemon_config_if_not_exists().await?;
 
-        // 5. 데몬 실행
+        // 6. 데몬 실행
         self.start_daemon().await?;
 
         Ok(())
@@ -88,6 +91,18 @@ impl Executor {
         let data_path = self.config.data_directory.clone();
 
         if let Err(error) = self.file_system.create_dir(&data_path).await {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(ExecuteError::wrap(error.to_string()));
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn create_wal_directory_if_not_exists(&self) -> Result<(), RRDBError> {
+        let wal_path = self.config.wal_directory.clone();
+
+        if let Err(error) = self.file_system.create_dir(&wal_path).await {
             if error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
@@ -188,9 +203,9 @@ mod tests {
     async fn test_init_config() {
         use mockall::predicate::eq;
 
-        use crate::executor::mocking::{
+        use crate::{constants::{DEFAULT_DATA_DIRNAME, DEFAULT_WAL_DIRNAME}, executor::mocking::{
             CommandRunner, FileSystem, MockCommandRunner, MockFileSystem,
-        };
+        }};
 
         use super::*;
         use std::sync::Arc;
@@ -198,6 +213,10 @@ mod tests {
         const CONFIG: &[u8] = br##"port = 22208
 host = "0.0.0.0"
 data_directory = "/var/lib/rrdb/data"
+wal_enabled = true
+wal_directory = "/var/lib/rrdb/wal"
+wal_segment_size = 16777216
+wal_extension = "log"
 "##;
 
         use crate::constants::SYSTEMD_DAEMON_SCRIPT;
@@ -240,10 +259,16 @@ data_directory = "/var/lib/rrdb/data"
                     // 3. 데이터 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/data"))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME)) 
                         .returning(|_| Ok(()));
 
-                    // 4. 데몬 설정파일 생성
+                    // 4. WAL 디렉터리 생성
+                    mock.expect_create_dir()
+                        .times(1)
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .returning(|_| Ok(()));
+
+                    // 5. 데몬 설정파일 생성
                     mock.expect_write_file()
                         .times(1)
                         .with(
@@ -294,10 +319,15 @@ data_directory = "/var/lib/rrdb/data"
 
                     // 3. 데이터 디렉터리 생성
                     mock.expect_create_dir()
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/data"))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME))
                         .returning(|_| Ok(()));
 
-                    // 4. 데몬 설정파일 생성
+                    // 4. WAL 디렉터리 생성
+                    mock.expect_create_dir()
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .returning(|_| Ok(()));
+
+                    // 5. 데몬 설정파일 생성
                     mock.expect_write_file()
                         .with(
                             eq("/etc/systemd/system/rrdb.service"),
@@ -348,7 +378,13 @@ data_directory = "/var/lib/rrdb/data"
                         .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/data"))
                         .returning(|_| Ok(()));
 
-                    // 4. 데몬 설정파일 생성
+                    // 4. WAL 디렉터리 생성
+                    mock.expect_create_dir()
+                        .times(1)
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .returning(|_| Ok(()));
+
+                    // 5. 데몬 설정파일 생성
                     mock.expect_write_file()
                         .times(1)
                         .with(
@@ -397,7 +433,7 @@ data_directory = "/var/lib/rrdb/data"
                     // 3. 데이터 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/data"))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME))
                         .returning(|_| Err(Error::from_raw_os_error(1)));
 
                     Arc::new(mock)
