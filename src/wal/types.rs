@@ -1,6 +1,6 @@
 use bitcode::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Default, Clone, Debug, Encode, Decode)]
 pub struct WALEntry {
     pub entry_type: EntryType,
     pub data: Option<Vec<u8>>,
@@ -15,8 +15,9 @@ impl WALEntry {
     }
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Default, Clone, Debug, Encode, Decode)]
 pub enum EntryType {
+    #[default]
     Insert,
     Set,
     Delete,

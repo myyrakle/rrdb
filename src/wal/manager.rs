@@ -10,6 +10,7 @@ use crate::{errors::{predule::WALError, RRDBError}, executor::config::global::Gl
 
 use super::{endec::{WALDecoder, WALEncoder}, types::{EntryType, WALEntry}};
 
+#[derive(Default, Debug, Clone)]
 pub struct WALManager<T>
 where
     T: WALEncoder<Vec<WALEntry>>,

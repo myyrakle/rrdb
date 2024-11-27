@@ -5,6 +5,8 @@ use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
+use crate::wal::endec::BitcodeEncoder;
+use crate::wal::manager::WALManager;
 
 use super::config::global::GlobalConfig;
 use super::mocking::{CommandRunner, FileSystem, RealCommandRunner, RealFileSystem};
@@ -28,9 +30,12 @@ impl Executor {
     pub async fn process_query(
         &self,
         statement: SQLStatement,
+        wal_manager: Arc<WALManager<BitcodeEncoder>>,
         _connection_id: String,
     ) -> Result<ExecuteResult, RRDBError> {
         Logger::info(format!("AST echo: {:?}", statement));
+
+        // TODO: WAL 로깅 추가
 
         // 쿼리 실행
         let result = match statement {
