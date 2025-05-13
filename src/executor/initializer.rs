@@ -203,9 +203,10 @@ mod tests {
     async fn test_init_config() {
         use mockall::predicate::eq;
 
-        use crate::{constants::{DEFAULT_DATA_DIRNAME, DEFAULT_WAL_DIRNAME}, executor::mocking::{
-            CommandRunner, FileSystem, MockCommandRunner, MockFileSystem,
-        }};
+        use crate::{
+            constants::{DEFAULT_DATA_DIRNAME, DEFAULT_WAL_DIRNAME},
+            executor::mocking::{CommandRunner, FileSystem, MockCommandRunner, MockFileSystem},
+        };
 
         use super::*;
         use std::sync::Arc;
@@ -259,13 +260,17 @@ wal_extension = "log"
                     // 3. 데이터 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME)) 
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_DATA_DIRNAME))
                         .returning(|_| Ok(()));
 
                     // 4. WAL 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_WAL_DIRNAME))
                         .returning(|_| Ok(()));
 
                     // 5. 데몬 설정파일 생성
@@ -319,12 +324,16 @@ wal_extension = "log"
 
                     // 3. 데이터 디렉터리 생성
                     mock.expect_create_dir()
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_DATA_DIRNAME))
                         .returning(|_| Ok(()));
 
                     // 4. WAL 디렉터리 생성
                     mock.expect_create_dir()
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_WAL_DIRNAME))
                         .returning(|_| Ok(()));
 
                     // 5. 데몬 설정파일 생성
@@ -375,13 +384,17 @@ wal_extension = "log"
                     // 3. 데이터 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_DATA_DIRNAME))
                         .returning(|_| Ok(()));
 
                     // 4. WAL 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_WAL_DIRNAME))
                         .returning(|_| Err(Error::from_raw_os_error(1)));
 
                     Arc::new(mock)
@@ -427,7 +440,9 @@ wal_extension = "log"
                     // 4. WAL 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_WAL_DIRNAME))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_WAL_DIRNAME))
                         .returning(|_| Ok(()));
 
                     // 5. 데몬 설정파일 생성
@@ -479,7 +494,9 @@ wal_extension = "log"
                     // 3. 데이터 디렉터리 생성
                     mock.expect_create_dir()
                         .times(1)
-                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned() + "/" + DEFAULT_DATA_DIRNAME))
+                        .with(eq(DEFAULT_CONFIG_BASEPATH.to_owned()
+                            + "/"
+                            + DEFAULT_DATA_DIRNAME))
                         .returning(|_| Err(Error::from_raw_os_error(1)));
 
                     Arc::new(mock)

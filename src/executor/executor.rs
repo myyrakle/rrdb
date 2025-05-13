@@ -5,7 +5,7 @@ use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
-use crate::wal::endec::BitcodeEncoder;
+use crate::wal::endec::implements::bitcode::BitcodeEncoder;
 use crate::wal::manager::WALManager;
 
 use super::config::global::GlobalConfig;

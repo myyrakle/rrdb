@@ -34,7 +34,9 @@ impl ToString for RRDBError {
 
 #[cfg(test)]
 mod tests {
-    use predule::{ExecuteError, IntoError, LexingError, ParsingError, ServerError, TypeError, WALError};
+    use predule::{
+        ExecuteError, IntoError, LexingError, ParsingError, ServerError, TypeError, WALError,
+    };
 
     use super::*;
 

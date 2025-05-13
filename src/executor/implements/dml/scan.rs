@@ -62,7 +62,9 @@ impl Executor {
                                 Err(ExecuteError::wrap(format!("full scan failed {}", error)))
                             }
                         },
-                        Err(error) => Err(ExecuteError::wrap(format!("full scan failed {}", error))),
+                        Err(error) => {
+                            Err(ExecuteError::wrap(format!("full scan failed {}", error)))
+                        }
                     }
                 });
 

@@ -3,12 +3,17 @@ use std::time::SystemTime;
 #[allow(unused_variables)]
 #[allow(unused_assignments)]
 #[allow(unused_imports)]
-
 use std::{fs, io::BufWriter, path::PathBuf};
 
-use crate::{errors::{predule::WALError, RRDBError}, executor::config::global::GlobalConfig};
+use crate::{
+    errors::{predule::WALError, RRDBError},
+    executor::config::global::GlobalConfig,
+};
 
-use super::{endec::{WALDecoder, WALEncoder}, types::{EntryType, WALEntry}};
+use super::{
+    endec::{WALDecoder, WALEncoder},
+    types::{EntryType, WALEntry},
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct WALManager<T>
@@ -74,7 +79,9 @@ where
     }
 
     fn save_to_file(&mut self) -> Result<(), RRDBError> {
-        let path = self.directory.join(format!("{}.{}", self.sequence, self.extension));
+        let path = self
+            .directory
+            .join(format!("{}.{}", self.sequence, self.extension));
 
         let encoded = self.encoder.encode(&self.buffers)?;
 
@@ -115,31 +122,21 @@ where
     }
 }
 
-
-pub struct WALBuilder<'a, T>
-where
-    T: WALDecoder<Vec<WALEntry>>,
-{
+pub struct WALBuilder<'a> {
     config: &'a GlobalConfig,
-    decoder: T,
 }
 
-impl<'a, T> WALBuilder<'a, T>
-where
-    T: WALDecoder<Vec<WALEntry>>,
-{
-    pub fn new(config: &'a GlobalConfig, decoder: T) -> Self {
-        Self {
-            config,
-            decoder,
-        }
+impl<'a> WALBuilder<'a> {
+    pub fn new(config: &'a GlobalConfig) -> Self {
+        Self { config }
     }
 
-    pub async fn build<D>(&self, encoder: D) -> Result<WALManager<D>, RRDBError>
+    pub async fn build<T, D>(&self, decoder: T, encoder: D) -> Result<WALManager<D>, RRDBError>
     where
+        T: WALDecoder<Vec<WALEntry>>,
         D: WALEncoder<Vec<WALEntry>>,
     {
-        let (sequence, entries) = self.load_data().await?;
+        let (sequence, entries) = self.load_data(decoder).await?;
 
         Ok(WALManager::new(
             sequence,
@@ -151,7 +148,10 @@ where
         ))
     }
 
-    async fn load_data(&self) -> Result<(usize, Vec<WALEntry>), RRDBError> {
+    async fn load_data<T>(&self, decoder: T) -> Result<(usize, Vec<WALEntry>), RRDBError>
+    where
+        T: WALDecoder<Vec<WALEntry>>,
+    {
         let mut sequence = 1;
 
         // get all log file entry
@@ -166,13 +166,14 @@ where
         if let Some(last_log) = logs.last() {
             sequence = logs.len();
 
-            let content = std::fs::read(last_log.path())
-                .map_err(|e| WALError::wrap(e.to_string()))?;
-            let saved_entries: Vec<WALEntry> = self.decoder.decode(&content)?;
+            let content =
+                std::fs::read(last_log.path()).map_err(|e| WALError::wrap(e.to_string()))?;
+            let saved_entries: Vec<WALEntry> = decoder.decode(&content)?;
 
             match saved_entries.last() {
-                Some(entry)
-                    if matches!(entry.entry_type, EntryType::Checkpoint) => entries = saved_entries,
+                Some(entry) if matches!(entry.entry_type, EntryType::Checkpoint) => {
+                    entries = saved_entries
+                }
                 _ => (),
             }
         }

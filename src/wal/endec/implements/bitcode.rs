@@ -1,15 +1,10 @@
-use crate::errors::{predule::WALError, RRDBError};
-
-use super::types::WALEntry;
-
-pub trait WALEncoder<T>: Clone {
-    fn encode(&self, entry: &T) -> Result<Vec<u8>, RRDBError>;
-}
-
-pub trait WALDecoder<T>: Clone {
-    fn decode(&self, data: &[u8]) -> Result<T, RRDBError>;
-}
-
+use crate::{
+    errors::{predule::WALError, RRDBError},
+    wal::{
+        endec::{WALDecoder, WALEncoder},
+        types::WALEntry,
+    },
+};
 
 #[derive(Clone)]
 pub struct BitcodeEncoder {}

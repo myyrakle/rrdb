@@ -8,7 +8,7 @@ use crate::logger::predule::Logger;
 use crate::pgwire::predule::Connection;
 use crate::server::channel::ChannelResponse;
 use crate::server::predule::{ChannelRequest, SharedState};
-use crate::wal::endec::{BitcodeDecoder, BitcodeEncoder};
+use crate::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
 use crate::wal::manager::WALBuilder;
 
 use futures::future::join_all;
@@ -36,9 +36,10 @@ impl Server {
         // WAL 관리자 생성
         let encoder = BitcodeEncoder::new();
         let decoder = BitcodeDecoder::new();
+
         let wal_manager = Arc::new(
-            WALBuilder::new(&self.config, decoder)
-                .build(encoder)
+            WALBuilder::new(&self.config)
+                .build(decoder, encoder)
                 .await
                 .map_err(|error| ExecuteError::wrap(error.to_string()))?,
         );

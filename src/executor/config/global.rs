@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATA_DIRNAME, DEFAULT_WAL_DIRNAME, DEFAULT_WAL_EXTENSION};
+use crate::constants::{
+    DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATA_DIRNAME, DEFAULT_WAL_DIRNAME,
+    DEFAULT_WAL_EXTENSION,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GlobalConfig {
