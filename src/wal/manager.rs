@@ -233,3 +233,100 @@ impl<'a> WALBuilder<'a> {
         Ok((current_sequence, entries))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
+    use crate::wal::types::{EntryType, WALEntry};
+    use std::fs::{self, File};
+    use std::io::Write;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn get_test_config(wal_dir_path: &Path) -> GlobalConfig {
+        GlobalConfig {
+            port: 22208,
+            host: "127.0.0.1".to_string(),
+            data_directory: "./test_db_data".to_string(),
+            wal_enabled: true,
+            wal_directory: wal_dir_path.to_str().unwrap().to_string(),
+            wal_segment_size: 1024,
+            wal_extension: "waltest".to_string(),
+        }
+    }
+
+    fn setup_test_wal_dir(test_name: &str) -> PathBuf {
+        let wal_dir = PathBuf::from(format!("target/test_wal_data/{}", test_name));
+        if wal_dir.exists() {
+            fs::remove_dir_all(&wal_dir)
+                .unwrap_or_else(|e| panic!("Failed to remove old test WAL dir {:?}: {}", wal_dir, e));
+        }
+        fs::create_dir_all(&wal_dir)
+            .unwrap_or_else(|e| panic!("Failed to create test WAL dir {:?}: {}", wal_dir, e));
+        wal_dir
+    }
+
+    fn create_entry(entry_type: EntryType, data_str: Option<&str>) -> WALEntry {
+        WALEntry {
+            entry_type,
+            data: data_str.map(|s| s.as_bytes().to_vec()),
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis(),
+            transaction_id: None,
+        }
+    }
+
+    // WAL 파일에 엔트리들을 기록하는 헬퍼 함수
+    fn write_wal_file(config: &GlobalConfig, sequence: usize, entries: &Vec<WALEntry>) {
+        let encoder = BitcodeEncoder::new();
+        let encoded_data = encoder.encode(entries).unwrap();
+        let file_path = PathBuf::from(&config.wal_directory)
+            .join(format!("{:08X}.{}", sequence, config.wal_extension));
+        
+        let mut file = File::create(&file_path)
+            .unwrap_or_else(|e| panic!("Failed to create wal file {:?}: {}", file_path, e));
+        file.write_all(&encoded_data)
+            .unwrap_or_else(|e| panic!("Failed to write to wal file {:?}: {}", file_path, e));
+        file.sync_all()
+            .unwrap_or_else(|e| panic!("Failed to sync wal file {:?}: {}", file_path, e));
+    }
+
+    #[tokio::test]
+    async fn test_build_no_wal_files() {
+        let wal_dir = setup_test_wal_dir("no_wal_files");
+        let config = get_test_config(&wal_dir);
+        
+        let builder = WALBuilder::new(&config);
+        let encoder = BitcodeEncoder::new();
+        let decoder = BitcodeDecoder::new();
+
+        let wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        assert_eq!(wal_manager.sequence, 1, "Sequence should be 1 when no WAL files exist");
+        assert!(wal_manager.buffers.is_empty(), "Buffers should be empty when no WAL files exist");
+    }
+
+    #[tokio::test]
+    async fn test_build_single_file_with_checkpoint() {
+        let wal_dir = setup_test_wal_dir("single_file_checkpoint");
+        let config = get_test_config(&wal_dir);
+
+        // 테스트용 WAL 파일 생성 (시퀀스 1, 마지막은 체크포인트)
+        let entries_seq1 = vec![
+            create_entry(EntryType::Insert, Some("data1")),
+            create_entry(EntryType::Set, Some("data2")),
+            create_entry(EntryType::Checkpoint, None),
+        ];
+        write_wal_file(&config, 1, &entries_seq1);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BitcodeEncoder::new();
+        let decoder = BitcodeDecoder::new();
+
+        let wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        // 시퀀스는 2여야 하고, 버퍼는 비어있어야 함 (체크포인트 완료)
+        assert_eq!(wal_manager.sequence, 2, "Sequence should be 2 after a checkpointed file");
+        assert!(wal_manager.buffers.is_empty(), "Buffers should be empty after a checkpointed file");
+    }
+}
