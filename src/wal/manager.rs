@@ -218,15 +218,14 @@ impl<'a> WALBuilder<'a> {
                     None => return Ok((max_sequence + 1, Vec::new())),
                 };
 
-                let next_sequence = if matches!(last_entry.entry_type, EntryType::Checkpoint) {
-                    max_sequence + 1
+                let result = if matches!(last_entry.entry_type, EntryType::Checkpoint) {
+                    Ok((max_sequence + 1, Vec::new()))
                 } else {
                     // 마지막 엔트리가 체크포인트가 아니면 비정상 종료로 간주
-                    max_sequence
+                    Ok((max_sequence, saved_entries))
                 };
 
-                // 로드된 엔트리들과 결정된 시퀀스 번호를 반환
-                Ok((next_sequence, saved_entries))
+                result
             },
         )?;
 
