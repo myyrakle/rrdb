@@ -81,11 +81,12 @@ where
     fn save_to_file(&mut self) -> Result<(), RRDBError> {
         let path = self
             .directory
-            .join(format!("{}.{}", self.sequence, self.extension));
+            .join(format!("{:08X}.{}", self.sequence, self.extension));
 
         let encoded = self.encoder.encode(&self.buffers)?;
 
-        fs::write(&path, encoded).map_err(|e| WALError::wrap(e.to_string()))?;
+        fs::write(&path, encoded)
+            .map_err(|e| WALError::wrap(e.to_string()))?;
 
         // fsync 디스크 동기화 보장
         let file = fs::OpenOptions::new()
