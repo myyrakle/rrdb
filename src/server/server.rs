@@ -9,7 +9,7 @@ use crate::pgwire::predule::Connection;
 use crate::server::channel::ChannelResponse;
 use crate::server::predule::{ChannelRequest, SharedState};
 use crate::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
-use crate::wal::manager::WALBuilder;
+use crate::wal::manager::builder::WALBuilder;
 
 use futures::future::join_all;
 use tokio::net::TcpListener;

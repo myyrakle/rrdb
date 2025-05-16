@@ -337,7 +337,7 @@ impl Executor {
                         _ => Err(TypeError::wrap(
                             "binary '>' operator is valid only for integer and float and string types.",
                         )),
-                    }, 
+                    },
                     BinaryOperator::Lte => match lhs {
                         TableDataFieldType::Integer(lhs_value) => {
                             if let TableDataFieldType::Integer(rhs_value) = rhs {
@@ -385,9 +385,9 @@ impl Executor {
                         )),
                     },
                     BinaryOperator::Eq =>
-                         Ok(TableDataFieldType::Boolean(lhs == rhs)),    
+                         Ok(TableDataFieldType::Boolean(lhs == rhs)),
                     BinaryOperator::Neq =>
-                         Ok(TableDataFieldType::Boolean(lhs != rhs)),    
+                         Ok(TableDataFieldType::Boolean(lhs != rhs)),
                     BinaryOperator::Like => unimplemented!("미구현"),   
                     BinaryOperator::NotLike => unimplemented!("미구현"),  
                     BinaryOperator::In => unimplemented!("미구현"),      

@@ -1,3 +1,5 @@
+pub mod builder;
+
 use std::time::SystemTime;
 #[allow(dead_code)]
 #[allow(unused_variables)]
@@ -7,11 +9,10 @@ use std::{fs, io::BufWriter, path::PathBuf};
 
 use crate::{
     errors::{predule::WALError, RRDBError},
-    executor::config::global::GlobalConfig,
 };
 
 use super::{
-    endec::{WALDecoder, WALEncoder},
+    endec::WALEncoder,
     types::{EntryType, WALEntry},
 };
 
@@ -57,21 +58,57 @@ where
         }
     }
 
-    pub fn append(&mut self, entry: WALEntry) -> Result<(), RRDBError> {
-        self.buffers.push(entry);
+    pub fn append(&mut self, mut entry: WALEntry) -> Result<(), RRDBError> {
+        let entire_data_size = self.buffers.iter().map(|entry| entry.size()).sum::<usize>();
 
-        self.check_and_mark()?;
-        Ok(())
-    }
+        // 원본 WAL 객체 정보
+        let original_entry_type = entry.entry_type.clone();
+        let original_timestamp = entry.timestamp;
+        let original_transaction_id = entry.transaction_id;
+        let original_entry_full_size = entry.size();
+        let data_option = entry.data.take();
 
-    fn check_and_mark(&mut self) -> Result<(), RRDBError> {
-        let size = self.buffers.iter().map(|entry| entry.size()).sum::<usize>();
+        // 데이터 분배 필요 여부 확인
+        if entire_data_size + original_entry_full_size > self.page_size {
+            if let Some(mut distributed_entry_data) = data_option {
+                let mut first_chunk = true;
 
-        if size > self.page_size {
-            self.checkpoint()?;
+                // 데이터 분배
+                while !distributed_entry_data.is_empty() {
+                    let chunk_size = std::cmp::min(
+                        distributed_entry_data.len(),
+                        self.page_size - entire_data_size,
+                    );
 
-            self.buffers.clear();
-            self.sequence += 1;
+                    let chunk: Vec<u8> = distributed_entry_data.drain(..chunk_size).collect();
+
+                    self.buffers.push(WALEntry {
+                        entry_type: original_entry_type.clone(),
+                        data: Some(chunk),
+                        timestamp: original_timestamp,
+                        transaction_id: original_transaction_id,
+                        is_continuation: !first_chunk,
+                    });
+
+                    first_chunk = false;
+                }
+            } else {
+                self.buffers.push(WALEntry {
+                    entry_type: original_entry_type,
+                    data: None,
+                    timestamp: original_timestamp,
+                    transaction_id: original_transaction_id,
+                    is_continuation: false,
+                });
+            }
+        } else {
+            self.buffers.push(WALEntry {
+                entry_type: original_entry_type,
+                data: data_option,
+                timestamp: original_timestamp,
+                transaction_id: original_transaction_id,
+                is_continuation: false,
+            });
         }
 
         Ok(())
@@ -84,8 +121,7 @@ where
 
         let encoded = self.encoder.encode(&self.buffers)?;
 
-        fs::write(&path, encoded)
-            .map_err(|e| WALError::wrap(e.to_string()))?;
+        fs::write(&path, encoded).map_err(|e| WALError::wrap(e.to_string()))?;
 
         // fsync 디스크 동기화 보장
         let file = fs::OpenOptions::new()
@@ -103,6 +139,7 @@ where
             entry_type: EntryType::Checkpoint,
             timestamp: Self::get_current_secs()?,
             transaction_id: None,
+            is_continuation: false,
         });
         self.save_to_file()?;
 
@@ -122,121 +159,12 @@ where
     }
 }
 
-pub struct WALBuilder<'a> {
-    config: &'a GlobalConfig,
-}
-
-impl<'a> WALBuilder<'a> {
-    pub fn new(config: &'a GlobalConfig) -> Self {
-        Self { config }
-    }
-
-    pub async fn build<T, D>(&self, decoder: T, encoder: D) -> Result<WALManager<D>, RRDBError>
-    where
-        T: WALDecoder<Vec<WALEntry>>,
-        D: WALEncoder<Vec<WALEntry>>,
-    {
-        let (sequence, entries) = self.load_data(decoder).await?;
-
-        Ok(WALManager::new(
-            sequence,
-            entries,
-            self.config.wal_segment_size as usize,
-            PathBuf::from(self.config.wal_directory.clone()),
-            self.config.wal_extension.to_string(),
-            encoder,
-        ))
-    }
-
-    async fn load_data<T>(&self, decoder: T) -> Result<(usize, Vec<WALEntry>), RRDBError>
-    where
-        T: WALDecoder<Vec<WALEntry>>,
-    {
-        let mut max_sequence = 0;
-        let mut last_log_path: Option<PathBuf> = None;
-
-        let dir_entries = std::fs::read_dir(&self.config.wal_directory)
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-
-        for entry_result in dir_entries {
-            let path = match entry_result {
-                Ok(entry) => entry.path(),
-                Err(e) => return Err(WALError::wrap(e.to_string())),
-            };
-
-            if !path.is_file() {
-                continue;
-            }
-
-            // 파일 명 16진수로 변환
-            let wrapped_parsed_seq = path.extension()
-                .filter(|ext_osstr| ext_osstr.to_str() == Some(self.config.wal_extension.as_str()))
-                .and_then(|_| path.file_stem())
-                .and_then(|stem_osstr| stem_osstr.to_str())
-                .and_then(|stem_str| usize::from_str_radix(stem_str, 16).ok());
-
-            if let Some(seq) = wrapped_parsed_seq {
-                if seq > max_sequence {
-                    max_sequence = seq;
-                    last_log_path = Some(path);
-                }
-            }
-        }
-
-        let (current_sequence, entries) = last_log_path.map_or_else(
-            // Case 1: WAL 파일이 하나도 없는 초기 상태
-            || {
-                // 첫 번째 WAL 파일이므로 시퀀스는 1로 시작하고, 복구할 엔트리는 없음
-                Ok((1, Vec::new()))
-            },
-
-            // Case 2: 최신 WAL 파일이 존재하는 상태
-            |log_path| {
-                // 최신 WAL 파일의 내용을 읽음
-                let content = std::fs::read(&log_path).map_err(|e|
-                    WALError::wrap(format!(
-                        "failed to read log file {:?}: {}",
-                        log_path, e.to_string()
-                    ))
-                )?;
-
-                // 파일 내용이 비어있는 경우 복구할 엔트리는 없음 
-                if content.is_empty() {
-                    return Ok((max_sequence + 1, Vec::new()))
-                }
-
-                let saved_entries: Vec<WALEntry> = decoder.decode(&content).map_err(|e|
-                    WALError::wrap(format!(
-                        "failed to decode log file {:?}: {}",
-                        log_path,
-                        e.to_string()
-                    ))
-                )?;
-
-                let last_entry = match saved_entries.last() {
-                    Some(entry) => entry,
-                    None => return Ok((max_sequence + 1, Vec::new())),
-                };
-
-                let result = if matches!(last_entry.entry_type, EntryType::Checkpoint) {
-                    Ok((max_sequence + 1, Vec::new()))
-                } else {
-                    // 마지막 엔트리가 체크포인트가 아니면 비정상 종료로 간주
-                    Ok((max_sequence, saved_entries))
-                };
-
-                result
-            },
-        )?;
-
-        Ok((current_sequence, entries))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::executor::config::global::GlobalConfig;
     use crate::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
+    use crate::wal::manager::builder::WALBuilder;
     use crate::wal::types::{EntryType, WALEntry};
     use std::fs::{self, File};
     use std::io::Write;
@@ -258,8 +186,9 @@ mod tests {
     fn setup_test_wal_dir(test_name: &str) -> PathBuf {
         let wal_dir = PathBuf::from(format!("target/test_wal_data/{}", test_name));
         if wal_dir.exists() {
-            fs::remove_dir_all(&wal_dir)
-                .unwrap_or_else(|e| panic!("Failed to remove old test WAL dir {:?}: {}", wal_dir, e));
+            fs::remove_dir_all(&wal_dir).unwrap_or_else(|e| {
+                panic!("Failed to remove old test WAL dir {:?}: {}", wal_dir, e)
+            });
         }
         fs::create_dir_all(&wal_dir)
             .unwrap_or_else(|e| panic!("Failed to create test WAL dir {:?}: {}", wal_dir, e));
@@ -270,8 +199,12 @@ mod tests {
         WALEntry {
             entry_type,
             data: data_str.map(|s| s.as_bytes().to_vec()),
-            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis(),
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
             transaction_id: None,
+            is_continuation: false,
         }
     }
 
@@ -281,7 +214,7 @@ mod tests {
         let encoded_data = encoder.encode(entries).unwrap();
         let file_path = PathBuf::from(&config.wal_directory)
             .join(format!("{:08X}.{}", sequence, config.wal_extension));
-        
+
         let mut file = File::create(&file_path)
             .unwrap_or_else(|e| panic!("Failed to create wal file {:?}: {}", file_path, e));
         file.write_all(&encoded_data)
@@ -294,15 +227,21 @@ mod tests {
     async fn test_build_no_wal_files() {
         let wal_dir = setup_test_wal_dir("no_wal_files");
         let config = get_test_config(&wal_dir);
-        
+
         let builder = WALBuilder::new(&config);
         let encoder = BitcodeEncoder::new();
         let decoder = BitcodeDecoder::new();
 
         let wal_manager = builder.build(decoder, encoder).await.unwrap();
 
-        assert_eq!(wal_manager.sequence, 1, "Sequence should be 1 when no WAL files exist");
-        assert!(wal_manager.buffers.is_empty(), "Buffers should be empty when no WAL files exist");
+        assert_eq!(
+            wal_manager.sequence, 1,
+            "Sequence should be 1 when no WAL files exist"
+        );
+        assert!(
+            wal_manager.buffers.is_empty(),
+            "Buffers should be empty when no WAL files exist"
+        );
     }
 
     #[tokio::test]
@@ -325,7 +264,13 @@ mod tests {
         let wal_manager = builder.build(decoder, encoder).await.unwrap();
 
         // 시퀀스는 2여야 하고, 버퍼는 비어있어야 함 (체크포인트 완료)
-        assert_eq!(wal_manager.sequence, 2, "Sequence should be 2 after a checkpointed file");
-        assert!(wal_manager.buffers.is_empty(), "Buffers should be empty after a checkpointed file");
+        assert_eq!(
+            wal_manager.sequence, 2,
+            "Sequence should be 2 after a checkpointed file"
+        );
+        assert!(
+            wal_manager.buffers.is_empty(),
+            "Buffers should be empty after a checkpointed file"
+        );
     }
 }
