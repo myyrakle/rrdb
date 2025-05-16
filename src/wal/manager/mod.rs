@@ -273,4 +273,38 @@ mod tests {
             "Buffers should be empty after a checkpointed file"
         );
     }
+
+    #[tokio::test]
+    async fn test_build_multiple_files() {
+        let wal_dir = setup_test_wal_dir("multiple_files");
+
+        // 일부러 페이지 사이즈를 작게 설정
+        let mut config = get_test_config(&wal_dir);
+        config.wal_segment_size = 20; // 20 바이트
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BitcodeEncoder::new();
+        let decoder = BitcodeDecoder::new();
+
+        let wal_manager = builder
+            .build(decoder, encoder)
+            .await
+            .expect("Failed to build WAL manager");
+
+        assert_eq!(wal_manager.sequence, 1, "Sequence should be 1");
+
+        // 여러개로 분산 처리 되는지 확인
+        let entries_seq1 = vec![
+            create_entry(EntryType::Insert, Some("helloworld")), // 10바이트
+            create_entry(EntryType::Set, Some("data2")), // 5바이트
+        ];
+        write_wal_file(&config, 1, &entries_seq1);
+
+        // 여기서 기본 페이지 사이즈보다 크게
+        let entries_seq2 = vec![
+            create_entry(EntryType::Insert, Some("helloworld")), // 10바이트
+            create_entry(EntryType::Set, Some("data2")), // 5바이트
+        ];
+        write_wal_file(&config, 2, &entries_seq2);
+    }
 }
