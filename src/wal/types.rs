@@ -1,0 +1,35 @@
+use bitcode::{Decode, Encode};
+
+#[derive(Default, Clone, Debug, Encode, Decode)]
+pub struct WALEntry {
+    pub entry_type: EntryType,
+    pub data: Option<Vec<u8>>,
+    pub timestamp: u128,
+    pub transaction_id: Option<u64>,
+    pub is_continuation: bool,
+}
+
+impl WALEntry {
+    pub fn size(&self) -> usize {
+        let data_size = self.data.as_ref().map_or(0, |data| data.len());
+
+        size_of::<EntryType>()
+            + size_of::<u128>()
+            + size_of::<Option<u64>>()
+            + size_of::<bool>()
+            + data_size
+    }
+}
+
+#[derive(Default, Clone, Debug, Encode, Decode)]
+pub enum EntryType {
+    #[default]
+    Insert,
+    Set,
+    Delete,
+    Checkpoint,
+
+    TransactionBegin,
+    TransactionCommit,
+    TransactionRollback,
+}

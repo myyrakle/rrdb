@@ -2,13 +2,21 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATA_DIRNAME};
+use crate::constants::{
+    DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATA_DIRNAME, DEFAULT_WAL_DIRNAME,
+    DEFAULT_WAL_EXTENSION,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GlobalConfig {
     pub port: u32,
     pub host: String,
     pub data_directory: String,
+
+    pub wal_enabled: bool,
+    pub wal_directory: String,
+    pub wal_segment_size: u32,
+    pub wal_extension: String,
 }
 
 #[allow(clippy::derivable_impls)]
@@ -24,6 +32,14 @@ impl std::default::Default for GlobalConfig {
                 .to_str()
                 .unwrap()
                 .to_string(),
+            wal_enabled: true,
+            wal_directory: base_path
+                .join(DEFAULT_WAL_DIRNAME)
+                .to_str()
+                .unwrap()
+                .to_string(),
+            wal_segment_size: 1024 * 1024 * 16, // 16MB 세그먼트 사이즈
+            wal_extension: DEFAULT_WAL_EXTENSION.to_string(),
         }
     }
 }

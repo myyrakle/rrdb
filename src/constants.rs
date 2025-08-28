@@ -7,6 +7,12 @@ pub const DEFAULT_CONFIG_FILENAME: &str = "rrdb.config";
 // 기본 Data 디렉터리 이름
 pub const DEFAULT_DATA_DIRNAME: &str = "data";
 
+// 기본 WAL 디렉터리 이름
+pub const DEFAULT_WAL_DIRNAME: &str = "wal";
+
+// 기본 WAL 확장자
+pub const DEFAULT_WAL_EXTENSION: &str = "log";
+
 // 운영체제별 기본 저장 경로를 반환합니다.
 #[cfg(target_os = "linux")]
 pub const DEFAULT_CONFIG_BASEPATH: &str = "/var/lib/rrdb";

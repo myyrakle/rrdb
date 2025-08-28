@@ -8,6 +8,8 @@ use crate::logger::predule::Logger;
 use crate::pgwire::predule::Connection;
 use crate::server::channel::ChannelResponse;
 use crate::server::predule::{ChannelRequest, SharedState};
+use crate::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
+use crate::wal::manager::builder::WALBuilder;
 
 use futures::future::join_all;
 use tokio::net::TcpListener;
@@ -31,21 +33,34 @@ impl Server {
     pub async fn run(&self) -> Result<(), RRDBError> {
         // TODO: 인덱스 로딩 등 기본 로직 실행.
 
+        // WAL 관리자 생성
+        let encoder = BitcodeEncoder::new();
+        let decoder = BitcodeDecoder::new();
+
+        let wal_manager = Arc::new(
+            WALBuilder::new(&self.config)
+                .build(decoder, encoder)
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?,
+        );
+
         let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
 
         // background task
         // 쿼리 실행 요청을 전달받음
         let config = self.config.clone();
+        let wal_manager_cloned = wal_manager.clone();
 
         let background_task = tokio::spawn(async move {
             while let Some(request) = request_receiver.recv().await {
                 let config = config.clone();
+                let wal_manager_cloned = wal_manager_cloned.clone();
 
                 // 쿼리 실행 태스크
                 tokio::spawn(async move {
                     let executor = Executor::new(config);
                     let result = executor
-                        .process_query(request.statement, request.connection_id)
+                        .process_query(request.statement, wal_manager_cloned, request.connection_id)
                         .await;
 
                     match result {
