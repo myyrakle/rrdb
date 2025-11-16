@@ -65,12 +65,11 @@ impl<'a> WALBuilder<'a> {
                 .and_then(|stem_osstr| stem_osstr.to_str())
                 .and_then(|stem_str| usize::from_str_radix(stem_str, 16).ok());
 
-            if let Some(seq) = wrapped_parsed_seq {
-                if seq > max_sequence {
+            if let Some(seq) = wrapped_parsed_seq
+                && seq > max_sequence {
                     max_sequence = seq;
                     last_log_path = Some(path);
                 }
-            }
         }
 
         let (current_sequence, entries) = last_log_path.map_or_else(
@@ -86,7 +85,7 @@ impl<'a> WALBuilder<'a> {
                     WALError::wrap(format!(
                         "failed to read log file {:?}: {}",
                         log_path,
-                        e.to_string()
+                        e
                     ))
                 })?;
 
@@ -108,14 +107,14 @@ impl<'a> WALBuilder<'a> {
                     None => return Ok((max_sequence + 1, Vec::new())),
                 };
 
-                let result = if matches!(last_entry.entry_type, EntryType::Checkpoint) {
+                
+
+                if matches!(last_entry.entry_type, EntryType::Checkpoint) {
                     Ok((max_sequence + 1, Vec::new()))
                 } else {
                     // 마지막 엔트리가 체크포인트가 아니면 비정상 종료로 간주
                     Ok((max_sequence, saved_entries))
-                };
-
-                result
+                }
             },
         )?;
 

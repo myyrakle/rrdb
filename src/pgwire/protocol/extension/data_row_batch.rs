@@ -2,7 +2,7 @@ use bytes::BytesMut;
 use tokio_util::codec::Encoder;
 
 use crate::pgwire::protocol::{
-    backend::RowDescription, ConnectionCodec, FormatCode, ProtocolError,
+    ConnectionCodec, FormatCode, ProtocolError, backend::RowDescription,
 };
 
 use super::data_row_writer::DataRowWriter;
@@ -38,7 +38,7 @@ impl DataRowBatch {
     /// Starts writing a new row.
     ///
     /// Returns a [DataRowWriter] that is responsible for the actual value encoding.
-    pub fn create_row(&mut self) -> DataRowWriter {
+    pub fn create_row(&mut self) -> DataRowWriter<'_> {
         self.num_rows += 1;
         DataRowWriter::new(self)
     }

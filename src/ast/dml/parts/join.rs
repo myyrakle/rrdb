@@ -13,15 +13,12 @@ pub struct JoinClause {
 impl JoinClause {}
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub enum JoinType {
+    #[default]
     InnerJoin,
     LeftOuterJoin,
     RightOuterJoin,
     FullOuterJoin,
 }
 
-impl Default for JoinType {
-    fn default() -> Self {
-        JoinType::InnerJoin
-    }
-}

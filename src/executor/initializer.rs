@@ -53,13 +53,12 @@ impl Executor {
     async fn create_top_level_directory_if_not_exists(&self) -> Result<(), RRDBError> {
         let base_path = DEFAULT_CONFIG_BASEPATH;
 
-        if let Err(error) = self.file_system.create_dir(base_path).await {
-            if error.kind() != std::io::ErrorKind::AlreadyExists {
+        if let Err(error) = self.file_system.create_dir(base_path).await
+            && error.kind() != std::io::ErrorKind::AlreadyExists {
                 println!("path {:?}", base_path);
                 println!("error: {:?}", error.to_string());
                 return Err(ExecuteError::wrap(error.to_string()));
             }
-        }
 
         Ok(())
     }
@@ -90,11 +89,10 @@ impl Executor {
     async fn create_data_directory_if_not_exists(&self) -> Result<(), RRDBError> {
         let data_path = self.config.data_directory.clone();
 
-        if let Err(error) = self.file_system.create_dir(&data_path).await {
-            if error.kind() != std::io::ErrorKind::AlreadyExists {
+        if let Err(error) = self.file_system.create_dir(&data_path).await
+            && error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
-        }
 
         Ok(())
     }
@@ -102,11 +100,10 @@ impl Executor {
     async fn create_wal_directory_if_not_exists(&self) -> Result<(), RRDBError> {
         let wal_path = self.config.wal_directory.clone();
 
-        if let Err(error) = self.file_system.create_dir(&wal_path).await {
-            if error.kind() != std::io::ErrorKind::AlreadyExists {
+        if let Err(error) = self.file_system.create_dir(&wal_path).await
+            && error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
-        }
 
         Ok(())
     }
@@ -157,11 +154,9 @@ impl Executor {
             .file_system
             .write_file(base_path.to_str().unwrap_or_default(), contents.as_bytes())
             .await
-        {
-            if error.kind() != std::io::ErrorKind::AlreadyExists {
+            && error.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(ExecuteError::wrap(error.to_string()));
             }
-        }
         Ok(())
     }
 

@@ -55,3 +55,6 @@ path = "./src/test.rs"
 default = ["rrdb"]
 rrdb = ["cli"]
 cli = ["atty", "structopt"]
+
+[lints.clippy]
+to_string_trait_impl = "allow"

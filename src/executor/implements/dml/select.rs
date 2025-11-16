@@ -127,11 +127,9 @@ impl Executor {
                                         }
                                     } else if let Some(table_name) =
                                         table_alias_reverse_map.get(table_name)
-                                    {
-                                        if table_name == &field.table_name.table_name {
+                                        && table_name == &field.table_name.table_name {
                                             table_name_matched = true;
                                         }
-                                    }
                                 } else {
                                     table_name_matched = true;
                                 }

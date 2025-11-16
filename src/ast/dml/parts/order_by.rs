@@ -15,25 +15,19 @@ pub struct OrderByItem {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub enum OrderByType {
+    #[default]
     Asc,
     Desc,
 }
 
-impl Default for OrderByType {
-    fn default() -> Self {
-        OrderByType::Asc
-    }
-}
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub enum OrderByNulls {
     First,
+    #[default]
     Last,
 }
 
-impl Default for OrderByNulls {
-    fn default() -> Self {
-        OrderByNulls::Last
-    }
-}
