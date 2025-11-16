@@ -16,9 +16,6 @@ impl StorageEncoder {
     where
         T: Deserialize<'a>,
     {
-        match bson::from_slice(data) {
-            Ok(data) => Some(data),
-            _ => None,
-        }
+        bson::from_slice(data).ok()
     }
 }

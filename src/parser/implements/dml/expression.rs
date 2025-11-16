@@ -7,8 +7,8 @@ use crate::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
 use crate::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::ast::dml::expressions::unary::UnaryOperatorExpression;
 use crate::ast::types::{BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction};
-use crate::errors::predule::ParsingError;
 use crate::errors::RRDBError;
+use crate::errors::predule::ParsingError;
 use crate::lexer::predule::Token;
 use crate::parser::predule::Parser;
 use crate::parser::predule::ParserContext;
@@ -239,9 +239,9 @@ impl Parser {
 
     /**
      * 소괄호연산자, 혹은 리스트 파싱
-    parenexpr ::= '(' expression ')'
-    parenexpr ::= '(' 1, 2, 3 ')'
-    */
+     *  parenexpr ::= '(' expression ')'
+     *    parenexpr ::= '(' 1, 2, 3 ')'
+     */
     pub(crate) fn parse_parentheses_expression(
         &mut self,
         context: ParserContext,
@@ -362,8 +362,8 @@ impl Parser {
                     // 단항연산식일 경우
                     if lhs.is_unary() {
                         Ok(BinaryOperatorExpression {
-                            lhs: lhs,
-                            rhs: rhs,
+                            lhs,
+                            rhs,
                             operator: rhs_binary.operator,
                         }
                         .into())

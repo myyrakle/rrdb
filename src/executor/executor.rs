@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
-use crate::errors::execute_error::ExecuteError;
 use crate::errors::RRDBError;
+use crate::errors::execute_error::ExecuteError;
 use crate::executor::predule::ExecuteResult;
 use crate::logger::predule::Logger;
 use crate::wal::endec::implements::bitcode::BitcodeEncoder;
@@ -30,7 +30,7 @@ impl Executor {
     pub async fn process_query(
         &self,
         statement: SQLStatement,
-        wal_manager: Arc<WALManager<BitcodeEncoder>>,
+        _wal_manager: Arc<WALManager<BitcodeEncoder>>,
         _connection_id: String,
     ) -> Result<ExecuteResult, RRDBError> {
         Logger::info(format!("AST echo: {:?}", statement));
