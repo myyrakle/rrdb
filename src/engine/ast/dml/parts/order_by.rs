@@ -1,0 +1,33 @@
+use crate::engine::ast::types::SQLExpression;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+pub struct OrderByClause {
+    pub order_by_items: Vec<OrderByItem>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
+pub struct OrderByItem {
+    pub item: SQLExpression,
+    pub order_type: OrderByType,
+    pub nulls: OrderByNulls,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
+pub enum OrderByType {
+    #[default]
+    Asc,
+    Desc,
+}
+
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
+pub enum OrderByNulls {
+    First,
+    #[default]
+    Last,
+}
+

@@ -5,27 +5,22 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
-use crate::{
-    ast::{OtherStatement, SQLStatement},
-    executor::{config::global::GlobalConfig, executor::Executor},
-    lexer::predule::Tokenizer,
-    logger::predule::Logger,
-    parser::{context::ParserContext, predule::Parser},
-    pgwire::{
-        connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement},
-        engine::{Engine, Portal, RRDBEngine},
-        protocol::{
-            backend::{
-                AuthenticationOk, BindComplete, CommandComplete, EmptyQueryResponse, ErrorResponse,
-                NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
-                RowDescription,
-            },
-            client::{BindFormat, ClientMessage, Describe},
-            ConnectionCodec, DataRowBatch, FormatCode, Severity, SqlState,
-        },
-    },
-    server::predule::SharedState,
+use crate::config::launch_config::LaunchConfig;
+use crate::engine::DBEngine;
+use crate::engine::ast::{OtherStatement, SQLStatement};
+use crate::engine::lexer::predule::Tokenizer;
+use crate::engine::parser::context::ParserContext;
+use crate::engine::parser::predule::Parser;
+use crate::engine::server::shared_state::SharedState;
+use crate::logger::predule::Logger;
+use crate::pgwire::connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement};
+use crate::pgwire::engine::{Engine, Portal, RRDBEngine};
+use crate::pgwire::protocol::backend::{
+    AuthenticationOk, BindComplete, CommandComplete, EmptyQueryResponse, ErrorResponse, NoData,
+    ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery, RowDescription,
 };
+use crate::pgwire::protocol::client::{BindFormat, ClientMessage, Describe};
+use crate::pgwire::protocol::{ConnectionCodec, DataRowBatch, FormatCode, Severity, SqlState};
 
 /// Describes a connection using a specific engine.
 /// Contains connection state including prepared statements and portals.
@@ -34,12 +29,12 @@ pub struct Connection {
     state: ConnectionState,
     statements: HashMap<String, PreparedStatement>,
     portals: HashMap<String, Option<BoundPortal<RRDBEngine>>>,
-    config: Arc<GlobalConfig>,
+    config: Arc<LaunchConfig>,
 }
 
 impl Connection {
     /// Create a new connection from an engine instance.
-    pub fn new(shared_state: SharedState, config: Arc<GlobalConfig>) -> Self {
+    pub fn new(shared_state: SharedState, config: Arc<LaunchConfig>) -> Self {
         Self {
             state: ConnectionState::Startup,
             statements: HashMap::new(),
@@ -116,7 +111,7 @@ impl Connection {
                     ClientMessage::Startup(startup) => {
                         if let Some(database_name) = startup.parameters.get("database") {
                             // 해당 데이터베이스가 존재하는지 검사
-                            let executor = Executor::new(self.config.clone());
+                            let executor = DBEngine::new((*self.config).clone());
                             let result = executor.find_database(database_name.clone()).await;
 
                             match result {
@@ -312,7 +307,7 @@ impl Connection {
                             SqlState::PROTOCOL_VIOLATION,
                             "unexpected message",
                         )
-                        .into())
+                        .into());
                     }
                 };
 

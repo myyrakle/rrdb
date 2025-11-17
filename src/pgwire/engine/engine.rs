@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 
-use crate::{
-    ast::SQLStatement,
-    pgwire::protocol::backend::{ErrorResponse, FieldDescription},
-};
+use crate::engine::ast::SQLStatement;
+use crate::pgwire::protocol::backend::{ErrorResponse, FieldDescription};
 
 use super::Portal;
 
