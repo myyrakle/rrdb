@@ -3,9 +3,9 @@ name: Test & Coverage
 on:
   pull_request:
 
-permissions:                # Job-level permissions configuration starts here
-  contents: write           # 'write' access to repository contents
-  pull-requests: write      # 'write' access to pull requests
+permissions: # Job-level permissions configuration starts here
+  contents: write # 'write' access to repository contents
+  pull-requests: write # 'write' access to pull requests
 
 jobs:
   check:
@@ -14,8 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with: 
-          persist-credentials: false 
+        with:
+          persist-credentials: false
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -25,19 +25,26 @@ jobs:
         uses: actions/cache@v4
         with:
           save-always: true
-          key: ${{ runner.os }}-coverage-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
           path: |
-            ./target
-            ~/.cargo
-            ~/.cargo/registry
-            ~/.cargo/git
             ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
+            ./target
+
+      - name: Cache cargo-tarpaulin
+        id: cache-tarpaulin
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-tarpaulin-v0.30
+          path: ~/.cargo/bin/cargo-tarpaulin
 
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+        if: steps.cache-tarpaulin.outputs.cache-hit != 'true'
+        run: cargo install cargo-tarpaulin --locked
 
       - name: Run cargo-tarpaulin
         run: |
@@ -51,26 +58,26 @@ jobs:
         run: |
           git clone https://github.com/myyrakle/html_reports
 
-      - name: Generate Random Name 
+      - name: Generate Random Name
         run: |
           echo "REPORT_NAME=$(date +%s)" >> $GITHUB_ENV
 
       - name: Copy coverage report
         run: |
           cp ./tarpaulin-report.html ./html_reports/${{ env.REPORT_NAME }}.html | 
-          cd ./html_reports 
+          cd ./html_reports
 
       - name: Add
         working-directory: html_reports
         run: |
-          git add . 
+          git add .
 
       - name: Commit
         working-directory: html_reports
         run: |
           git config --global user.email "sssang97@naver.com" && 
           git config --global user.name "myyrakle" && 
-          git commit -m "Add report" 
+          git commit -m "Add report"
 
       - name: Push changes
         uses: ad-m/github-push-action@master
@@ -87,4 +94,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           message: |
             ✅ **Total Coverage**: ${{ env.COVERAGE }}  
-            🔗 [Coverage View](https://myyrakle.github.io/html_reports/${{ env.REPORT_NAME }}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub> 
+            🔗 [Coverage View](https://myyrakle.github.io/html_reports/${{ env.REPORT_NAME }}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub>
