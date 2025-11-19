@@ -1,7 +1,6 @@
-use crate::errors::predule::LexingError;
-use crate::errors::RRDBError;
 use crate::engine::lexer::predule::{OperatorToken, Token};
-use crate::logger::predule::Logger;
+use crate::errors::RRDBError;
+use crate::errors::predule::LexingError;
 
 #[derive(Debug)]
 pub struct Tokenizer {
@@ -12,7 +11,7 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn new(text: String) -> Self {
-        Logger::info(format!("SQL echo: {:?}", text));
+        log::info!("SQL echo: {:?}", text);
         Self {
             last_char: ' ',
             buffer: text.chars().collect(),
@@ -207,7 +206,7 @@ impl Tokenizer {
                         return Err(LexingError::wrap(format!(
                             "invalid floating point number format: {}",
                             number_string
-                        )))
+                        )));
                     }
                 }
             } else {
@@ -219,7 +218,7 @@ impl Tokenizer {
                         return Err(LexingError::wrap(format!(
                             "invalid integer number format: {}",
                             number_string
-                        )))
+                        )));
                     }
                 }
             }
@@ -328,7 +327,7 @@ impl Tokenizer {
                     return Err(LexingError::wrap(format!(
                         "unexpected operator: {:?}",
                         self.last_char
-                    )))
+                    )));
                 }
             }
         }
