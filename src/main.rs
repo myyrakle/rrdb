@@ -4,7 +4,6 @@ pub mod config;
 pub mod constants;
 pub mod engine;
 pub mod errors;
-pub mod logger;
 pub mod pgwire;
 pub mod utils;
 
@@ -20,6 +19,8 @@ use crate::{
 
 #[tokio::main]
 async fn main() -> Result<(), RRDBError> {
+    env_logger::init();
+
     let args = Command::parse();
 
     match args.action {

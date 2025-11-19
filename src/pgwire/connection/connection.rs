@@ -12,7 +12,6 @@ use crate::engine::lexer::predule::Tokenizer;
 use crate::engine::parser::context::ParserContext;
 use crate::engine::parser::predule::Parser;
 use crate::engine::server::shared_state::SharedState;
-use crate::logger::predule::Logger;
 use crate::pgwire::connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement};
 use crate::pgwire::engine::{Engine, Portal, RRDBEngine};
 use crate::pgwire::protocol::backend::{
@@ -120,12 +119,12 @@ impl Connection {
                                         self.engine.shared_state.client_info.database =
                                             database_name.to_owned();
 
-                                        Logger::info(format!(
+                                        log::info!(
                                             "New Connection=> UUID:{} IP:{} DATABASE:{}",
                                             self.engine.shared_state.client_info.connection_id,
                                             self.engine.shared_state.client_info.ip,
                                             self.engine.shared_state.client_info.database
-                                        ));
+                                        );
                                     } else {
                                         return Err(ErrorResponse::fatal(
                                             SqlState::CONNECTION_EXCEPTION,

@@ -13,7 +13,6 @@ use crate::engine::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEnco
 use crate::engine::wal::manager::builder::WALBuilder;
 use crate::errors::RRDBError;
 use crate::errors::execute_error::ExecuteError;
-use crate::logger::predule::Logger;
 use crate::pgwire::predule::Connection;
 
 use futures::future::join_all;
@@ -74,7 +73,7 @@ impl Server {
                                 .response_sender
                                 .send(ChannelResponse { result: Ok(result) })
                             {
-                                Logger::error("channel send failed");
+                                log::error!("channel send failed");
                             }
                         }
                         Err(error) => {
@@ -82,7 +81,7 @@ impl Server {
                             if let Err(_response) = request.response_sender.send(ChannelResponse {
                                 result: Err(ExecuteError::wrap(error)),
                             }) {
-                                Logger::error("channel send failed");
+                                log::error!("channel send failed");
                             }
                         }
                     }
@@ -104,7 +103,7 @@ impl Server {
                 let (stream, address) = match accepted {
                     Ok((stream, address)) => (stream, address),
                     Err(error) => {
-                        Logger::error(format!("socket error {:?}", error));
+                        log::error!("socket error {:?}", error);
                         continue;
                     }
                 };
@@ -124,16 +123,17 @@ impl Server {
                 tokio::spawn(async move {
                     let mut conn = Connection::new(shared_state, config);
                     if let Err(error) = conn.run(stream).await {
-                        Logger::error(format!("connection error {:?}", error));
+                        log::error!("connection error {:?}", error);
                     }
                 });
             }
         });
 
-        Logger::info(format!(
+        log::info!(
             "Server is running on {}:{}",
-            self.config.host, self.config.port
-        ));
+            self.config.host,
+            self.config.port
+        );
 
         join_all(vec![connection_task, background_task]).await;
 

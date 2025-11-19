@@ -31,7 +31,6 @@ use crate::engine::wal::endec::implements::bitcode::BitcodeEncoder;
 use crate::engine::wal::manager::WALManager;
 use crate::errors::RRDBError;
 use crate::errors::execute_error::ExecuteError;
-use crate::logger::predule::Logger;
 
 pub struct DBEngine {
     pub(crate) config: Arc<LaunchConfig>,
@@ -55,7 +54,7 @@ impl DBEngine {
         _wal_manager: Arc<WALManager<BitcodeEncoder>>,
         _connection_id: String,
     ) -> Result<ExecuteResult, RRDBError> {
-        Logger::info(format!("AST echo: {:?}", statement));
+        log::info!("AST echo: {:?}", statement);
 
         // 쿼리 실행
         let result = match statement {
