@@ -848,7 +848,7 @@ fn test_parse_unary_expression() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<SQLExpression, crate::errors::RRDBError> =
+        let got: Result<SQLExpression, crate::errors::Errors> =
             parser.parse_unary_expression(t.operator, Default::default());
 
         assert_eq!(
@@ -956,7 +956,7 @@ fn test_parse_parentheses_expression() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<SQLExpression, crate::errors::RRDBError> =
+        let got: Result<SQLExpression, crate::errors::Errors> =
             parser.parse_parentheses_expression(Default::default());
 
         assert_eq!(
@@ -1048,7 +1048,7 @@ fn test_parse_binary_expression() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<SQLExpression, crate::errors::RRDBError> =
+        let got: Result<SQLExpression, crate::errors::Errors> =
             parser.parse_binary_expression(t.lhs, Default::default());
 
         assert_eq!(
@@ -1123,7 +1123,7 @@ fn test_parse_function_call_expression() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<SQLExpression, crate::errors::RRDBError> = parser
+        let got: Result<SQLExpression, crate::errors::Errors> = parser
             .parse_function_call_expression(t.database_name, t.function_name, Default::default());
 
         assert_eq!(
@@ -1209,7 +1209,7 @@ fn test_parse_between_expression() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<SQLExpression, crate::errors::RRDBError> =
+        let got: Result<SQLExpression, crate::errors::Errors> =
             parser.parse_between_expression(t.a, Default::default());
 
         assert_eq!(

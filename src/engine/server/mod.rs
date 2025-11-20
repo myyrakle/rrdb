@@ -11,7 +11,7 @@ use crate::engine::server::client::ClientInfo;
 use crate::engine::server::shared_state::SharedState;
 use crate::engine::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
 use crate::engine::wal::manager::builder::WALBuilder;
-use crate::errors::RRDBError;
+use crate::errors::Errors;
 use crate::errors::execute_error::ExecuteError;
 use crate::pgwire::predule::Connection;
 
@@ -32,7 +32,7 @@ impl Server {
 
     /// 메인 서버 루프.
     /// 여러개의 태스크 제어
-    pub async fn run(&self) -> Result<(), RRDBError> {
+    pub async fn run(&self) -> Result<(), Errors> {
         // TODO: 인덱스 로딩 등 기본 로직 실행.
 
         let engine = Arc::new(DBEngine::new(self.config.as_ref().clone()));

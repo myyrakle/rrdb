@@ -1,18 +1,20 @@
 use crate::engine::ast::SQLStatement;
-use crate::errors::predule::ParsingError;
-use crate::errors::RRDBError;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::context::ParserContext;
 use crate::engine::parser::predule::Parser;
+use crate::errors::parsing_error::ParsingError;
+use crate::errors::{ErrorKind, Errors};
 
 impl Parser {
     // CREATE...로 시작되는 쿼리 분석
     pub(crate) fn handle_create_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, RRDBError> {
+    ) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E1101 need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError(
+                "E1101 need more tokens".to_string(),
+            )));
         }
 
         let current_token = self.get_next_token();
@@ -31,9 +33,11 @@ impl Parser {
     pub(crate) fn handle_alter_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, RRDBError> {
+    ) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E1103 need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError(
+                "E1103 need more tokens".to_string(),
+            )));
         }
 
         let current_token = self.get_next_token();
@@ -50,9 +54,11 @@ impl Parser {
     pub(crate) fn handle_drop_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, RRDBError> {
+    ) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E1105 need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError(
+                "E1105 need more tokens".to_string(),
+            )));
         }
 
         let current_token = self.get_next_token();

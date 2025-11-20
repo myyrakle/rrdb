@@ -1,4 +1,4 @@
-use std::io::ErrorKind;
+use std::io::ErrorKind as IOErrorKind;
 
 use crate::engine::DBEngine;
 use crate::engine::ast::ddl::alter_database::{AlterDatabaseAction, AlterDatabaseQuery};
@@ -8,14 +8,11 @@ use crate::engine::schema::database::DatabaseSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::RRDBError;
-use crate::errors::predule::ExecuteError;
+use crate::errors::execute_error::ExecuteError;
+use crate::errors::{ErrorKind, Errors};
 
 impl DBEngine {
-    pub async fn alter_database(
-        &self,
-        query: AlterDatabaseQuery,
-    ) -> Result<ExecuteResult, RRDBError> {
+    pub async fn alter_database(&self, query: AlterDatabaseQuery) -> Result<ExecuteResult, Errors> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
@@ -25,10 +22,9 @@ impl DBEngine {
             Some(action) => match action {
                 AlterDatabaseAction::RenameTo(rename) => {
                     // 기존 데이터베이스명
-                    let from_database_name = query
-                        .database_name
-                        .clone()
-                        .ok_or_else(|| ExecuteError::wrap("no database name"))?;
+                    let from_database_name = query.database_name.clone().ok_or_else(|| {
+                        Errors::new(ErrorKind::ExecuteError("no database name".to_string()))
+                    })?;
 
                     // 변경할 데이터베이스명
                     let to_database_name = rename.name;
@@ -45,11 +41,15 @@ impl DBEngine {
 
                     if let Err(error) = result {
                         match error.kind() {
-                            ErrorKind::NotFound => {
-                                return Err(ExecuteError::wrap("database not found"));
+                            IOErrorKind::NotFound => {
+                                return Err(Errors::new(ErrorKind::ExecuteError(
+                                    "database not found".to_string(),
+                                )));
                             }
                             _ => {
-                                return Err(ExecuteError::wrap("database alter failed"));
+                                return Err(Errors::new(ErrorKind::ExecuteError(
+                                    "database alter failed".to_string(),
+                                )));
                             }
                         }
                     }
@@ -72,17 +72,23 @@ impl DBEngine {
                                     )
                                     .await
                                     {
-                                        return Err(ExecuteError::wrap("no database name"));
+                                        return Err(Errors::new(ErrorKind::ExecuteError(
+                                            "no database name".to_string(),
+                                        )));
                                     }
                                 }
                                 None => {
-                                    return Err(ExecuteError::wrap("invalid config data"));
+                                    return Err(Errors::new(ErrorKind::ExecuteError(
+                                        "invalid config data".to_string(),
+                                    )));
                                 }
                             }
                         }
                         Err(error) => match error.kind() {
-                            ErrorKind::NotFound => {
-                                return Err(ExecuteError::wrap("database not found"));
+                            IOErrorKind::NotFound => {
+                                return Err(Errors::new(ErrorKind::ExecuteError(
+                                    "database not found".to_string(),
+                                )));
                             }
                             _ => {
                                 return Err(ExecuteError::wrap(format!("{:?}", error)));

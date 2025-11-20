@@ -13,9 +13,6 @@ pub mod expression;
 pub mod initialize;
 pub mod types;
 
-// pub use server::server::Server;
-
-use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -29,8 +26,8 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bitcode::BitcodeEncoder;
 use crate::engine::wal::manager::WALManager;
-use crate::errors::RRDBError;
 use crate::errors::execute_error::ExecuteError;
+use crate::errors::{ErrorKind, Errors};
 
 pub struct DBEngine {
     pub(crate) config: Arc<LaunchConfig>,
@@ -53,7 +50,7 @@ impl DBEngine {
         statement: SQLStatement,
         _wal_manager: Arc<WALManager<BitcodeEncoder>>,
         _connection_id: String,
-    ) -> Result<ExecuteResult, RRDBError> {
+    ) -> Result<ExecuteResult, Errors> {
         log::info!("AST echo: {:?}", statement);
 
         // 쿼리 실행
@@ -97,7 +94,7 @@ impl DBEngine {
 }
 
 impl DBEngine {
-    pub async fn get_table_config(&self, table_name: TableName) -> Result<TableSchema, RRDBError> {
+    pub async fn get_table_config(&self, table_name: TableName) -> Result<TableSchema, Errors> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
@@ -121,12 +118,16 @@ impl DBEngine {
 
                 match table_config {
                     Some(table_config) => Ok(table_config),
-                    None => Err(ExecuteError::wrap("invalid config data")),
+                    None => Err(Errors::new(ErrorKind::ExecuteError(
+                        "invalid config data".to_string(),
+                    ))),
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::wrap("table not found")),
-                _ => Err(ExecuteError::wrap(format!("{:?}", error))),
+                std::io::ErrorKind::NotFound => Err(Errors::new(ErrorKind::ExecuteError(
+                    "table not found".to_string(),
+                ))),
+                _ => Err(Errors::new(ErrorKind::ExecuteError(format!("{:?}", error)))),
             },
         }
     }

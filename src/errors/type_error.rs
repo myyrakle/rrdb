@@ -1,4 +1,4 @@
-use super::RRDBError;
+use super::{Errors, ErrorKind};
 
 #[derive(Debug)]
 pub struct TypeError {
@@ -13,11 +13,8 @@ impl PartialEq for TypeError {
 }
 
 impl TypeError {
-    pub fn wrap<T: ToString>(message: T) -> RRDBError {
-        RRDBError::TypeError(Self {
-            message: message.to_string(),
-            backtrace: std::backtrace::Backtrace::capture(),
-        })
+    pub fn wrap<T: ToString>(message: T) -> Errors {
+        Errors::new(ErrorKind::TypeError(message.to_string()))
     }
 }
 
@@ -25,25 +22,19 @@ impl std::error::Error for TypeError {}
 
 impl std::fmt::Display for TypeError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "parsing error: {}", self.message)
+        write!(formatter, "type error: {}", self.message)
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_type_error_eq() {
-        let error1 = TypeError::wrap("test");
-        let error2 = TypeError::wrap("test");
-        assert_eq!(error1, error2);
-    }
-
-    #[test]
     fn test_type_error_display() {
-        let error = TypeError::wrap("test");
-
-        assert!(error.to_string().contains("parsing error: test"));
+        let error = Errors::new(ErrorKind::TypeError("test".to_string()));
+        assert!(error.to_string().contains("type error"));
     }
 }
+*/

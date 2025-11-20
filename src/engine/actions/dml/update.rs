@@ -6,19 +6,19 @@ use crate::engine::DBEngine;
 use crate::engine::ast::dml::plan::select::scan::ScanType;
 use crate::engine::ast::dml::plan::update::update_plan::UpdatePlanItem;
 use crate::engine::ast::dml::update::UpdateQuery;
-use crate::errors::predule::ExecuteError;
-use crate::errors::type_error::TypeError;
-use crate::errors::RRDBError;
-use crate::engine::schema::row::TableDataFieldType;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
-use crate::engine::types::{
-    ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow, ExecuteColumnType,
-};
 use crate::engine::expression::ReduceContext;
 use crate::engine::optimizer::predule::Optimizer;
+use crate::engine::schema::row::TableDataFieldType;
+use crate::engine::types::{
+    ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
+};
+use crate::errors::Errors;
+use crate::errors::type_error::TypeError;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
-    pub async fn update(&self, query: UpdateQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn update(&self, query: UpdateQuery) -> Result<ExecuteResult, Errors> {
         let encoder = StorageEncoder::new();
 
         let table = query.target_table.clone().unwrap().table;

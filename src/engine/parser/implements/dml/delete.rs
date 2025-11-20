@@ -1,17 +1,18 @@
 use crate::engine::ast::dml::delete::DeleteQuery;
-use crate::errors::RRDBError;
-use crate::engine::parser::predule::{Parser, ParserContext};
-
-use crate::errors::predule::ParsingError;
 use crate::engine::lexer::predule::Token;
+use crate::engine::parser::predule::{Parser, ParserContext};
+use crate::errors::parsing_error::ParsingError;
+use crate::errors::{ErrorKind, Errors};
 
 impl Parser {
     pub(crate) fn handle_delete_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<DeleteQuery, RRDBError> {
+    ) -> Result<DeleteQuery, Errors> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0501 need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError(
+                "E0501 need more tokens".to_string(),
+            )));
         }
 
         // DELETE 토큰 삼키기
@@ -25,7 +26,9 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0503 need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError(
+                "E0503 need more tokens".to_string(),
+            )));
         }
 
         // FROM 토큰 삼키기
@@ -41,7 +44,9 @@ impl Parser {
         let mut query_builder = DeleteQuery::builder();
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0505 need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError(
+                "E0505 need more tokens".to_string(),
+            )));
         }
 
         // 테이블명 파싱

@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use crate::config::launch_config::LaunchConfig;
 use crate::engine::wal::endec::{WALDecoder, WALEncoder};
 use crate::engine::wal::types::{EntryType, WALEntry};
-use crate::errors::RRDBError;
-use crate::errors::predule::WALError;
+use crate::errors::Errors;
+use crate::errors::wal_errors::WALError;
 
 use super::WALManager;
 
@@ -17,7 +17,7 @@ impl<'a> WALBuilder<'a> {
         Self { config }
     }
 
-    pub async fn build<T, D>(&self, decoder: T, encoder: D) -> Result<WALManager<D>, RRDBError>
+    pub async fn build<T, D>(&self, decoder: T, encoder: D) -> Result<WALManager<D>, Errors>
     where
         T: WALDecoder<Vec<WALEntry>>,
         D: WALEncoder<Vec<WALEntry>>,
@@ -34,7 +34,7 @@ impl<'a> WALBuilder<'a> {
         ))
     }
 
-    async fn load_data<T>(&self, decoder: T) -> Result<(usize, Vec<WALEntry>), RRDBError>
+    async fn load_data<T>(&self, decoder: T) -> Result<(usize, Vec<WALEntry>), Errors>
     where
         T: WALDecoder<Vec<WALEntry>>,
     {
@@ -74,7 +74,7 @@ impl<'a> WALBuilder<'a> {
             // Case 1: WAL 파일이 하나도 없는 초기 상태
             || {
                 // 첫 번째 WAL 파일이므로 시퀀스는 1로 시작하고, 복구할 엔트리는 없음
-                Ok((1, Vec::new()))
+                Ok::<(usize, Vec<WALEntry>), Errors>((1, Vec::new()))
             },
             // Case 2: 최신 WAL 파일이 존재하는 상태
             |log_path| {

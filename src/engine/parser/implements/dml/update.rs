@@ -1,18 +1,18 @@
 use crate::engine::ast::dml::parts::_where::WhereClause;
 use crate::engine::ast::dml::parts::update_item::UpdateItem;
 use crate::engine::ast::dml::update::UpdateQuery;
-use crate::errors::predule::ParsingError;
-use crate::errors::RRDBError;
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
+use crate::errors::{Errors, ErrorKind};
+use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     pub(crate) fn handle_update_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<UpdateQuery, RRDBError> {
+    ) -> Result<UpdateQuery, Errors> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0601: need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError("E0601: need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
@@ -27,7 +27,7 @@ impl Parser {
         let mut query_builder = UpdateQuery::builder();
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0603: need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError("E0603: need more tokens".to_string())));
         }
 
         // 테이블명 파싱
@@ -40,7 +40,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0604: need more tokens"));
+            return Err(Errors::new(ErrorKind::ParsingError("E0604: need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
@@ -70,7 +70,7 @@ impl Parser {
                 }
                 Token::Identifier(identifier) => {
                     if !self.has_next_token() {
-                        return Err(ParsingError::wrap("E0606: need more tokens"));
+                        return Err(Errors::new(ErrorKind::ParsingError("E0606: need more tokens".to_string())));
                     }
 
                     let current_token = self.get_next_token();
@@ -83,7 +83,7 @@ impl Parser {
                     }
 
                     if !self.has_next_token() {
-                        return Err(ParsingError::wrap("E0608: need more tokens"));
+                        return Err(Errors::new(ErrorKind::ParsingError("E0608: need more tokens".to_string())));
                     }
 
                     let expression = self.parse_expression(context.clone())?;

@@ -6,13 +6,14 @@ use itertools::Itertools;
 use crate::engine::DBEngine;
 use crate::engine::ast::dml::expressions::binary::BinaryOperatorExpression;
 use crate::engine::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
-use crate::engine::ast::types::function::{Function, BuiltInFunction, AggregateFunction};
-use crate::engine::ast::types::{Column, TableName, SQLExpression};
-use crate::engine::schema::row::TableDataRow;
-use crate::engine::types::{ExecuteColumnType};
+use crate::engine::ast::types::function::{AggregateFunction, BuiltInFunction, Function};
+use crate::engine::ast::types::{Column, SQLExpression, TableName};
 use crate::engine::schema::row::TableDataFieldType;
-use crate::errors::RRDBError;
-use crate::errors::predule::{ExecuteError, TypeError};
+use crate::engine::schema::row::TableDataRow;
+use crate::engine::types::ExecuteColumnType;
+use crate::errors::execute_error::ExecuteError;
+use crate::errors::type_error::TypeError;
+use crate::errors::{ErrorKind, Errors};
 
 #[derive(Debug, Default, Clone)]
 pub struct ReduceContext {
@@ -27,7 +28,7 @@ impl DBEngine {
         &self,
         expression: SQLExpression,
         context: ReduceContext,
-    ) -> Result<TableDataFieldType, RRDBError> {
+    ) -> Result<TableDataFieldType, Errors> {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),
@@ -116,7 +117,9 @@ impl DBEngine {
                     Box::pin(self.reduce_expression(binary.rhs.clone(), context.clone())).await?;
 
                 if lhs.type_code() != rhs.type_code() {
-                    return Err(TypeError::wrap("The types of lhs and rhs do not match."));
+                    return Err(Errors::new(ErrorKind::TypeError(
+                        "The types of lhs and rhs do not match.".to_string(),
+                    )));
                 }
 
                 if let TableDataFieldType::Array(ref left_array) = lhs {
@@ -591,7 +594,7 @@ impl DBEngine {
         &self,
         expression: SQLExpression,
         context: ReduceContext,
-    ) -> Result<ExecuteColumnType, RRDBError> {
+    ) -> Result<ExecuteColumnType, Errors> {
         match expression {
             SQLExpression::Integer(_) => Ok(ExecuteColumnType::Integer),
             SQLExpression::Boolean(_) => Ok(ExecuteColumnType::Bool),

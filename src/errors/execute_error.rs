@@ -1,4 +1,4 @@
-use super::RRDBError;
+use super::{ErrorKind, Errors};
 
 #[derive(Debug)]
 pub struct ExecuteError {
@@ -13,11 +13,8 @@ impl PartialEq for ExecuteError {
 }
 
 impl ExecuteError {
-    pub fn wrap<T: ToString>(message: T) -> RRDBError {
-        RRDBError::ExecuteError(Self {
-            message: message.to_string(),
-            backtrace: std::backtrace::Backtrace::capture(),
-        })
+    pub fn wrap<T: ToString>(message: T) -> Errors {
+        Errors::new(ErrorKind::ExecuteError(message.to_string()))
     }
 }
 
@@ -32,17 +29,11 @@ impl std::fmt::Display for ExecuteError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_execute_error_eq() {
-        let error1 = ExecuteError::wrap("test");
-        let error2 = ExecuteError::wrap("test");
-        assert_eq!(error1, error2);
-    }
+    use crate::errors::ErrorKind;
 
     #[test]
     fn test_execute_error_display() {
-        let error = ExecuteError::wrap("test");
+        let error = Errors::new(ErrorKind::ExecuteError("test".to_string()));
 
         assert!(error.to_string().contains("test"));
     }

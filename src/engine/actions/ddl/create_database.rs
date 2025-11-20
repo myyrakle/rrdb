@@ -1,4 +1,4 @@
-use std::io::ErrorKind;
+use std::io::ErrorKind as IOErrorKind;
 
 use crate::engine::DBEngine;
 use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
@@ -8,14 +8,14 @@ use crate::engine::schema::database::DatabaseSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::RRDBError;
-use crate::errors::predule::ExecuteError;
+use crate::errors::execute_error::ExecuteError;
+use crate::errors::{ErrorKind, Errors};
 
 impl DBEngine {
     pub async fn create_database(
         &self,
         query: CreateDatabaseQuery,
-    ) -> Result<ExecuteResult, RRDBError> {
+    ) -> Result<ExecuteResult, Errors> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
@@ -23,13 +23,13 @@ impl DBEngine {
         let database_name = query
             .database_name
             .clone()
-            .ok_or_else(|| ExecuteError::wrap("no database name"))?;
+            .ok_or_else(|| Errors::new(ErrorKind::ExecuteError("no database name".to_string())))?;
 
         let database_path = base_path.clone().join(&database_name);
 
         if let Err(error) = tokio::fs::create_dir(database_path.clone()).await {
             match error.kind() {
-                ErrorKind::AlreadyExists => {
+                IOErrorKind::AlreadyExists => {
                     if query.if_not_exists {
                         return Ok(ExecuteResult {
                             columns: (vec![ExecuteColumn {
@@ -43,11 +43,15 @@ impl DBEngine {
                             }]),
                         });
                     } else {
-                        return Err(ExecuteError::wrap("already exists database"));
+                        return Err(Errors::new(ErrorKind::ExecuteError(
+                            "already exists database".to_string(),
+                        )));
                     }
                 }
                 _ => {
-                    return Err(ExecuteError::wrap("database create failed"));
+                    return Err(Errors::new(ErrorKind::ExecuteError(
+                        "database create failed".to_string(),
+                    )));
                 }
             }
         }
@@ -57,11 +61,15 @@ impl DBEngine {
 
         if let Err(error) = tokio::fs::create_dir(&tables_path).await {
             match error.kind() {
-                ErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::wrap("already exists tables"));
+                IOErrorKind::AlreadyExists => {
+                    return Err(Errors::new(ErrorKind::ExecuteError(
+                        "already exists tables".to_string(),
+                    )));
                 }
                 _ => {
-                    return Err(ExecuteError::wrap("tables create failed"));
+                    return Err(Errors::new(ErrorKind::ExecuteError(
+                        "tables create failed".to_string(),
+                    )));
                 }
             }
         }
