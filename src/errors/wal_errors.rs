@@ -25,16 +25,3 @@ impl std::fmt::Display for WALError {
         write!(formatter, "wal error: {}", self.message)
     }
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_wal_error_display() {
-        let error = Errors::new(ErrorKind::WALError("test".to_string()));
-        assert!(error.to_string().contains("wal error"));
-    }
-}
-*/

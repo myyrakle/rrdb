@@ -1,4 +1,4 @@
-use super::{Errors, ErrorKind};
+use super::{ErrorKind, Errors};
 
 #[derive(Debug)]
 pub struct TypeError {
@@ -25,16 +25,3 @@ impl std::fmt::Display for TypeError {
         write!(formatter, "type error: {}", self.message)
     }
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_type_error_display() {
-        let error = Errors::new(ErrorKind::TypeError("test".to_string()));
-        assert!(error.to_string().contains("type error"));
-    }
-}
-*/

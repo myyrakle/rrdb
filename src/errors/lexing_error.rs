@@ -1,4 +1,4 @@
-use super::{Errors, ErrorKind};
+use super::{ErrorKind, Errors};
 
 #[derive(Debug)]
 pub struct LexingError {
@@ -25,23 +25,3 @@ impl std::fmt::Display for LexingError {
         write!(formatter, "lexing error: {}", self.message)
     }
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_lexing_error_eq() {
-        let error1 = Errors::new(ErrorKind::LexingError("test".to_string()));
-        let error2 = Errors::new(ErrorKind::LexingError("test".to_string()));
-        // Cannot compare Errors directly - no PartialEq
-    }
-
-    #[test]
-    fn test_lexing_error_display() {
-        let error = Errors::new(ErrorKind::LexingError("test".to_string()));
-        assert!(error.to_string().contains("lexing error: test"));
-    }
-}
-*/

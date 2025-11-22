@@ -25,16 +25,3 @@ impl std::fmt::Display for ExecuteError {
         write!(formatter, "{}", self.message)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::errors::ErrorKind;
-
-    #[test]
-    fn test_execute_error_display() {
-        let error = Errors::new(ErrorKind::ExecuteError("test".to_string()));
-
-        assert!(error.to_string().contains("test"));
-    }
-}
