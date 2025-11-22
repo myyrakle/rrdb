@@ -13,23 +13,23 @@ impl Parser {
         let mut query_builder = InsertQuery::builder();
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0401 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         // INSERT 토큰 삼키기
         let current_token = self.get_next_token();
         if current_token != Token::Insert {
-            return Err(Errors::new(ErrorKind::ParsingError("E0402 expected INSERT".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("expected INSERT".to_string())));
         }
 
         // INTO 토큰 삼키기
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0410 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
         if current_token != Token::Into {
-            return Err(Errors::new(ErrorKind::ParsingError("E0403 expected INTO".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("expected INTO".to_string())));
         }
 
         // 테이블명 파싱
@@ -38,7 +38,7 @@ impl Parser {
 
         // 컬럼명 지정 파싱
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0404 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
@@ -51,7 +51,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0405 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         // 컬럼명 지정 파싱
@@ -59,7 +59,7 @@ impl Parser {
         query_builder = query_builder.set_columns(columns.clone());
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0413 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
@@ -71,7 +71,7 @@ impl Parser {
 
                 if values.iter().any(|e| e.list.len() != columns.len()) {
                     return Err(ParsingError::wrap(
-                        "E0415 The number of values in insert and the number of columns do not match.",
+                        "The number of values in insert and the number of columns do not match.",
                     ));
                 }
 
@@ -83,7 +83,7 @@ impl Parser {
 
                 if select.select_items.len() != columns.len() {
                     return Err(ParsingError::wrap(
-                        "E0416 The number of values in insert and the number of columns do not match.",
+                        "The number of values in insert and the number of columns do not match.",
                     ));
                 }
 
@@ -91,7 +91,7 @@ impl Parser {
             }
             _ => {
                 return Err(ParsingError::wrap(format!(
-                    "E0414 expected 'Values'. but your input word is '{:?}'",
+                    "expected 'Values'. but your input word is '{:?}'",
                     current_token
                 )));
             }
@@ -114,7 +114,7 @@ impl Parser {
         let mut names = vec![];
         loop {
             if !self.has_next_token() {
-                return Err(Errors::new(ErrorKind::ParsingError("E0406 need more tokens".to_string())));
+                return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
             }
 
             let current_token = self.get_next_token();
@@ -132,7 +132,7 @@ impl Parser {
                 }
                 _ => {
                     return Err(ParsingError::wrap(format!(
-                        "E0407 unexpected input word '{:?}'",
+                        "unexpected input word '{:?}'",
                         current_token
                     )));
                 }
@@ -151,14 +151,14 @@ impl Parser {
         let mut values: Vec<InsertValue> = vec![];
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0409 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
 
         if current_token != Token::Values {
             return Err(ParsingError::wrap(format!(
-                "E0408 expected 'Values'. but your input word is '{:?}'",
+                "expected 'Values'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -174,19 +174,19 @@ impl Parser {
 
             if current_token != Token::LeftParentheses {
                 return Err(ParsingError::wrap(format!(
-                    "E0417 expected '('. but your input word is '{:?}'",
+                    "expected '('. but your input word is '{:?}'",
                     current_token
                 )));
             }
 
             if !self.has_next_token() {
-                return Err(Errors::new(ErrorKind::ParsingError("E0411 need more tokens".to_string())));
+                return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
             }
 
             // 각 Value 절 파싱. (A, B, C, D...)
             loop {
                 if !self.has_next_token() {
-                    return Err(Errors::new(ErrorKind::ParsingError("E0412 need more tokens".to_string())));
+                    return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
                 }
 
                 let current_token = self.get_next_token();

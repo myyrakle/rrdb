@@ -9,7 +9,7 @@ impl Parser {
         context: ParserContext,
     ) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E1001 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let table_name = self.parse_table_name(context)?;

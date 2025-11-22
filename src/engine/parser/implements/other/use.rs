@@ -11,7 +11,7 @@ impl Parser {
         _context: ParserContext,
     ) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0901 need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
@@ -22,7 +22,7 @@ impl Parser {
             }
             .into()),
             _ => Err(ParsingError::wrap(format!(
-                "E0902: unexpected token '{:?}'",
+                "unexpected token '{:?}'",
                 current_token
             ))),
         }

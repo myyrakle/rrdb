@@ -20,7 +20,7 @@ impl Parser {
     ) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E1205 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -37,7 +37,7 @@ impl Parser {
         // 여는 괄호 체크
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E1206 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -45,7 +45,7 @@ impl Parser {
 
         if Token::LeftParentheses != current_token {
             return Err(ParsingError::wrap(format!(
-                "E1207 expected '('. but your input word is '{:?}'",
+                "expected '('. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -54,7 +54,7 @@ impl Parser {
         loop {
             if !self.has_next_token() {
                 return Err(Errors::new(ErrorKind::ParsingError(
-                    "E1208 need more tokens".to_string(),
+                    "need more tokens".to_string(),
                 )));
             }
 
@@ -80,7 +80,7 @@ impl Parser {
 
         if Token::SemiColon != current_token {
             return Err(ParsingError::wrap(format!(
-                "E1211 expected ';'. but your input word is '{:?}'",
+                "expected ';'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -95,7 +95,7 @@ impl Parser {
     ) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E1201 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -116,7 +116,7 @@ impl Parser {
             Token::Rename => {
                 if !self.has_next_token() {
                     return Err(Errors::new(ErrorKind::ParsingError(
-                        "E1212 need more tokens".to_string(),
+                        "need more tokens".to_string(),
                     )));
                 }
 
@@ -127,7 +127,7 @@ impl Parser {
                     Token::To => {
                         if !self.has_next_token() {
                             return Err(Errors::new(ErrorKind::ParsingError(
-                                "E1213 need more tokens".to_string(),
+                                "need more tokens".to_string(),
                             )));
                         }
 
@@ -140,7 +140,7 @@ impl Parser {
                             }
                             _ => {
                                 return Err(ParsingError::wrap(format!(
-                                    "E1214 unexpected token {:?}",
+                                    "unexpected token {:?}",
                                     current_token
                                 )));
                             }
@@ -150,7 +150,7 @@ impl Parser {
                     Token::Column => {
                         if !self.has_next_token() {
                             return Err(Errors::new(ErrorKind::ParsingError(
-                                "E1217 need more tokens".to_string(),
+                                "need more tokens".to_string(),
                             )));
                         }
 
@@ -159,7 +159,7 @@ impl Parser {
                         if let Token::Identifier(from_name) = current_token {
                             if !self.has_next_token() {
                                 return Err(Errors::new(ErrorKind::ParsingError(
-                                    "E1219 need more tokens".to_string(),
+                                    "need more tokens".to_string(),
                                 )));
                             }
 
@@ -167,14 +167,14 @@ impl Parser {
 
                             if Token::To != current_token {
                                 return Err(ParsingError::wrap(format!(
-                                    "E1220 expected token is 'TO', but you input is {:?}",
+                                    "expected token is 'TO', but you input is {:?}",
                                     current_token
                                 )));
                             }
 
                             if !self.has_next_token() {
                                 return Err(Errors::new(ErrorKind::ParsingError(
-                                    "E1221 need more tokens".to_string(),
+                                    "need more tokens".to_string(),
                                 )));
                             }
 
@@ -186,13 +186,13 @@ impl Parser {
                                 );
                             } else {
                                 return Err(ParsingError::wrap(format!(
-                                    "E1222 expected token is 'identifer', but you input is {:?}",
+                                    "expected token is 'identifer', but you input is {:?}",
                                     current_token
                                 )));
                             }
                         } else {
                             return Err(ParsingError::wrap(format!(
-                                "E1218 expected token {:?}",
+                                "expected token {:?}",
                                 current_token
                             )));
                         }
@@ -201,7 +201,7 @@ impl Parser {
                     Token::Identifier(from_name) => {
                         if !self.has_next_token() {
                             return Err(Errors::new(ErrorKind::ParsingError(
-                                "E1218 need more tokens".to_string(),
+                                "need more tokens".to_string(),
                             )));
                         }
 
@@ -209,14 +209,14 @@ impl Parser {
 
                         if Token::To != current_token {
                             return Err(ParsingError::wrap(format!(
-                                "E1223 expected token is 'TO', but you input is {:?}",
+                                "expected token is 'TO', but you input is {:?}",
                                 current_token
                             )));
                         }
 
                         if !self.has_next_token() {
                             return Err(Errors::new(ErrorKind::ParsingError(
-                                "E1224 need more tokens".to_string(),
+                                "need more tokens".to_string(),
                             )));
                         }
 
@@ -227,14 +227,14 @@ impl Parser {
                                 .set_action(AlterTableRenameColumn { from_name, to_name }.into());
                         } else {
                             return Err(ParsingError::wrap(format!(
-                                "E1225 expected token is 'identifer', but you input is {:?}",
+                                "expected token is 'identifer', but you input is {:?}",
                                 current_token
                             )));
                         }
                     }
                     _ => {
                         return Err(ParsingError::wrap(format!(
-                            "E1213 expected token is 'TO' or 'COLUMN', but you input is {:?}",
+                            "expected token is 'TO' or 'COLUMN', but you input is {:?}",
                             current_token
                         )));
                     }
@@ -243,7 +243,7 @@ impl Parser {
             Token::Add => {
                 if !self.has_next_token() {
                     return Err(Errors::new(ErrorKind::ParsingError(
-                        "E1215 need more tokens".to_string(),
+                        "need more tokens".to_string(),
                     )));
                 }
 
@@ -266,7 +266,7 @@ impl Parser {
                     }
                     _ => {
                         return Err(ParsingError::wrap(format!(
-                            "E1216 unexpected keyword '{:?}'",
+                            "unexpected keyword '{:?}'",
                             current_token
                         )));
                     }
@@ -279,7 +279,7 @@ impl Parser {
 
                 if !self.has_next_token() {
                     return Err(Errors::new(ErrorKind::ParsingError(
-                        "E1226 need more tokens".to_string(),
+                        "need more tokens".to_string(),
                     )));
                 }
 
@@ -290,7 +290,7 @@ impl Parser {
                         query_builder.set_action(AlterTableDropColumn { column_name }.into());
                 } else {
                     return Err(ParsingError::wrap(format!(
-                        "E1227 unexpected token {:?}",
+                        "unexpected token {:?}",
                         current_token
                     )));
                 }
@@ -302,7 +302,7 @@ impl Parser {
 
                 if !self.has_next_token() {
                     return Err(Errors::new(ErrorKind::ParsingError(
-                        "E1228 need more tokens".to_string(),
+                        "need more tokens".to_string(),
                     )));
                 }
 
@@ -311,7 +311,7 @@ impl Parser {
                 if let Token::Identifier(column_name) = current_token {
                     if !self.has_next_token() {
                         return Err(Errors::new(ErrorKind::ParsingError(
-                            "E1230 need more tokens".to_string(),
+                            "need more tokens".to_string(),
                         )));
                     }
 
@@ -336,7 +336,7 @@ impl Parser {
 
                                 if !self.has_next_token() {
                                     return Err(Errors::new(ErrorKind::ParsingError(
-                                        "E1233 need more tokens".to_string(),
+                                        "need more tokens".to_string(),
                                     )));
                                 }
 
@@ -354,7 +354,7 @@ impl Parser {
 
                                 if !self.has_next_token() {
                                     return Err(Errors::new(ErrorKind::ParsingError(
-                                        "E1234 need more tokens".to_string(),
+                                        "need more tokens".to_string(),
                                     )));
                                 }
 
@@ -369,7 +369,7 @@ impl Parser {
                                 );
                             } else {
                                 return Err(Errors::new(ErrorKind::ParsingError(
-                                    "E1231 unexpected tokens".to_string(),
+                                    "unexpected tokens".to_string(),
                                 )));
                             }
                         }
@@ -397,14 +397,14 @@ impl Parser {
                                 );
                             } else {
                                 return Err(Errors::new(ErrorKind::ParsingError(
-                                    "E1231 unexpected tokens".to_string(),
+                                    "unexpected tokens".to_string(),
                                 )));
                             }
                         }
                         Token::Type => {
                             if !self.has_next_token() {
                                 return Err(Errors::new(ErrorKind::ParsingError(
-                                    "E1232 need more tokens".to_string(),
+                                    "need more tokens".to_string(),
                                 )));
                             }
 
@@ -420,21 +420,21 @@ impl Parser {
                         }
                         _ => {
                             return Err(ParsingError::wrap(format!(
-                                "E1229 unexpected token {:?}",
+                                "unexpected token {:?}",
                                 current_token
                             )));
                         }
                     }
                 } else {
                     return Err(ParsingError::wrap(format!(
-                        "E1229 unexpected token {:?}",
+                        "unexpected token {:?}",
                         current_token
                     )));
                 }
             }
             _ => {
                 return Err(ParsingError::wrap(format!(
-                    "E1202 unexpected keyword '{:?}'",
+                    "unexpected keyword '{:?}'",
                     current_token
                 )));
             }
@@ -457,7 +457,7 @@ impl Parser {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E1203 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -474,7 +474,7 @@ impl Parser {
 
         if Token::SemiColon != current_token {
             return Err(ParsingError::wrap(format!(
-                "E1204 expected ';'. but your input word is '{:?}'",
+                "expected ';'. but your input word is '{:?}'",
                 current_token
             )));
         }

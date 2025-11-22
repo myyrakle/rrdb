@@ -12,14 +12,14 @@ impl Parser {
         context: ParserContext,
     ) -> Result<UpdateQuery, Errors> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0601: need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
 
         if current_token != Token::Update {
             return Err(ParsingError::wrap(format!(
-                "E0602: expected 'UPDATE'. but your input word is '{:?}'",
+                "expected 'UPDATE'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -27,7 +27,7 @@ impl Parser {
         let mut query_builder = UpdateQuery::builder();
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0603: need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         // 테이블명 파싱
@@ -40,14 +40,14 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("E0604: need more tokens".to_string())));
+            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
 
         let current_token = self.get_next_token();
 
         if current_token != Token::Set {
             return Err(ParsingError::wrap(format!(
-                "E0605: expected 'SET'. but your input word is '{:?}'",
+                "expected 'SET'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -70,20 +70,20 @@ impl Parser {
                 }
                 Token::Identifier(identifier) => {
                     if !self.has_next_token() {
-                        return Err(Errors::new(ErrorKind::ParsingError("E0606: need more tokens".to_string())));
+                        return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
                     }
 
                     let current_token = self.get_next_token();
 
                     if current_token != Token::Operator(OperatorToken::Eq) {
                         return Err(ParsingError::wrap(format!(
-                            "E0607: expected '='. but your input word is '{:?}'",
+                            "expected '='. but your input word is '{:?}'",
                             current_token
                         )));
                     }
 
                     if !self.has_next_token() {
-                        return Err(Errors::new(ErrorKind::ParsingError("E0608: need more tokens".to_string())));
+                        return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
                     }
 
                     let expression = self.parse_expression(context.clone())?;
@@ -97,7 +97,7 @@ impl Parser {
                 }
                 _ => {
                     return Err(ParsingError::wrap(format!(
-                        "E0609: unexpected input word: '{:?}'",
+                        "unexpected input word: '{:?}'",
                         current_token
                     )));
                 }

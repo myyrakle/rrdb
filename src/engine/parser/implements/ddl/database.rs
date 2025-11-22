@@ -13,7 +13,7 @@ impl Parser {
     pub(crate) fn handle_create_database_query(&mut self) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E0101 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -25,7 +25,7 @@ impl Parser {
 
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E0102 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -69,7 +69,7 @@ impl Parser {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E0104 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -107,7 +107,7 @@ impl Parser {
     pub(crate) fn handle_alter_database_query(&mut self) -> Result<SQLStatement, Errors> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E0105 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -144,14 +144,14 @@ impl Parser {
 
                 if current_token != Token::To {
                     return Err(ParsingError::wrap(format!(
-                        "E107: expected 'TO'. but your input word is '{:?}'",
+                        " expected 'TO'. but your input word is '{:?}'",
                         current_token
                     )));
                 }
 
                 if !self.has_next_token() {
                     return Err(ParsingError::wrap(
-                        "E108: expected identifier. but no more token",
+                        " expected identifier. but no more token",
                     ));
                 }
 
@@ -165,7 +165,7 @@ impl Parser {
                     }
                     _ => {
                         return Err(ParsingError::wrap(
-                            "E109: not supported command. possible commands: (alter database)",
+                            " not supported command. possible commands: (alter database)",
                         ));
                     }
                 }
@@ -173,7 +173,7 @@ impl Parser {
             Token::SemiColon => {}
             _ => {
                 return Err(ParsingError::wrap(format!(
-                    "E107: not supported syntax'{:?}'",
+                    " not supported syntax'{:?}'",
                     current_token
                 )));
             }

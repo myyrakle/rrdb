@@ -11,7 +11,7 @@ impl Parser {
     ) -> Result<DeleteQuery, Errors> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E0501 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -20,14 +20,14 @@ impl Parser {
 
         if current_token != Token::Delete {
             return Err(ParsingError::wrap(format!(
-                "E0502: expected 'DELETE'. but your input word is '{:?}'",
+                "expected 'DELETE'. but your input word is '{:?}'",
                 current_token
             )));
         }
 
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E0503 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
@@ -36,7 +36,7 @@ impl Parser {
 
         if current_token != Token::From {
             return Err(ParsingError::wrap(format!(
-                "E0504: expected 'FROM'. but your input word is '{:?}'",
+                "expected 'FROM'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -45,7 +45,7 @@ impl Parser {
 
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
-                "E0505 need more tokens".to_string(),
+                "need more tokens".to_string(),
             )));
         }
 
