@@ -7,8 +7,8 @@ use std::time::SystemTime;
 #[allow(unused_imports)]
 use std::{fs, io::BufWriter, path::PathBuf};
 
-use crate::errors::RRDBError;
-use crate::errors::predule::WALError;
+use crate::errors;
+use crate::errors::wal_errors::WALError;
 
 use super::{
     endec::WALEncoder,
@@ -57,7 +57,7 @@ where
         }
     }
 
-    pub fn append(&mut self, mut entry: WALEntry) -> Result<(), RRDBError> {
+    pub fn append(&mut self, mut entry: WALEntry) -> errors::Result<()> {
         let entire_data_size = self.buffers.iter().map(|entry| entry.size()).sum::<usize>();
 
         // 원본 WAL 객체 정보
@@ -113,7 +113,7 @@ where
         Ok(())
     }
 
-    fn save_to_file(&mut self) -> Result<(), RRDBError> {
+    fn save_to_file(&mut self) -> errors::Result<()> {
         let path = self
             .directory
             .join(format!("{:08X}.{}", self.sequence, self.extension));
@@ -132,7 +132,7 @@ where
         Ok(())
     }
 
-    fn checkpoint(&mut self) -> Result<(), RRDBError> {
+    fn checkpoint(&mut self) -> errors::Result<()> {
         self.buffers.push(WALEntry {
             data: None,
             entry_type: EntryType::Checkpoint,
@@ -145,12 +145,12 @@ where
         Ok(())
     }
 
-    pub fn flush(&mut self) -> Result<(), RRDBError> {
+    pub fn flush(&mut self) -> errors::Result<()> {
         self.checkpoint()?;
         Ok(())
     }
 
-    fn get_current_secs() -> Result<u128, RRDBError> {
+    fn get_current_secs() -> errors::Result<u128> {
         SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| WALError::wrap(e.to_string()))

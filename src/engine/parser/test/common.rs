@@ -179,7 +179,7 @@ fn test_parse_table_column() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<_, crate::errors::RRDBError> = parser.parse_table_column();
+        let got: Result<_, crate::errors::Errors> = parser.parse_table_column();
 
         assert_eq!(
             got.is_err(),
@@ -284,7 +284,7 @@ fn test_parse_data_type() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<_, crate::errors::RRDBError> = parser.parse_data_type();
+        let got: Result<_, crate::errors::Errors> = parser.parse_data_type();
 
         assert_eq!(
             got.is_err(),
@@ -356,7 +356,7 @@ fn test_parse_table_name() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<_, crate::errors::RRDBError> = parser.parse_table_name(Default::default());
+        let got: Result<_, crate::errors::Errors> = parser.parse_table_name(Default::default());
 
         assert_eq!(
             got.is_err(),
@@ -430,7 +430,7 @@ fn test_has_if_not_exists() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<_, crate::errors::RRDBError> = parser.has_if_not_exists();
+        let got: Result<_, crate::errors::Errors> = parser.has_if_not_exists();
 
         assert_eq!(
             got.is_err(),
@@ -492,7 +492,7 @@ fn test_has_if_exists() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<_, crate::errors::RRDBError> = parser.has_if_exists();
+        let got: Result<_, crate::errors::Errors> = parser.has_if_exists();
 
         assert_eq!(
             got.is_err(),
@@ -562,7 +562,7 @@ fn test_parse_select_column() {
     for t in test_cases {
         let mut parser = Parser::new(t.input);
 
-        let got: Result<_, crate::errors::RRDBError> = parser.parse_select_column();
+        let got: Result<_, crate::errors::Errors> = parser.parse_select_column();
 
         assert_eq!(
             got.is_err(),

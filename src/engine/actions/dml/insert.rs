@@ -1,18 +1,20 @@
 use std::collections::HashSet;
-use std::io::ErrorKind;
+use std::io::ErrorKind as IOErrorKind;
 
 use crate::engine::DBEngine;
 use crate::engine::ast::dml::insert::{InsertData, InsertQuery};
 use crate::engine::ast::types::SQLExpression;
+use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::{TableDataField, TableDataRow};
 use crate::engine::schema::table::TableSchema;
-use crate::engine::encoder::schema_encoder::StorageEncoder;
-use crate::engine::types::{ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow};
-use crate::errors::RRDBError;
-use crate::errors::predule::ExecuteError;
+use crate::engine::types::{
+    ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
+};
+use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
-    pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn insert(&self, query: InsertQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let into_table = query.into_table.as_ref().unwrap();
@@ -39,13 +41,17 @@ impl DBEngine {
                 match table_config {
                     Some(table_config) => table_config,
                     None => {
-                        return Err(ExecuteError::wrap("invalid config data"));
+                        return Err(ExecuteError::wrap(
+                            "invalid config data".to_string(),
+                        ));
                     }
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => {
-                    return Err(ExecuteError::wrap("table not found"));
+                IOErrorKind::NotFound => {
+                    return Err(ExecuteError::wrap(
+                        "table not found".to_string(),
+                    ));
                 }
                 _ => {
                     return Err(ExecuteError::wrap(format!("{:?}", error)));

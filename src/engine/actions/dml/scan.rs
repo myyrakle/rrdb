@@ -1,4 +1,4 @@
-use std::io::ErrorKind;
+use std::io::ErrorKind as IOErrorKind;
 use std::path::PathBuf;
 
 use futures::future::join_all;
@@ -7,14 +7,14 @@ use crate::engine::DBEngine;
 use crate::engine::ast::types::TableName;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::TableDataRow;
-use crate::errors::RRDBError;
-use crate::errors::predule::ExecuteError;
+use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn full_scan(
         &self,
         table_name: TableName,
-    ) -> Result<Vec<(PathBuf, TableDataRow)>, RRDBError> {
+    ) -> errors::Result<Vec<(PathBuf, TableDataRow)>> {
         let encoder = StorageEncoder::new();
 
         let database_name = table_name.database_name.unwrap();
@@ -55,7 +55,9 @@ impl DBEngine {
                                         ))),
                                     }
                                 } else {
-                                    Err(ExecuteError::wrap("full scan failed"))
+                                    Err(ExecuteError::wrap(
+                                        "full scan failed".to_string(),
+                                    ))
                                 }
                             }
                             Err(error) => {
@@ -79,8 +81,12 @@ impl DBEngine {
                 }
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::wrap("base path not exists (3)")),
-                _ => Err(ExecuteError::wrap("full scan failed")),
+                IOErrorKind::NotFound => Err(ExecuteError::wrap(
+                    "base path not exists (3)".to_string(),
+                )),
+                _ => Err(ExecuteError::wrap(
+                    "full scan failed".to_string(),
+                )),
             },
         }
     }

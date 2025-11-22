@@ -1,4 +1,4 @@
-use std::io::ErrorKind;
+use std::io::ErrorKind as IOErrorKind;
 
 use crate::engine::DBEngine;
 use crate::engine::ast::ddl::create_table::CreateTableQuery;
@@ -7,11 +7,11 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::RRDBError;
-use crate::errors::predule::ExecuteError;
+use crate::errors::execute_error::ExecuteError;
+use crate::errors;
 
 impl DBEngine {
-    pub async fn create_table(&self, query: CreateTableQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn create_table(&self, query: CreateTableQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table.clone().unwrap().database_name.unwrap();
@@ -24,9 +24,15 @@ impl DBEngine {
 
         if let Err(error) = tokio::fs::create_dir(&table_path).await {
             match error.kind() {
-                ErrorKind::AlreadyExists => return Err(ExecuteError::wrap("already exists table")),
+                IOErrorKind::AlreadyExists => {
+                    return Err(ExecuteError::wrap(
+                        "already exists table".to_string(),
+                    ));
+                }
                 _ => {
-                    return Err(ExecuteError::wrap("table create failed"));
+                    return Err(ExecuteError::wrap(
+                        "table create failed".to_string(),
+                    ));
                 }
             }
         }

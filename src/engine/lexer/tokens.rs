@@ -1,7 +1,6 @@
 use super::predule::OperatorToken;
 use crate::engine::ast::dml::expressions::operators::BinaryOperator;
-use crate::errors::RRDBError;
-use crate::errors::predule::IntoError;
+use crate::errors::{self, Errors, ErrorKind};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
@@ -137,18 +136,18 @@ impl Token {
     pub fn try_into_multi_token_operator(
         self,
         second_token: Self,
-    ) -> Result<BinaryOperator, RRDBError> {
+    ) -> errors::Result<BinaryOperator> {
         match self {
             Token::Not => match second_token {
                 Token::Like => Ok(BinaryOperator::NotLike),
                 Token::In => Ok(BinaryOperator::NotIn),
-                _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
+                _ => Err(Errors::new(ErrorKind::IntoError("BinaryOperator Cast Error".to_string()))),
             },
             Token::Is => match second_token {
                 Token::Not => Ok(BinaryOperator::IsNot),
                 _ => Ok(BinaryOperator::Is),
             },
-            _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
+            _ => Err(Errors::new(ErrorKind::IntoError("BinaryOperator Cast Error".to_string()))),
         }
     }
 
@@ -169,9 +168,9 @@ impl Token {
 }
 
 impl TryInto<BinaryOperator> for Token {
-    type Error = RRDBError;
+    type Error = Errors;
 
-    fn try_into(self) -> Result<BinaryOperator, RRDBError> {
+    fn try_into(self) -> errors::Result<BinaryOperator> {
         match self {
             Token::Operator(operator) => operator.try_into(),
             Token::And => Ok(BinaryOperator::And),
@@ -179,7 +178,7 @@ impl TryInto<BinaryOperator> for Token {
             Token::Like => Ok(BinaryOperator::Like),
             Token::In => Ok(BinaryOperator::In),
             Token::Is => Ok(BinaryOperator::Is),
-            _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
+            _ => Err(Errors::new(ErrorKind::IntoError("BinaryOperator Cast Error".to_string()))),
         }
     }
 }

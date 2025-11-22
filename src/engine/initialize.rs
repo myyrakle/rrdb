@@ -7,14 +7,14 @@ use crate::config::launch_config::LaunchConfig;
 use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME};
 use crate::engine::DBEngine;
 use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::errors::RRDBError;
+use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
 #[cfg(target_os = "macos")]
 use crate::constants::LAUNCHD_PLIST_PATH;
 
 impl DBEngine {
-    pub async fn initialize(&self) -> Result<(), RRDBError> {
+    pub async fn initialize(&self) -> errors::Result<()> {
         self.init_config().await?;
         self.init_database().await?;
 
@@ -22,7 +22,7 @@ impl DBEngine {
     }
 
     // 기본 설정파일 세팅
-    async fn init_config(&self) -> Result<(), RRDBError> {
+    async fn init_config(&self) -> errors::Result<()> {
         // 1. 루트 디렉터리 생성 (없다면)
         self.create_top_level_directory_if_not_exists().await?;
 
@@ -44,7 +44,7 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn init_database(&self) -> Result<(), RRDBError> {
+    async fn init_database(&self) -> errors::Result<()> {
         // 6. 기본 데이터베이스 생성 (rrdb)
         self.create_database(
             CreateDatabaseQuery::builder()
@@ -56,7 +56,7 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn create_top_level_directory_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_top_level_directory_if_not_exists(&self) -> errors::Result<()> {
         let base_path = DEFAULT_CONFIG_BASEPATH;
 
         if let Err(error) = self.file_system.create_dir(base_path).await
@@ -70,7 +70,7 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn create_global_config_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_global_config_if_not_exists(&self) -> errors::Result<()> {
         let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
 
         let mut global_path = base_path;
@@ -93,7 +93,7 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn create_data_directory_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_data_directory_if_not_exists(&self) -> errors::Result<()> {
         let data_path = self.config.data_directory.clone();
 
         if let Err(error) = self.file_system.create_dir(&data_path).await
@@ -105,7 +105,7 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn create_wal_directory_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_wal_directory_if_not_exists(&self) -> errors::Result<()> {
         let wal_path = self.config.wal_directory.clone();
 
         if let Err(error) = self.file_system.create_dir(&wal_path).await
@@ -118,7 +118,7 @@ impl DBEngine {
     }
 
     #[cfg(target_os = "linux")]
-    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_daemon_config_if_not_exists(&self) -> errors::Result<()> {
         use crate::constants::SYSTEMD_DAEMON_SCRIPT;
 
         let base_path = PathBuf::from("/etc/systemd/system/rrdb.service");
@@ -128,7 +128,7 @@ impl DBEngine {
     }
 
     #[cfg(target_os = "macos")]
-    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_daemon_config_if_not_exists(&self) -> errors::Result<()> {
         use crate::constants::LAUNCHD_DAEMON_SCRIPT;
 
         let base_path = PathBuf::from(LAUNCHD_PLIST_PATH);
@@ -138,7 +138,7 @@ impl DBEngine {
     }
 
     #[cfg(target_os = "windows")]
-    async fn create_daemon_config_if_not_exists(&self) -> Result<(), RRDBError> {
+    async fn create_daemon_config_if_not_exists(&self) -> errors::Result<()> {
         Command::new("winget").args(["install", "--accept-package-agreements", "nssm"]);
 
         let output = Command::new("nssm.exe")
@@ -154,11 +154,7 @@ impl DBEngine {
     }
 
     #[allow(dead_code)]
-    async fn write_and_check_err(
-        &self,
-        base_path: PathBuf,
-        contents: &str,
-    ) -> Result<(), RRDBError> {
+    async fn write_and_check_err(&self, base_path: PathBuf, contents: &str) -> errors::Result<()> {
         if let Err(error) = self
             .file_system
             .write_file(base_path.to_str().unwrap_or_default(), contents.as_bytes())
@@ -170,7 +166,7 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn start_daemon(&self) -> Result<(), RRDBError> {
+    async fn start_daemon(&self) -> errors::Result<()> {
         let (program, args) = self.get_daemon_start_command();
         let output = self.command_runner.run(Command::new(program).args(args));
 
@@ -192,9 +188,9 @@ impl DBEngine {
         ("sc.exe", vec!["start", "rrdb"])
     }
 
-    fn check_output_status(&self, output: Result<Output, Error>) -> Result<(), RRDBError> {
+    fn check_output_status(&self, output: Result<Output, Error>) -> errors::Result<()> {
         if output.is_err() {
-            Err(ExecuteError::wrap("failed to start daemon"))
+            Err(ExecuteError::wrap("failed to start daemon".to_string()))
         } else {
             Ok(())
         }

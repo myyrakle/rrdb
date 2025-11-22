@@ -1,35 +1,35 @@
 use crate::engine::ast::dml::insert::InsertQuery;
 use crate::engine::ast::dml::parts::insert_values::InsertValue;
-use crate::errors::predule::ParsingError;
-use crate::errors::RRDBError;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
+use crate::errors;
+use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     pub(crate) fn handle_insert_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<InsertQuery, RRDBError> {
+    ) -> errors::Result<InsertQuery> {
         let mut query_builder = InsertQuery::builder();
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0401 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // INSERT 토큰 삼키기
         let current_token = self.get_next_token();
         if current_token != Token::Insert {
-            return Err(ParsingError::wrap("E0402 expected INSERT"));
+            return Err(ParsingError::wrap("expected INSERT".to_string()));
         }
 
         // INTO 토큰 삼키기
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0410 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
         if current_token != Token::Into {
-            return Err(ParsingError::wrap("E0403 expected INTO"));
+            return Err(ParsingError::wrap("expected INTO".to_string()));
         }
 
         // 테이블명 파싱
@@ -38,7 +38,7 @@ impl Parser {
 
         // 컬럼명 지정 파싱
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0404 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -51,7 +51,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0405 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // 컬럼명 지정 파싱
@@ -59,7 +59,7 @@ impl Parser {
         query_builder = query_builder.set_columns(columns.clone());
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0413 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -71,7 +71,7 @@ impl Parser {
 
                 if values.iter().any(|e| e.list.len() != columns.len()) {
                     return Err(ParsingError::wrap(
-                        "E0415 The number of values in insert and the number of columns do not match.",
+                        "The number of values in insert and the number of columns do not match.",
                     ));
                 }
 
@@ -83,7 +83,7 @@ impl Parser {
 
                 if select.select_items.len() != columns.len() {
                     return Err(ParsingError::wrap(
-                        "E0416 The number of values in insert and the number of columns do not match.",
+                        "The number of values in insert and the number of columns do not match.",
                     ));
                 }
 
@@ -91,9 +91,9 @@ impl Parser {
             }
             _ => {
                 return Err(ParsingError::wrap(format!(
-                    "E0414 expected 'Values'. but your input word is '{:?}'",
+                    "expected 'VALUES' or 'SELECT'. but your input word is '{:?}'",
                     current_token
-                )))
+                )));
             }
         }
 
@@ -110,11 +110,11 @@ impl Parser {
     pub(crate) fn parse_insert_columns(
         &mut self,
         _context: ParserContext,
-    ) -> Result<Vec<String>, RRDBError> {
+    ) -> errors::Result<Vec<String>> {
         let mut names = vec![];
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::wrap("E0406 need more tokens"));
+                return Err(ParsingError::wrap("need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -132,7 +132,7 @@ impl Parser {
                 }
                 _ => {
                     return Err(ParsingError::wrap(format!(
-                        "E0407 unexpected input word '{:?}'",
+                        "unexpected input word '{:?}'",
                         current_token
                     )));
                 }
@@ -146,19 +146,19 @@ impl Parser {
     pub(crate) fn parse_insert_values(
         &mut self,
         context: ParserContext,
-    ) -> Result<Vec<InsertValue>, RRDBError> {
+    ) -> errors::Result<Vec<InsertValue>> {
         // Values 파싱
         let mut values: Vec<InsertValue> = vec![];
 
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0409 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
 
         if current_token != Token::Values {
             return Err(ParsingError::wrap(format!(
-                "E0408 expected 'Values'. but your input word is '{:?}'",
+                "expected 'Values'. but your input word is '{:?}'",
                 current_token
             )));
         }
@@ -174,19 +174,19 @@ impl Parser {
 
             if current_token != Token::LeftParentheses {
                 return Err(ParsingError::wrap(format!(
-                    "E0417 expected '('. but your input word is '{:?}'",
+                    "expected '('. but your input word is '{:?}'",
                     current_token
                 )));
             }
 
             if !self.has_next_token() {
-                return Err(ParsingError::wrap("E0411 need more tokens"));
+                return Err(ParsingError::wrap("need more tokens"));
             }
 
             // 각 Value 절 파싱. (A, B, C, D...)
             loop {
                 if !self.has_next_token() {
-                    return Err(ParsingError::wrap("E0412 need more tokens"));
+                    return Err(ParsingError::wrap("need more tokens"));
                 }
 
                 let current_token = self.get_next_token();

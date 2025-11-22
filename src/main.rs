@@ -8,7 +8,6 @@ pub mod pgwire;
 pub mod utils;
 
 use command::{Command, SubCommand};
-use errors::RRDBError;
 
 use clap::Parser;
 
@@ -18,7 +17,7 @@ use crate::{
 };
 
 #[tokio::main]
-async fn main() -> Result<(), RRDBError> {
+async fn main() -> errors::Result<()> {
     env_logger::init();
 
     let args = Command::parse();

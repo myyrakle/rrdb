@@ -1,6 +1,5 @@
 use crate::engine::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
-use crate::errors::predule::IntoError;
-use crate::errors::RRDBError;
+use crate::errors::{ErrorKind, Errors};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OperatorToken {
@@ -40,7 +39,7 @@ impl OperatorToken {
 }
 
 impl TryInto<BinaryOperator> for OperatorToken {
-    type Error = RRDBError;
+    type Error = Errors;
 
     fn try_into(self) -> Result<BinaryOperator, Self::Error> {
         match self {
@@ -54,20 +53,24 @@ impl TryInto<BinaryOperator> for OperatorToken {
             Self::Gte => Ok(BinaryOperator::Gte),
             Self::Eq => Ok(BinaryOperator::Eq),
             Self::Neq => Ok(BinaryOperator::Neq),
-            _ => Err(IntoError::wrap("BinaryOperator Cast Error")),
+            _ => Err(Errors::new(ErrorKind::IntoError(
+                "BinaryOperator Cast Error".to_string(),
+            ))),
         }
     }
 }
 
 impl TryInto<UnaryOperator> for OperatorToken {
-    type Error = RRDBError;
+    type Error = Errors;
 
     fn try_into(self) -> Result<UnaryOperator, Self::Error> {
         match self {
             Self::Plus => Ok(UnaryOperator::Pos),
             Self::Minus => Ok(UnaryOperator::Neg),
             Self::Not => Ok(UnaryOperator::Not),
-            _ => Err(IntoError::wrap("UnaryOperator Cast Error")),
+            _ => Err(Errors::new(ErrorKind::IntoError(
+                "UnaryOperator Cast Error".to_string(),
+            ))),
         }
     }
 }

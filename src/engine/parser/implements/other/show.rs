@@ -1,18 +1,18 @@
+use crate::engine::ast::SQLStatement;
 use crate::engine::ast::other::show_databases::ShowDatabasesQuery;
 use crate::engine::ast::other::show_tables::ShowTablesQuery;
-use crate::engine::ast::SQLStatement;
-use crate::errors::predule::ParsingError;
-use crate::errors::RRDBError;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
+use crate::errors::parsing_error::ParsingError;
+use crate::errors::{self};
 
 impl Parser {
     pub(crate) fn parse_show_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, RRDBError> {
+    ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0701 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -24,7 +24,7 @@ impl Parser {
             }
             .into()),
             _ => Err(ParsingError::wrap(format!(
-                "E0702: unexpected token '{:?}'",
+                "unexpected token '{:?}'",
                 current_token
             ))),
         }

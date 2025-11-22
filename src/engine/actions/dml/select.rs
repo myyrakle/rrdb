@@ -14,11 +14,11 @@ use crate::engine::expression::ReduceContext;
 use crate::engine::optimizer::predule::Optimizer;
 use crate::engine::schema::row::{TableDataField, TableDataFieldType, TableDataRow};
 use crate::engine::types::{ExecuteColumn, ExecuteField, ExecuteResult, ExecuteRow};
-use crate::errors::RRDBError;
+use crate::errors;
 use crate::errors::type_error::TypeError;
 
 impl DBEngine {
-    pub async fn select(&self, query: SelectQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn select(&self, query: SelectQuery) -> errors::Result<ExecuteResult> {
         // 최적화 작업
         let optimizer = Optimizer::new();
 
@@ -449,7 +449,7 @@ impl DBEngine {
                 };
                 let data_type = self.reduce_type(item, reduce_context.clone())?;
 
-                Ok(ExecuteColumn { name, data_type })
+                Ok::<ExecuteColumn, errors::Errors>(ExecuteColumn { name, data_type })
             })
             .collect::<Result<Vec<_>, _>>()?;
 

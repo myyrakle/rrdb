@@ -1,4 +1,4 @@
-use std::io::ErrorKind;
+use std::io::ErrorKind as IOErrorKind;
 
 use futures::future::join_all;
 
@@ -14,11 +14,11 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::RRDBError;
-use crate::errors::predule::ExecuteError;
+use crate::errors::execute_error::ExecuteError;
+use crate::errors;
 
 impl DBEngine {
-    pub async fn desc_table(&self, query: DescTableQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn desc_table(&self, query: DescTableQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table_name.database_name.unwrap();
@@ -33,9 +33,10 @@ impl DBEngine {
 
         match std::fs::read(config_path) {
             Ok(read_result) => {
-                let table_info: TableSchema = encoder
-                    .decode(read_result.as_slice())
-                    .ok_or_else(|| ExecuteError::wrap("config decode error"))?;
+                let table_info: TableSchema =
+                    encoder.decode(read_result.as_slice()).ok_or_else(|| {
+                        ExecuteError::wrap("config decode error".to_string())
+                    })?;
 
                 Ok(ExecuteResult {
                     columns: (vec![
@@ -76,11 +77,13 @@ impl DBEngine {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::wrap(format!(
+                IOErrorKind::NotFound => Err(ExecuteError::wrap(format!(
                     "table '{}' not exists",
                     table_name
                 ))),
-                _ => Err(ExecuteError::wrap("database listup failed")),
+                _ => Err(ExecuteError::wrap(
+                    "database listup failed".to_string(),
+                )),
             },
         }
     }
@@ -90,7 +93,7 @@ impl DBEngine {
     pub async fn show_databases(
         &self,
         _query: ShowDatabasesQuery,
-    ) -> Result<ExecuteResult, RRDBError> {
+    ) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
@@ -139,13 +142,17 @@ impl DBEngine {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::wrap("base path not exists")),
-                _ => Err(ExecuteError::wrap("database listup failed")),
+                IOErrorKind::NotFound => Err(ExecuteError::wrap(
+                    "base path not exists".to_string(),
+                )),
+                _ => Err(ExecuteError::wrap(
+                    "database listup failed".to_string(),
+                )),
             },
         }
     }
 
-    pub async fn find_database(&self, database_name: String) -> Result<bool, RRDBError> {
+    pub async fn find_database(&self, database_name: String) -> errors::Result<bool> {
         let result = self.show_databases(ShowDatabasesQuery {}).await?;
 
         Ok(result.rows.iter().any(|e| {
@@ -159,7 +166,7 @@ impl DBEngine {
 }
 
 impl DBEngine {
-    pub async fn show_tables(&self, query: ShowTablesQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn show_tables(&self, query: ShowTablesQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
@@ -213,15 +220,19 @@ impl DBEngine {
                 })
             }
             Err(error) => match error.kind() {
-                ErrorKind::NotFound => Err(ExecuteError::wrap("base path not exists")),
-                _ => Err(ExecuteError::wrap("table listup failed")),
+                IOErrorKind::NotFound => Err(ExecuteError::wrap(
+                    "base path not exists".to_string(),
+                )),
+                _ => Err(ExecuteError::wrap(
+                    "table listup failed".to_string(),
+                )),
             },
         }
     }
 }
 
 impl DBEngine {
-    pub async fn use_databases(&self, query: UseDatabaseQuery) -> Result<ExecuteResult, RRDBError> {
+    pub async fn use_databases(&self, query: UseDatabaseQuery) -> errors::Result<ExecuteResult> {
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
                 name: "desc".into(),

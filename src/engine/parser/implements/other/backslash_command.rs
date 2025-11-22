@@ -1,17 +1,17 @@
-use crate::engine::ast::other::show_databases::ShowDatabasesQuery;
 use crate::engine::ast::SQLStatement;
-use crate::errors::predule::ParsingError;
-use crate::errors::RRDBError;
+use crate::engine::ast::other::show_databases::ShowDatabasesQuery;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
+use crate::errors::parsing_error::ParsingError;
+use crate::errors::{self};
 
 impl Parser {
     pub(crate) fn parse_backslash_query(
         &mut self,
         _context: ParserContext,
-    ) -> Result<SQLStatement, RRDBError> {
+    ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap("E0801 need more tokens"));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -20,12 +20,12 @@ impl Parser {
             Token::Identifier(identifier) => match identifier.as_str() {
                 "l" => Ok(ShowDatabasesQuery {}.into()),
                 _ => Err(ParsingError::wrap(format!(
-                    "E0803: unexpected identifier '{:?}'",
+                    "unexpected identifier '{:?}'",
                     identifier
                 ))),
             },
             _ => Err(ParsingError::wrap(format!(
-                "E0802: unexpected token '{:?}'",
+                "unexpected token '{:?}'",
                 current_token
             ))),
         }
