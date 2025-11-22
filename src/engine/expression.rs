@@ -13,7 +13,7 @@ use crate::engine::schema::row::TableDataRow;
 use crate::engine::types::ExecuteColumnType;
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::type_error::TypeError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 #[derive(Debug, Default, Clone)]
 pub struct ReduceContext {
@@ -117,9 +117,9 @@ impl DBEngine {
                     Box::pin(self.reduce_expression(binary.rhs.clone(), context.clone())).await?;
 
                 if lhs.type_code() != rhs.type_code() {
-                    return Err(Errors::new(ErrorKind::TypeError(
+                    return Err(TypeError::wrap(
                         "The types of lhs and rhs do not match.".to_string(),
-                    )));
+                    ));
                 }
 
                 if let TableDataFieldType::Array(ref left_array) = lhs {

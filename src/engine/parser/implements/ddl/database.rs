@@ -6,15 +6,15 @@ use crate::engine::ast::ddl::drop_database::{DropDatabaseQuery, SQLStatement};
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::Parser;
 use crate::errors::parsing_error::ParsingError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 impl Parser {
     // CREATE DATABASE 쿼리 분석
     pub(crate) fn handle_create_database_query(&mut self) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError(
+            return Err(ParsingError::wrap(
                 "need more tokens".to_string(),
-            )));
+            ));
         }
 
         let mut query_builder = CreateDatabaseQuery::builder();
@@ -24,9 +24,9 @@ impl Parser {
         query_builder = query_builder.set_if_not_exists(if_not_exists);
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError(
+            return Err(ParsingError::wrap(
                 "need more tokens".to_string(),
-            )));
+            ));
         }
 
         let current_token = self.get_next_token();
@@ -68,9 +68,9 @@ impl Parser {
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError(
+            return Err(ParsingError::wrap(
                 "need more tokens".to_string(),
-            )));
+            ));
         }
 
         let current_token = self.get_next_token();
@@ -106,9 +106,9 @@ impl Parser {
     // ALTER DATABASE 쿼리 분석
     pub(crate) fn handle_alter_database_query(&mut self) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError(
+            return Err(ParsingError::wrap(
                 "need more tokens".to_string(),
-            )));
+            ));
         }
 
         let mut query_builder = AlterDatabaseQuery::builder();
@@ -135,9 +135,9 @@ impl Parser {
         match current_token {
             Token::Rename => {
                 if !self.has_next_token() {
-                    return Err(Errors::new(ErrorKind::ParsingError(
+                    return Err(ParsingError::wrap(
                         "E106: expected 'TO'. but no more token".to_string(),
-                    )));
+                    ));
                 }
 
                 let current_token = self.get_next_token();

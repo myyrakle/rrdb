@@ -8,7 +8,7 @@ use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 impl DBEngine {
     pub async fn create_table(&self, query: CreateTableQuery) -> errors::Result<ExecuteResult> {
@@ -25,14 +25,14 @@ impl DBEngine {
         if let Err(error) = tokio::fs::create_dir(&table_path).await {
             match error.kind() {
                 IOErrorKind::AlreadyExists => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "already exists table".to_string(),
-                    )));
+                    ));
                 }
                 _ => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "table create failed".to_string(),
-                    )));
+                    ));
                 }
             }
         }

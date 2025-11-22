@@ -9,7 +9,7 @@ use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 impl DBEngine {
     pub async fn create_database(
@@ -23,7 +23,7 @@ impl DBEngine {
         let database_name = query
             .database_name
             .clone()
-            .ok_or_else(|| Errors::new(ErrorKind::ExecuteError("no database name".to_string())))?;
+            .ok_or_else(|| ExecuteError::wrap("no database name".to_string()))?;
 
         let database_path = base_path.clone().join(&database_name);
 
@@ -43,15 +43,15 @@ impl DBEngine {
                             }]),
                         });
                     } else {
-                        return Err(Errors::new(ErrorKind::ExecuteError(
+                        return Err(ExecuteError::wrap(
                             "already exists database".to_string(),
-                        )));
+                        ));
                     }
                 }
                 _ => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "database create failed".to_string(),
-                    )));
+                    ));
                 }
             }
         }
@@ -62,14 +62,14 @@ impl DBEngine {
         if let Err(error) = tokio::fs::create_dir(&tables_path).await {
             match error.kind() {
                 IOErrorKind::AlreadyExists => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "already exists tables".to_string(),
-                    )));
+                    ));
                 }
                 _ => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "tables create failed".to_string(),
-                    )));
+                    ));
                 }
             }
         }

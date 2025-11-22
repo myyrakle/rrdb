@@ -2,7 +2,7 @@ use crate::engine::ast::dml::insert::InsertQuery;
 use crate::engine::ast::dml::parts::insert_values::InsertValue;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
-use crate::errors::{self, Errors, ErrorKind};
+use crate::errors;
 use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
@@ -13,23 +13,23 @@ impl Parser {
         let mut query_builder = InsertQuery::builder();
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // INSERT 토큰 삼키기
         let current_token = self.get_next_token();
         if current_token != Token::Insert {
-            return Err(Errors::new(ErrorKind::ParsingError("expected INSERT".to_string())));
+            return Err(ParsingError::wrap("expected INSERT".to_string()));
         }
 
         // INTO 토큰 삼키기
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
         if current_token != Token::Into {
-            return Err(Errors::new(ErrorKind::ParsingError("expected INTO".to_string())));
+            return Err(ParsingError::wrap("expected INTO".to_string()));
         }
 
         // 테이블명 파싱
@@ -38,7 +38,7 @@ impl Parser {
 
         // 컬럼명 지정 파싱
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -51,7 +51,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // 컬럼명 지정 파싱
@@ -59,7 +59,7 @@ impl Parser {
         query_builder = query_builder.set_columns(columns.clone());
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -114,7 +114,7 @@ impl Parser {
         let mut names = vec![];
         loop {
             if !self.has_next_token() {
-                return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+                return Err(ParsingError::wrap("need more tokens"));
             }
 
             let current_token = self.get_next_token();
@@ -151,7 +151,7 @@ impl Parser {
         let mut values: Vec<InsertValue> = vec![];
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -180,13 +180,13 @@ impl Parser {
             }
 
             if !self.has_next_token() {
-                return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+                return Err(ParsingError::wrap("need more tokens"));
             }
 
             // 각 Value 절 파싱. (A, B, C, D...)
             loop {
                 if !self.has_next_token() {
-                    return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+                    return Err(ParsingError::wrap("need more tokens"));
                 }
 
                 let current_token = self.get_next_token();

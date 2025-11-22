@@ -27,7 +27,7 @@ use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bitcode::BitcodeEncoder;
 use crate::engine::wal::manager::WALManager;
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 pub struct DBEngine {
     pub(crate) config: Arc<LaunchConfig>,
@@ -118,16 +118,16 @@ impl DBEngine {
 
                 match table_config {
                     Some(table_config) => Ok(table_config),
-                    None => Err(Errors::new(ErrorKind::ExecuteError(
+                    None => Err(ExecuteError::wrap(
                         "invalid config data".to_string(),
-                    ))),
+                    )),
                 }
             }
             Err(error) => match error.kind() {
-                std::io::ErrorKind::NotFound => Err(Errors::new(ErrorKind::ExecuteError(
+                std::io::ErrorKind::NotFound => Err(ExecuteError::wrap(
                     "table not found".to_string(),
-                ))),
-                _ => Err(Errors::new(ErrorKind::ExecuteError(format!("{:?}", error)))),
+                )),
+                _ => Err(ExecuteError::wrap(format!("{:?}", error))),
             },
         }
     }

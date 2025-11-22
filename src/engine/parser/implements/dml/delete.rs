@@ -2,7 +2,7 @@ use crate::engine::ast::dml::delete::DeleteQuery;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
 use crate::errors::parsing_error::ParsingError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 impl Parser {
     pub(crate) fn handle_delete_query(
@@ -10,9 +10,9 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<DeleteQuery> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError(
+            return Err(ParsingError::wrap(
                 "need more tokens".to_string(),
-            )));
+            ));
         }
 
         // DELETE 토큰 삼키기
@@ -26,9 +26,9 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError(
+            return Err(ParsingError::wrap(
                 "need more tokens".to_string(),
-            )));
+            ));
         }
 
         // FROM 토큰 삼키기
@@ -44,9 +44,9 @@ impl Parser {
         let mut query_builder = DeleteQuery::builder();
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError(
+            return Err(ParsingError::wrap(
                 "need more tokens".to_string(),
-            )));
+            ));
         }
 
         // 테이블명 파싱

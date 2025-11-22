@@ -15,7 +15,7 @@ use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 impl DBEngine {
     pub async fn desc_table(&self, query: DescTableQuery) -> errors::Result<ExecuteResult> {
@@ -35,7 +35,7 @@ impl DBEngine {
             Ok(read_result) => {
                 let table_info: TableSchema =
                     encoder.decode(read_result.as_slice()).ok_or_else(|| {
-                        Errors::new(ErrorKind::ExecuteError("config decode error".to_string()))
+                        ExecuteError::wrap("config decode error".to_string())
                     })?;
 
                 Ok(ExecuteResult {
@@ -81,9 +81,9 @@ impl DBEngine {
                     "table '{}' not exists",
                     table_name
                 ))),
-                _ => Err(Errors::new(ErrorKind::ExecuteError(
+                _ => Err(ExecuteError::wrap(
                     "database listup failed".to_string(),
-                ))),
+                )),
             },
         }
     }
@@ -142,12 +142,12 @@ impl DBEngine {
                 })
             }
             Err(error) => match error.kind() {
-                IOErrorKind::NotFound => Err(Errors::new(ErrorKind::ExecuteError(
+                IOErrorKind::NotFound => Err(ExecuteError::wrap(
                     "base path not exists".to_string(),
-                ))),
-                _ => Err(Errors::new(ErrorKind::ExecuteError(
+                )),
+                _ => Err(ExecuteError::wrap(
                     "database listup failed".to_string(),
-                ))),
+                )),
             },
         }
     }
@@ -220,12 +220,12 @@ impl DBEngine {
                 })
             }
             Err(error) => match error.kind() {
-                IOErrorKind::NotFound => Err(Errors::new(ErrorKind::ExecuteError(
+                IOErrorKind::NotFound => Err(ExecuteError::wrap(
                     "base path not exists".to_string(),
-                ))),
-                _ => Err(Errors::new(ErrorKind::ExecuteError(
+                )),
+                _ => Err(ExecuteError::wrap(
                     "table listup failed".to_string(),
-                ))),
+                )),
             },
         }
     }

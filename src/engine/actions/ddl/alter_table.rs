@@ -9,7 +9,7 @@ use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 
 impl DBEngine {
     pub async fn alter_table(&self, query: AlterTableQuery) -> errors::Result<ExecuteResult> {
@@ -150,17 +150,17 @@ impl DBEngine {
                                         }
                                     }
                                     None => {
-                                        return Err(Errors::new(ErrorKind::ExecuteError(
+                                        return Err(ExecuteError::wrap(
                                             "invalid config data".to_string(),
-                                        )));
+                                        ));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(Errors::new(ErrorKind::ExecuteError(
+                                    return Err(ExecuteError::wrap(
                                         "table not found".to_string(),
-                                    )));
+                                    ));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));
@@ -206,17 +206,17 @@ impl DBEngine {
                                         }
                                     }
                                     None => {
-                                        return Err(Errors::new(ErrorKind::ExecuteError(
+                                        return Err(ExecuteError::wrap(
                                             "invalid config data".to_string(),
-                                        )));
+                                        ));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(Errors::new(ErrorKind::ExecuteError(
+                                    return Err(ExecuteError::wrap(
                                         "table not found".to_string(),
-                                    )));
+                                    ));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));
@@ -262,17 +262,17 @@ impl DBEngine {
                                         }
                                     }
                                     None => {
-                                        return Err(Errors::new(ErrorKind::ExecuteError(
+                                        return Err(ExecuteError::wrap(
                                             "invalid config data".to_string(),
-                                        )));
+                                        ));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(Errors::new(ErrorKind::ExecuteError(
+                                    return Err(ExecuteError::wrap(
                                         "table not found".to_string(),
-                                    )));
+                                    ));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));
@@ -317,17 +317,17 @@ impl DBEngine {
                                         }
                                     }
                                     None => {
-                                        return Err(Errors::new(ErrorKind::ExecuteError(
+                                        return Err(ExecuteError::wrap(
                                             "invalid config data".to_string(),
-                                        )));
+                                        ));
                                     }
                                 }
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(Errors::new(ErrorKind::ExecuteError(
+                                    return Err(ExecuteError::wrap(
                                         "table not found".to_string(),
-                                    )));
+                                    ));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));

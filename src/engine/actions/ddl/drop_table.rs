@@ -6,7 +6,8 @@ use crate::engine::ast::types::TableName;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors::execute_error::ExecuteError;
+use crate::errors;
 
 impl DBEngine {
     pub async fn drop_table(&self, query: DropTableQuery) -> errors::Result<ExecuteResult> {
@@ -26,14 +27,14 @@ impl DBEngine {
         if let Err(error) = tokio::fs::remove_dir_all(table_path).await {
             match error.kind() {
                 IOErrorKind::NotFound => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "table not found".to_string(),
-                    )));
+                    ));
                 }
                 _ => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "table drop failed".to_string(),
-                    )));
+                    ));
                 }
             }
         }

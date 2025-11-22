@@ -1,7 +1,8 @@
 use crate::engine::ast::SQLStatement;
 use crate::engine::ast::other::desc_table::DescTableQuery;
 use crate::engine::parser::predule::{Parser, ParserContext};
-use crate::errors::{self, Errors, ErrorKind};
+use crate::errors::parsing_error::ParsingError;
+use crate::errors::{self};
 
 impl Parser {
     pub(crate) fn parse_desc_query(
@@ -9,7 +10,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let table_name = self.parse_table_name(context)?;

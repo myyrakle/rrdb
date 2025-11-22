@@ -7,7 +7,7 @@ use crate::engine::DBEngine;
 use crate::engine::ast::types::TableName;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::TableDataRow;
-use crate::errors::{self, Errors, ErrorKind};
+use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
@@ -55,9 +55,9 @@ impl DBEngine {
                                         ))),
                                     }
                                 } else {
-                                    Err(Errors::new(ErrorKind::ExecuteError(
+                                    Err(ExecuteError::wrap(
                                         "full scan failed".to_string(),
-                                    )))
+                                    ))
                                 }
                             }
                             Err(error) => {
@@ -81,12 +81,12 @@ impl DBEngine {
                 }
             }
             Err(error) => match error.kind() {
-                IOErrorKind::NotFound => Err(Errors::new(ErrorKind::ExecuteError(
+                IOErrorKind::NotFound => Err(ExecuteError::wrap(
                     "base path not exists (3)".to_string(),
-                ))),
-                _ => Err(Errors::new(ErrorKind::ExecuteError(
+                )),
+                _ => Err(ExecuteError::wrap(
                     "full scan failed".to_string(),
-                ))),
+                )),
             },
         }
     }

@@ -6,12 +6,14 @@ use crate::engine::ast::dml::expressions::not_between::NotBetweenExpression;
 use crate::engine::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
 use crate::engine::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::engine::ast::dml::expressions::unary::UnaryOperatorExpression;
-use crate::engine::ast::types::{BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction};
-use crate::errors::{self, Errors, ErrorKind};
-use crate::errors::parsing_error::ParsingError;
+use crate::engine::ast::types::{
+    BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction,
+};
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::Parser;
 use crate::engine::parser::predule::ParserContext;
+use crate::errors::parsing_error::ParsingError;
+use crate::errors::{self};
 
 impl Parser {
     pub(crate) fn parse_expression(
@@ -19,7 +21,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SQLExpression> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -112,7 +114,7 @@ impl Parser {
             }
             Token::LeftParentheses => {
                 if !self.has_next_token() {
-                    return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+                    return Err(ParsingError::wrap("need more tokens"));
                 }
 
                 let second_token = self.get_next_token();
@@ -204,7 +206,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SQLExpression> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let expression = self.parse_expression(context)?;
@@ -249,7 +251,7 @@ impl Parser {
         let context = context.set_in_parentheses(true);
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // ( 삼킴
@@ -263,14 +265,14 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // 표현식 파싱
         let expression = self.parse_expression(context.clone())?;
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // ) 삼킴
@@ -291,7 +293,7 @@ impl Parser {
 
                 loop {
                     if !self.has_next_token() {
-                        return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+                        return Err(ParsingError::wrap("need more tokens"));
                     }
 
                     let current_token = self.get_next_token();
@@ -326,7 +328,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SQLExpression> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // 연산자 획득
@@ -429,7 +431,7 @@ impl Parser {
         };
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // ( 삼킴
@@ -443,7 +445,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // 닫는 괄호가 나올때까지 인자 파싱
@@ -479,7 +481,7 @@ impl Parser {
             .set_in_parentheses(false);
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -499,7 +501,7 @@ impl Parser {
             }
             Token::Not => {
                 if !self.has_next_token() {
-                    return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+                    return Err(ParsingError::wrap("need more tokens"));
                 }
 
                 let current_token = self.get_next_token();

@@ -7,7 +7,7 @@ use crate::config::launch_config::LaunchConfig;
 use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME};
 use crate::engine::DBEngine;
 use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
-use crate::errors::{self, ErrorKind, Errors};
+use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
 #[cfg(target_os = "macos")]
@@ -190,7 +190,7 @@ impl DBEngine {
 
     fn check_output_status(&self, output: Result<Output, Error>) -> errors::Result<()> {
         if output.is_err() {
-            Err(Errors::new(ErrorKind::ExecuteError("failed to start daemon".to_string())))
+            Err(ExecuteError::wrap("failed to start daemon".to_string()))
         } else {
             Ok(())
         }

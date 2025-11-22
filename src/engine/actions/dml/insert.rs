@@ -10,7 +10,7 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::{self, Errors, ErrorKind};
+use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
@@ -41,17 +41,17 @@ impl DBEngine {
                 match table_config {
                     Some(table_config) => table_config,
                     None => {
-                        return Err(Errors::new(ErrorKind::ExecuteError(
+                        return Err(ExecuteError::wrap(
                             "invalid config data".to_string(),
-                        )));
+                        ));
                     }
                 }
             }
             Err(error) => match error.kind() {
                 IOErrorKind::NotFound => {
-                    return Err(Errors::new(ErrorKind::ExecuteError(
+                    return Err(ExecuteError::wrap(
                         "table not found".to_string(),
-                    )));
+                    ));
                 }
                 _ => {
                     return Err(ExecuteError::wrap(format!("{:?}", error)));

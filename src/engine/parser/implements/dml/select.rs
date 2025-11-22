@@ -7,7 +7,7 @@ use crate::engine::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::engine::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
 use crate::engine::ast::dml::select::SelectQuery;
-use crate::errors::{self, Errors, ErrorKind};
+use crate::errors;
 use crate::errors::parsing_error::ParsingError;
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
@@ -18,7 +18,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SelectQuery> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // SELECT 토큰 삼키기
@@ -32,7 +32,7 @@ impl Parser {
         }
 
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let mut query_builder = SelectQuery::builder();
@@ -281,7 +281,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SelectItem> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let select_item = SelectItem::builder();
@@ -300,7 +300,7 @@ impl Parser {
             Token::As => {
                 // 더 없을 경우 바로 반환
                 if !self.has_next_token() {
-                    return Err(Errors::new(ErrorKind::ParsingError("expected alias. need more".to_string())));
+                    return Err(ParsingError::wrap("expected alias. need more".to_string()));
                 }
 
                 let current_token = self.get_next_token();
@@ -343,7 +343,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<OrderByItem> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // 표현식 파싱
@@ -384,7 +384,7 @@ impl Parser {
         match current_token {
             Token::Nulls => {
                 if !self.has_next_token() {
-                    return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+                    return Err(ParsingError::wrap("need more tokens"));
                 }
 
                 let current_token = self.get_next_token();
@@ -414,7 +414,7 @@ impl Parser {
         _context: ParserContext,
     ) -> errors::Result<GroupByItem> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // 표현식 파싱
@@ -431,7 +431,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<JoinClause> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let right = self.parse_table_name(context.clone())?;
@@ -468,7 +468,7 @@ impl Parser {
 
     pub(crate) fn parse_where(&mut self, context: ParserContext) -> errors::Result<WhereClause> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -490,7 +490,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<HavingClause> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -511,7 +511,7 @@ impl Parser {
 
     pub(crate) fn parse_offset(&mut self, _context: ParserContext) -> errors::Result<u32> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // OFFSET 삼키기
@@ -526,7 +526,7 @@ impl Parser {
 
         // OFFSET 숫자값 획득
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
@@ -550,7 +550,7 @@ impl Parser {
 
     pub(crate) fn parse_limit(&mut self, _context: ParserContext) -> errors::Result<u32> {
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         // OFFSET 삼키기
@@ -565,7 +565,7 @@ impl Parser {
 
         // OFFSET 숫자값 획득
         if !self.has_next_token() {
-            return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
+            return Err(ParsingError::wrap("need more tokens"));
         }
 
         let current_token = self.get_next_token();
