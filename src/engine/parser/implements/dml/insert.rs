@@ -91,7 +91,7 @@ impl Parser {
             }
             _ => {
                 return Err(ParsingError::wrap(format!(
-                    "expected 'Values'. but your input word is '{:?}'",
+                    "expected 'VALUES' or 'SELECT'. but your input word is '{:?}'",
                     current_token
                 )));
             }

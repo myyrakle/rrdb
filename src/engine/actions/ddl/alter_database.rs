@@ -8,8 +8,8 @@ use crate::engine::schema::database::DatabaseSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn alter_database(&self, query: AlterDatabaseQuery) -> errors::Result<ExecuteResult> {
@@ -22,9 +22,10 @@ impl DBEngine {
             Some(action) => match action {
                 AlterDatabaseAction::RenameTo(rename) => {
                     // 기존 데이터베이스명
-                    let from_database_name = query.database_name.clone().ok_or_else(|| {
-                        ExecuteError::wrap("no database name".to_string())
-                    })?;
+                    let from_database_name = query
+                        .database_name
+                        .clone()
+                        .ok_or_else(|| ExecuteError::wrap("no database name".to_string()))?;
 
                     // 변경할 데이터베이스명
                     let to_database_name = rename.name;
@@ -42,9 +43,7 @@ impl DBEngine {
                     if let Err(error) = result {
                         match error.kind() {
                             IOErrorKind::NotFound => {
-                                return Err(ExecuteError::wrap(
-                                    "database not found".to_string(),
-                                ));
+                                return Err(ExecuteError::wrap("database not found".to_string()));
                             }
                             _ => {
                                 return Err(ExecuteError::wrap(
@@ -73,22 +72,18 @@ impl DBEngine {
                                     .await
                                     {
                                         return Err(ExecuteError::wrap(
-                                            "no database name".to_string(),
+                                            "failed to write database config",
                                         ));
                                     }
                                 }
                                 None => {
-                                    return Err(ExecuteError::wrap(
-                                        "invalid config data".to_string(),
-                                    ));
+                                    return Err(ExecuteError::wrap("invalid config data"));
                                 }
                             }
                         }
                         Err(error) => match error.kind() {
                             IOErrorKind::NotFound => {
-                                return Err(ExecuteError::wrap(
-                                    "database not found".to_string(),
-                                ));
+                                return Err(ExecuteError::wrap("database not found"));
                             }
                             _ => {
                                 return Err(ExecuteError::wrap(format!("{:?}", error)));
