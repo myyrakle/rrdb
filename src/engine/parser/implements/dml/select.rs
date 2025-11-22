@@ -7,7 +7,7 @@ use crate::engine::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::engine::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
 use crate::engine::ast::dml::select::SelectQuery;
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 use crate::errors::parsing_error::ParsingError;
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
@@ -16,7 +16,7 @@ impl Parser {
     pub(crate) fn handle_select_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectQuery, Errors> {
+    ) -> errors::Result<SelectQuery> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -279,7 +279,7 @@ impl Parser {
     pub(crate) fn parse_select_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<SelectItem, Errors> {
+    ) -> errors::Result<SelectItem> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -341,7 +341,7 @@ impl Parser {
     pub(crate) fn parse_order_by_item(
         &mut self,
         context: ParserContext,
-    ) -> Result<OrderByItem, Errors> {
+    ) -> errors::Result<OrderByItem> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -412,7 +412,7 @@ impl Parser {
     pub(crate) fn parse_group_by_item(
         &mut self,
         _context: ParserContext,
-    ) -> Result<GroupByItem, Errors> {
+    ) -> errors::Result<GroupByItem> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -429,7 +429,7 @@ impl Parser {
         &mut self,
         join_type: JoinType,
         context: ParserContext,
-    ) -> Result<JoinClause, Errors> {
+    ) -> errors::Result<JoinClause> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -466,7 +466,7 @@ impl Parser {
         Ok(join)
     }
 
-    pub(crate) fn parse_where(&mut self, context: ParserContext) -> Result<WhereClause, Errors> {
+    pub(crate) fn parse_where(&mut self, context: ParserContext) -> errors::Result<WhereClause> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -488,7 +488,7 @@ impl Parser {
     pub(crate) fn parse_having(
         &mut self,
         context: ParserContext,
-    ) -> Result<HavingClause, Errors> {
+    ) -> errors::Result<HavingClause> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -509,7 +509,7 @@ impl Parser {
         })
     }
 
-    pub(crate) fn parse_offset(&mut self, _context: ParserContext) -> Result<u32, Errors> {
+    pub(crate) fn parse_offset(&mut self, _context: ParserContext) -> errors::Result<u32> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -548,7 +548,7 @@ impl Parser {
         }
     }
 
-    pub(crate) fn parse_limit(&mut self, _context: ParserContext) -> Result<u32, Errors> {
+    pub(crate) fn parse_limit(&mut self, _context: ParserContext) -> errors::Result<u32> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }

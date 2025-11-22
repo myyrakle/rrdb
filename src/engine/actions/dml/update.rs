@@ -13,12 +13,12 @@ use crate::engine::schema::row::TableDataFieldType;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::Errors;
+use crate::errors;
 use crate::errors::type_error::TypeError;
 use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
-    pub async fn update(&self, query: UpdateQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn update(&self, query: UpdateQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let table = query.target_table.clone().unwrap().table;

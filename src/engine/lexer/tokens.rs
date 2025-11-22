@@ -1,6 +1,6 @@
 use super::predule::OperatorToken;
 use crate::engine::ast::dml::expressions::operators::BinaryOperator;
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
@@ -136,7 +136,7 @@ impl Token {
     pub fn try_into_multi_token_operator(
         self,
         second_token: Self,
-    ) -> Result<BinaryOperator, Errors> {
+    ) -> errors::Result<BinaryOperator> {
         match self {
             Token::Not => match second_token {
                 Token::Like => Ok(BinaryOperator::NotLike),
@@ -170,7 +170,7 @@ impl Token {
 impl TryInto<BinaryOperator> for Token {
     type Error = Errors;
 
-    fn try_into(self) -> Result<BinaryOperator, Errors> {
+    fn try_into(self) -> errors::Result<BinaryOperator> {
         match self {
             Token::Operator(operator) => operator.try_into(),
             Token::And => Ok(BinaryOperator::And),

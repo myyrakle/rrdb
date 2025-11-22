@@ -2,14 +2,14 @@ use crate::engine::ast::dml::insert::InsertQuery;
 use crate::engine::ast::dml::parts::insert_values::InsertValue;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     pub(crate) fn handle_insert_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<InsertQuery, Errors> {
+    ) -> errors::Result<InsertQuery> {
         let mut query_builder = InsertQuery::builder();
 
         if !self.has_next_token() {
@@ -110,7 +110,7 @@ impl Parser {
     pub(crate) fn parse_insert_columns(
         &mut self,
         _context: ParserContext,
-    ) -> Result<Vec<String>, Errors> {
+    ) -> errors::Result<Vec<String>> {
         let mut names = vec![];
         loop {
             if !self.has_next_token() {
@@ -146,7 +146,7 @@ impl Parser {
     pub(crate) fn parse_insert_values(
         &mut self,
         context: ParserContext,
-    ) -> Result<Vec<InsertValue>, Errors> {
+    ) -> errors::Result<Vec<InsertValue>> {
         // Values 파싱
         let mut values: Vec<InsertValue> = vec![];
 

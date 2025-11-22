@@ -9,10 +9,10 @@ use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl DBEngine {
-    pub async fn alter_database(&self, query: AlterDatabaseQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn alter_database(&self, query: AlterDatabaseQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();

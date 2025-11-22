@@ -8,10 +8,10 @@ use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl DBEngine {
-    pub async fn create_table(&self, query: CreateTableQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn create_table(&self, query: CreateTableQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table.clone().unwrap().database_name.unwrap();

@@ -3,14 +3,14 @@ use crate::engine::ast::dml::parts::update_item::UpdateItem;
 use crate::engine::ast::dml::update::UpdateQuery;
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     pub(crate) fn handle_update_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<UpdateQuery, Errors> {
+    ) -> errors::Result<UpdateQuery> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }

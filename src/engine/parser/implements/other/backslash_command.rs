@@ -2,14 +2,14 @@ use crate::engine::ast::SQLStatement;
 use crate::engine::ast::other::show_databases::ShowDatabasesQuery;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     pub(crate) fn parse_backslash_query(
         &mut self,
         _context: ParserContext,
-    ) -> Result<SQLStatement, Errors> {
+    ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }

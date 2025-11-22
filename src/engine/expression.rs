@@ -13,7 +13,7 @@ use crate::engine::schema::row::TableDataRow;
 use crate::engine::types::ExecuteColumnType;
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::type_error::TypeError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 #[derive(Debug, Default, Clone)]
 pub struct ReduceContext {
@@ -28,7 +28,7 @@ impl DBEngine {
         &self,
         expression: SQLExpression,
         context: ReduceContext,
-    ) -> Result<TableDataFieldType, Errors> {
+    ) -> errors::Result<TableDataFieldType> {
         match expression {
             SQLExpression::Integer(value) => Ok(TableDataFieldType::Integer(value)),
             SQLExpression::Boolean(value) => Ok(TableDataFieldType::Boolean(value)),
@@ -594,7 +594,7 @@ impl DBEngine {
         &self,
         expression: SQLExpression,
         context: ReduceContext,
-    ) -> Result<ExecuteColumnType, Errors> {
+    ) -> errors::Result<ExecuteColumnType> {
         match expression {
             SQLExpression::Integer(_) => Ok(ExecuteColumnType::Integer),
             SQLExpression::Boolean(_) => Ok(ExecuteColumnType::Bool),

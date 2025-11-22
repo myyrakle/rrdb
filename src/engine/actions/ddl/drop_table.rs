@@ -6,10 +6,10 @@ use crate::engine::ast::types::TableName;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl DBEngine {
-    pub async fn drop_table(&self, query: DropTableQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn drop_table(&self, query: DropTableQuery) -> errors::Result<ExecuteResult> {
         let base_path = self.get_data_directory();
 
         let TableName {

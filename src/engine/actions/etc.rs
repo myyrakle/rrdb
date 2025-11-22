@@ -15,10 +15,10 @@ use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl DBEngine {
-    pub async fn desc_table(&self, query: DescTableQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn desc_table(&self, query: DescTableQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let database_name = query.table_name.database_name.unwrap();
@@ -93,7 +93,7 @@ impl DBEngine {
     pub async fn show_databases(
         &self,
         _query: ShowDatabasesQuery,
-    ) -> Result<ExecuteResult, Errors> {
+    ) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
@@ -152,7 +152,7 @@ impl DBEngine {
         }
     }
 
-    pub async fn find_database(&self, database_name: String) -> Result<bool, Errors> {
+    pub async fn find_database(&self, database_name: String) -> errors::Result<bool> {
         let result = self.show_databases(ShowDatabasesQuery {}).await?;
 
         Ok(result.rows.iter().any(|e| {
@@ -166,7 +166,7 @@ impl DBEngine {
 }
 
 impl DBEngine {
-    pub async fn show_tables(&self, query: ShowTablesQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn show_tables(&self, query: ShowTablesQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
@@ -232,7 +232,7 @@ impl DBEngine {
 }
 
 impl DBEngine {
-    pub async fn use_databases(&self, query: UseDatabaseQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn use_databases(&self, query: UseDatabaseQuery) -> errors::Result<ExecuteResult> {
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {
                 name: "desc".into(),

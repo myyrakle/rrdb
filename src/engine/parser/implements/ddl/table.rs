@@ -10,14 +10,14 @@ use crate::engine::lexer::predule::Token;
 use crate::engine::parser::context::ParserContext;
 use crate::engine::parser::predule::Parser;
 use crate::errors::parsing_error::ParsingError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl Parser {
     // CREATE TABLE 쿼리 분석
     pub(crate) fn handle_create_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Errors> {
+    ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
                 "need more tokens".to_string(),
@@ -92,7 +92,7 @@ impl Parser {
     pub(crate) fn handle_alter_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Errors> {
+    ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
                 "need more tokens".to_string(),
@@ -447,7 +447,7 @@ impl Parser {
     pub(crate) fn handle_drop_table_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Errors> {
+    ) -> errors::Result<SQLStatement> {
         let mut query_builder = DropTableQuery::builder();
 
         // IF EXISTS 파싱

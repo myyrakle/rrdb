@@ -7,14 +7,14 @@ use crate::engine::DBEngine;
 use crate::engine::ast::types::TableName;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::TableDataRow;
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn full_scan(
         &self,
         table_name: TableName,
-    ) -> Result<Vec<(PathBuf, TableDataRow)>, Errors> {
+    ) -> errors::Result<Vec<(PathBuf, TableDataRow)>> {
         let encoder = StorageEncoder::new();
 
         let database_name = table_name.database_name.unwrap();

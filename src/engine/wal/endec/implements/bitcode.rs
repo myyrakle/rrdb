@@ -1,6 +1,6 @@
 use crate::engine::wal::endec::{WALDecoder, WALEncoder};
 use crate::engine::wal::types::WALEntry;
-use crate::errors::Errors;
+use crate::errors;
 use crate::errors::wal_errors::WALError;
 
 #[derive(Clone)]
@@ -18,7 +18,7 @@ impl BitcodeEncoder {
 }
 
 impl WALEncoder<Vec<WALEntry>> for BitcodeEncoder {
-    fn encode(&self, entry: &Vec<WALEntry>) -> Result<Vec<u8>, Errors> {
+    fn encode(&self, entry: &Vec<WALEntry>) -> errors::Result<Vec<u8>> {
         Ok(bitcode::encode(entry))
     }
 }
@@ -38,7 +38,7 @@ impl BitcodeDecoder {
 }
 
 impl WALDecoder<Vec<WALEntry>> for BitcodeDecoder {
-    fn decode(&self, data: &[u8]) -> Result<Vec<WALEntry>, Errors> {
+    fn decode(&self, data: &[u8]) -> errors::Result<Vec<WALEntry>> {
         bitcode::decode(data).map_err(|e| WALError::wrap(e.to_string()))
     }
 }

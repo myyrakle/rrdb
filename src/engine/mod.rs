@@ -27,7 +27,7 @@ use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bitcode::BitcodeEncoder;
 use crate::engine::wal::manager::WALManager;
 use crate::errors::execute_error::ExecuteError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 pub struct DBEngine {
     pub(crate) config: Arc<LaunchConfig>,
@@ -50,7 +50,7 @@ impl DBEngine {
         statement: SQLStatement,
         _wal_manager: Arc<WALManager<BitcodeEncoder>>,
         _connection_id: String,
-    ) -> Result<ExecuteResult, Errors> {
+    ) -> errors::Result<ExecuteResult> {
         log::info!("AST echo: {:?}", statement);
 
         // 쿼리 실행
@@ -94,7 +94,7 @@ impl DBEngine {
 }
 
 impl DBEngine {
-    pub async fn get_table_config(&self, table_name: TableName) -> Result<TableSchema, Errors> {
+    pub async fn get_table_config(&self, table_name: TableName) -> errors::Result<TableSchema> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();

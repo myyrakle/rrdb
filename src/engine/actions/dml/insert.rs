@@ -10,11 +10,11 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
-    pub async fn insert(&self, query: InsertQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn insert(&self, query: InsertQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let into_table = query.into_table.as_ref().unwrap();

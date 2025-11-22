@@ -2,7 +2,7 @@ use tokio::sync::oneshot::Sender;
 
 use crate::engine::ast::SQLStatement;
 use crate::engine::types::ExecuteResult;
-use crate::errors::Errors;
+use crate::errors;
 
 #[derive(Debug)]
 pub struct ChannelRequest {
@@ -13,5 +13,5 @@ pub struct ChannelRequest {
 
 #[derive(Debug)]
 pub struct ChannelResponse {
-    pub result: Result<ExecuteResult, Errors>,
+    pub result: errors::Result<ExecuteResult>,
 }

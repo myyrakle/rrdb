@@ -1,5 +1,5 @@
 use crate::engine::lexer::predule::{OperatorToken, Token};
-use crate::errors::Errors;
+use crate::errors;
 use crate::errors::lexing_error::LexingError;
 
 #[derive(Debug)]
@@ -87,7 +87,7 @@ impl Tokenizer {
 
     // 주어진 텍스트에서 토큰을 순서대로 획득해 반환합니다.
     // 끝을 만날 경우 Token::EOF를 반환합니다.
-    pub fn get_token(&mut self) -> Result<Token, Errors> {
+    pub fn get_token(&mut self) -> errors::Result<Token> {
         // 화이트 스페이스 삼킴
         while self.is_whitespace() && !self.is_eof() {
             self.read_char();
@@ -431,7 +431,7 @@ impl Tokenizer {
     }
 
     // Tokenizer 생성 없이 토큰 목록을 가져올 수 있는 유틸 함수입니다.
-    pub fn string_to_tokens(text: String) -> Result<Vec<Token>, Errors> {
+    pub fn string_to_tokens(text: String) -> errors::Result<Vec<Token>> {
         let mut tokenizer = Tokenizer::new(text);
 
         let mut tokens = vec![];

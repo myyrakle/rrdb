@@ -1,13 +1,13 @@
 use crate::engine::ast::SQLStatement;
 use crate::engine::ast::other::desc_table::DescTableQuery;
 use crate::engine::parser::predule::{Parser, ParserContext};
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 
 impl Parser {
     pub(crate) fn parse_desc_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLStatement, Errors> {
+    ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }

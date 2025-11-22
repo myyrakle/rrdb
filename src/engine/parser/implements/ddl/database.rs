@@ -6,11 +6,11 @@ use crate::engine::ast::ddl::drop_database::{DropDatabaseQuery, SQLStatement};
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::Parser;
 use crate::errors::parsing_error::ParsingError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl Parser {
     // CREATE DATABASE 쿼리 분석
-    pub(crate) fn handle_create_database_query(&mut self) -> Result<SQLStatement, Errors> {
+    pub(crate) fn handle_create_database_query(&mut self) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
                 "need more tokens".to_string(),
@@ -59,7 +59,7 @@ impl Parser {
     }
 
     // DROP DATABASE 쿼리 분석
-    pub(crate) fn handle_drop_database_query(&mut self) -> Result<SQLStatement, Errors> {
+    pub(crate) fn handle_drop_database_query(&mut self) -> errors::Result<SQLStatement> {
         let mut query_builder = DropDatabaseQuery::builder();
 
         // IF EXISTS 파싱
@@ -104,7 +104,7 @@ impl Parser {
     }
 
     // ALTER DATABASE 쿼리 분석
-    pub(crate) fn handle_alter_database_query(&mut self) -> Result<SQLStatement, Errors> {
+    pub(crate) fn handle_alter_database_query(&mut self) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
                 "need more tokens".to_string(),

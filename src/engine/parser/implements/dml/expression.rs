@@ -7,7 +7,7 @@ use crate::engine::ast::dml::expressions::operators::{BinaryOperator, UnaryOpera
 use crate::engine::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::engine::ast::dml::expressions::unary::UnaryOperatorExpression;
 use crate::engine::ast::types::{BuiltInFunction, SQLExpression, SelectColumn, UserDefinedFunction};
-use crate::errors::{Errors, ErrorKind};
+use crate::errors::{self, Errors, ErrorKind};
 use crate::errors::parsing_error::ParsingError;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::Parser;
@@ -17,7 +17,7 @@ impl Parser {
     pub(crate) fn parse_expression(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLExpression, Errors> {
+    ) -> errors::Result<SQLExpression> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -202,7 +202,7 @@ impl Parser {
         &mut self,
         operator: UnaryOperator,
         context: ParserContext,
-    ) -> Result<SQLExpression, Errors> {
+    ) -> errors::Result<SQLExpression> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -245,7 +245,7 @@ impl Parser {
     pub(crate) fn parse_parentheses_expression(
         &mut self,
         context: ParserContext,
-    ) -> Result<SQLExpression, Errors> {
+    ) -> errors::Result<SQLExpression> {
         let context = context.set_in_parentheses(true);
 
         if !self.has_next_token() {
@@ -324,7 +324,7 @@ impl Parser {
         &mut self,
         lhs: SQLExpression,
         context: ParserContext,
-    ) -> Result<SQLExpression, Errors> {
+    ) -> errors::Result<SQLExpression> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError("need more tokens".to_string())));
         }
@@ -405,7 +405,7 @@ impl Parser {
         database_name: Option<String>,
         function_name: String,
         context: ParserContext,
-    ) -> Result<SQLExpression, Errors> {
+    ) -> errors::Result<SQLExpression> {
         let function = if database_name.is_some() {
             UserDefinedFunction {
                 database_name,
@@ -473,7 +473,7 @@ impl Parser {
         &mut self,
         a: SQLExpression,
         context: ParserContext,
-    ) -> Result<SQLExpression, Errors> {
+    ) -> errors::Result<SQLExpression> {
         let context = context
             .set_in_between_clause(true)
             .set_in_parentheses(false);

@@ -3,12 +3,12 @@ use crate::engine::ast::dml::parts::join::JoinType;
 use crate::engine::ast::types::{Column, DataType, SelectColumn, TableName};
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
-use crate::errors::Errors;
+use crate::errors;
 use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     // 테이블 컬럼 정의 분석
-    pub(crate) fn parse_table_column(&mut self) -> Result<Column, Errors> {
+    pub(crate) fn parse_table_column(&mut self) -> errors::Result<Column> {
         let mut builder = Column::builder();
 
         if !self.has_next_token() {
@@ -114,7 +114,7 @@ impl Parser {
     }
 
     // 데이터 타입 분석
-    pub(crate) fn parse_data_type(&mut self) -> Result<DataType, Errors> {
+    pub(crate) fn parse_data_type(&mut self) -> errors::Result<DataType> {
         if !self.has_next_token() {
             return Err(ParsingError::wrap("need more tokens"));
         }
@@ -185,7 +185,7 @@ impl Parser {
     }
 
     // 테이블명 분석
-    pub(crate) fn parse_table_name(&mut self, context: ParserContext) -> Result<TableName, Errors> {
+    pub(crate) fn parse_table_name(&mut self, context: ParserContext) -> errors::Result<TableName> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::wrap("need more tokens"));
@@ -241,7 +241,7 @@ impl Parser {
     }
 
     // IF NOT EXISTS 체크 로직
-    pub(crate) fn has_if_not_exists(&mut self) -> Result<bool, Errors> {
+    pub(crate) fn has_if_not_exists(&mut self) -> errors::Result<bool> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::wrap("need more tokens"));
@@ -284,7 +284,7 @@ impl Parser {
     }
 
     // IF EXISTS 체크 로직
-    pub(crate) fn has_if_exists(&mut self) -> Result<bool, Errors> {
+    pub(crate) fn has_if_exists(&mut self) -> errors::Result<bool> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::wrap("need more tokens"));
@@ -314,7 +314,7 @@ impl Parser {
     }
 
     // SELECT 컬럼 정의 분석
-    pub(crate) fn parse_select_column(&mut self) -> Result<SelectColumn, Errors> {
+    pub(crate) fn parse_select_column(&mut self) -> errors::Result<SelectColumn> {
         let mut select_column = SelectColumn::new(None, "".to_string());
 
         if !self.has_next_token() {
@@ -918,7 +918,7 @@ impl Parser {
     }
 
     // Table Alias 획득
-    pub(crate) fn parse_table_alias(&mut self) -> Result<String, Errors> {
+    pub(crate) fn parse_table_alias(&mut self) -> errors::Result<String> {
         // 테이블명 획득 로직
         if !self.has_next_token() {
             return Err(ParsingError::wrap("need more tokens"));
@@ -954,7 +954,7 @@ impl Parser {
     pub(crate) fn parse_subquery(
         &mut self,
         context: ParserContext,
-    ) -> Result<SubqueryExpression, Errors> {
+    ) -> errors::Result<SubqueryExpression> {
         if !self.has_next_token() {
             return Err(ParsingError::wrap("need more tokens"));
         }

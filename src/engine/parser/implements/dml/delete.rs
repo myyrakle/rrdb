@@ -2,13 +2,13 @@ use crate::engine::ast::dml::delete::DeleteQuery;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::predule::{Parser, ParserContext};
 use crate::errors::parsing_error::ParsingError;
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl Parser {
     pub(crate) fn handle_delete_query(
         &mut self,
         context: ParserContext,
-    ) -> Result<DeleteQuery, Errors> {
+    ) -> errors::Result<DeleteQuery> {
         if !self.has_next_token() {
             return Err(Errors::new(ErrorKind::ParsingError(
                 "need more tokens".to_string(),

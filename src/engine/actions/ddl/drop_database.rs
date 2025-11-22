@@ -6,10 +6,10 @@ use crate::engine::ast::ddl::drop_database::DropDatabaseQuery;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::{ErrorKind, Errors};
+use crate::errors::{self, ErrorKind, Errors};
 
 impl DBEngine {
-    pub async fn drop_database(&self, query: DropDatabaseQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn drop_database(&self, query: DropDatabaseQuery) -> errors::Result<ExecuteResult> {
         let base_path = self.get_data_directory();
         let mut database_path = base_path.clone();
 

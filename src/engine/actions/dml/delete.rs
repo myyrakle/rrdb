@@ -12,12 +12,12 @@ use crate::engine::schema::row::TableDataFieldType;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::Errors;
+use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::type_error::TypeError;
 
 impl DBEngine {
-    pub async fn delete(&self, query: DeleteQuery) -> Result<ExecuteResult, Errors> {
+    pub async fn delete(&self, query: DeleteQuery) -> errors::Result<ExecuteResult> {
         let table = query.from_table.as_ref().unwrap().table.clone();
 
         // 최적화 작업
