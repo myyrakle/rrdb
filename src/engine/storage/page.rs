@@ -1,4 +1,4 @@
-use crate::engine::storage::{PageError, PageId, SlotId};
+use super::{PageError, PageId, SlotId};
 
 pub const PAGE_SIZE: usize = 8 * 1024;
 
@@ -51,6 +51,10 @@ impl Page {
             slots: [EMPTY_SLOT; MAX_SLOTS],
             data: vec![0; PAGE_SIZE],
         }
+    }
+
+    pub fn slot_count(&self) -> u16 {
+        self.header.slot_count
     }
 
     pub fn insert(&mut self, payload: &[u8]) -> Result<SlotId, PageError> {
@@ -113,7 +117,9 @@ impl Page {
     }
 
     fn free_space(&self) -> usize {
-        self.header.free_end.saturating_sub(self.header.free_start) as usize
+        self.header
+            .free_end
+            .saturating_sub(self.header.free_start) as usize
     }
 }
 
