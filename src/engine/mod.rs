@@ -5,6 +5,7 @@ pub mod optimizer;
 pub mod parser;
 pub mod schema;
 pub mod server;
+pub mod storage;
 pub mod wal;
 
 // DB Engine implementations
@@ -26,8 +27,8 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bitcode::BitcodeEncoder;
 use crate::engine::wal::manager::WALManager;
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 pub struct DBEngine {
     pub(crate) config: Arc<LaunchConfig>,
@@ -118,15 +119,13 @@ impl DBEngine {
 
                 match table_config {
                     Some(table_config) => Ok(table_config),
-                    None => Err(ExecuteError::wrap(
-                        "invalid config data".to_string(),
-                    )),
+                    None => Err(ExecuteError::wrap("invalid config data".to_string())),
                 }
             }
             Err(error) => match error.kind() {
-                std::io::ErrorKind::NotFound => Err(ExecuteError::wrap(
-                    "table not found".to_string(),
-                )),
+                std::io::ErrorKind::NotFound => {
+                    Err(ExecuteError::wrap("table not found".to_string()))
+                }
                 _ => Err(ExecuteError::wrap(format!("{:?}", error))),
             },
         }
