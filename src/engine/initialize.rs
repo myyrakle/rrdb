@@ -201,7 +201,7 @@ impl DBEngine {
 mod tests {
     #[cfg(target_os = "linux")]
     #[tokio::test]
-    async fn test_init_config() {
+    async fn test_init_config() {        
         use mockall::predicate::eq;
 
         use crate::{
@@ -213,7 +213,9 @@ mod tests {
         };
 
         use super::*;
+        use std::collections::HashMap;
         use std::sync::Arc;
+        use tokio::sync::RwLock;
 
         const CONFIG: &[u8] = br##"port = 22208
 host = "0.0.0.0"
@@ -577,6 +579,7 @@ wal_extension = "log"
                 config: (test_case.mock_config)(),
                 file_system: (test_case.mock_file_system)(),
                 command_runner: (test_case.mock_command_runner)(),
+                table_heaps: Arc::new(RwLock::new(HashMap::new())),
             };
 
             let result = executor.init_config().await;

@@ -9,6 +9,7 @@ use crate::engine::ast::dml::plan::select::scan::ScanType;
 use crate::engine::expression::ReduceContext;
 use crate::engine::optimizer::predule::Optimizer;
 use crate::engine::schema::row::TableDataFieldType;
+use crate::engine::storage::TableHeap;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
@@ -22,11 +23,9 @@ impl DBEngine {
 
         // 최적화 작업
         let optimizer = Optimizer::new();
-
         let plan = optimizer.optimize_delete(query).await?;
 
         let mut table_alias_map = HashMap::new();
-        let mut table_infos = vec![];
 
         let mut rows = vec![];
 
@@ -36,9 +35,7 @@ impl DBEngine {
                 DeletePlanItem::DeleteFrom(from) => {
                     let table_name = from.table_name.clone();
 
-                    let table_config = self.get_table_config(table_name.clone()).await?;
-
-                    table_infos.push(table_config);
+                    let _table_config = self.get_table_config(table_name.clone()).await?;
 
                     if let Some(alias) = from.alias {
                         table_alias_map.insert(alias, table_name.clone());
@@ -48,7 +45,6 @@ impl DBEngine {
                         ScanType::FullScan => {
                             let mut result =
                                 self.full_scan(table_name).await?.into_iter().collect();
-
                             rows.append(&mut result);
                         }
                         ScanType::IndexScan(_index) => {
@@ -59,7 +55,7 @@ impl DBEngine {
                 // 필터링 처리
                 DeletePlanItem::Filter(filter) => {
                     let total_count = rows.len();
-                    let futures = rows.iter().cloned().map(|(path, row)| {
+                    let futures = rows.iter().cloned().map(|(row_id, row)| {
                         let table_alias_map = table_alias_map.clone();
                         let filter = filter.clone();
                         async move {
@@ -75,8 +71,8 @@ impl DBEngine {
                                 .await?;
 
                             match condition {
-                                TableDataFieldType::Boolean(boolean) => Ok((path, row, boolean)),
-                                TableDataFieldType::Null => Ok((path, row, false)),
+                                TableDataFieldType::Boolean(boolean) => Ok((row_id, row, boolean)),
+                                TableDataFieldType::Null => Ok((row_id, row, false)),
                                 _ => Err(TypeError::wrap(
                                     "condition expression is valid only for boolean and null types",
                                 )),
@@ -92,20 +88,16 @@ impl DBEngine {
                     rows = result
                         .into_iter()
                         .filter(|(_, _, boolean)| *boolean)
-                        .map(|(path, row, _)| (path, row))
+                        .map(|(row_id, row, _)| (row_id, row))
                         .collect();
                 }
             }
         }
-
-        // 삭제 작업
-        for (path, _) in rows.into_iter() {
-            if let Err(error) = tokio::fs::remove_file(&path).await {
-                return Err(ExecuteError::wrap(format!(
-                    "file {:?} remove failed: {}",
-                    path, error
-                )));
-            }
+        let mut heaps = self.table_heaps.write().await;
+        let heap = heaps.entry(table.clone()).or_insert_with(TableHeap::new);
+        for (row_id, _) in rows.into_iter() {
+            heap.delete(row_id)
+                .map_err(|error| ExecuteError::wrap(format!("{:?}", error)))?;
         }
 
         Ok(ExecuteResult {

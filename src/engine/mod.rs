@@ -14,6 +14,7 @@ pub mod expression;
 pub mod initialize;
 pub mod types;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -24,16 +25,19 @@ use crate::engine::ast::types::TableName;
 use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::table::TableSchema;
+use crate::engine::storage::TableHeap;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bitcode::BitcodeEncoder;
 use crate::engine::wal::manager::WALManager;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
+use tokio::sync::RwLock;
 
 pub struct DBEngine {
     pub(crate) config: Arc<LaunchConfig>,
     pub(crate) file_system: Arc<dyn FileSystem + Send + Sync>,
     pub(crate) command_runner: Arc<dyn CommandRunner + Send + Sync>,
+    pub(crate) table_heaps: Arc<RwLock<HashMap<TableName, TableHeap>>>,
 }
 
 impl DBEngine {
@@ -42,6 +46,7 @@ impl DBEngine {
             config: Arc::new(config),
             file_system: Arc::new(RealFileSystem {}),
             command_runner: Arc::new(RealCommandRunner {}),
+            table_heaps: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 

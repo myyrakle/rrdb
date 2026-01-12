@@ -46,6 +46,28 @@ impl TableHeap {
             .ok_or(HeapError::InvalidPage)?;
         page.delete(row_id.slot_id)?;
         Ok(())
+    }    
+    pub fn update(&mut self, row_id: RowId, payload: &[u8]) -> Result<RowId, HeapError> {
+        let update_result = {
+            let page = self
+                .pages
+                .get_mut(row_id.page_id as usize)
+                .ok_or(HeapError::InvalidPage)?;
+            page.update(row_id.slot_id, payload)
+        };
+
+        match update_result {
+            Ok(()) => Ok(row_id),
+            Err(PageError::NoSpace) => {
+                let page = self
+                    .pages
+                    .get_mut(row_id.page_id as usize)
+                    .ok_or(HeapError::InvalidPage)?;
+                page.delete(row_id.slot_id)?;
+                self.insert(payload)
+            }
+            Err(error) => Err(error.into()),
+        }
     }
 
     pub fn scan(&self) -> Result<Vec<(RowId, Vec<u8>)>, HeapError> {
@@ -85,5 +107,19 @@ mod tests {
         assert_eq!(heap.read(row_id).unwrap().unwrap(), b"foo");
         heap.delete(row_id).expect("delete failed");
         assert!(heap.read(row_id).unwrap().is_none());
+    }
+    #[test]
+    fn update_relocates_when_needed() {
+        let mut heap = TableHeap::new();
+        let row_id = heap.insert(b"hello").expect("insert failed");
+
+        let same_id = heap.update(row_id, b"hi").expect("update failed");
+        assert_eq!(same_id, row_id);
+        assert_eq!(heap.read(row_id).unwrap().unwrap(), b"hi");
+
+        let new_id = heap.update(row_id, b"hello world").expect("update failed");
+        assert_ne!(new_id, row_id);
+        assert!(heap.read(row_id).unwrap().is_none());
+        assert_eq!(heap.read(new_id).unwrap().unwrap(), b"hello world");
     }
 }

@@ -108,6 +108,30 @@ impl Page {
         Ok(Some(&self.data[start..end]))
     }
 
+    pub fn update(&mut self, slot_id: SlotId, payload: &[u8]) -> Result<(), PageError> {
+        if payload.len() > u16::MAX as usize {
+            return Err(PageError::RowTooLarge);
+        }
+        if slot_id >= self.header.slot_count {
+            return Err(PageError::InvalidSlot);
+        }
+
+        let mut slot = self.slots[slot_id as usize];
+        if !slot.live {
+            return Err(PageError::InvalidSlot);
+        }
+        if payload.len() > slot.len as usize {
+            return Err(PageError::NoSpace);
+        }
+
+        let start = slot.offset as usize;
+        let end = start + payload.len();
+        self.data[start..end].copy_from_slice(payload);
+        slot.len = payload.len() as u16;
+        self.slots[slot_id as usize] = slot;
+        Ok(())
+    }
+
     pub fn delete(&mut self, slot_id: SlotId) -> Result<(), PageError> {
         if slot_id >= self.header.slot_count {
             return Err(PageError::InvalidSlot);

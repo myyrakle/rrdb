@@ -7,6 +7,7 @@ use crate::engine::ast::types::SQLExpression;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::{TableDataField, TableDataRow};
 use crate::engine::schema::table::TableSchema;
+use crate::engine::storage::TableHeap;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
@@ -26,12 +27,8 @@ impl DBEngine {
 
         let database_path = base_path.clone().join(&database_name);
 
-        let table_path = database_path.clone().join("tables").join(&table_name);
-
-        // 데이터 행 파일 경로
-        let rows_path = table_path.clone().join("rows");
-
         // 설정파일 경로
+        let table_path = database_path.clone().join("tables").join(&table_name);
         let config_path = table_path.join("table.config");
 
         let table_config = match tokio::fs::read(&config_path).await {
@@ -41,17 +38,13 @@ impl DBEngine {
                 match table_config {
                     Some(table_config) => table_config,
                     None => {
-                        return Err(ExecuteError::wrap(
-                            "invalid config data".to_string(),
-                        ));
+                        return Err(ExecuteError::wrap("invalid config data".to_string()));
                     }
                 }
             }
             Err(error) => match error.kind() {
                 IOErrorKind::NotFound => {
-                    return Err(ExecuteError::wrap(
-                        "table not found".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("table not found".to_string()));
                 }
                 _ => {
                     return Err(ExecuteError::wrap(format!("{:?}", error)));
@@ -108,8 +101,7 @@ impl DBEngine {
                             Some(column) => {
                                 if column.not_null && data.type_code() == 0 {
                                     return Err(ExecuteError::wrap(format!(
-                                        "column '{}' is not null column
-                                        ",
+                                        "column '{}' is not null column",
                                         column_name
                                     )));
                                 }
@@ -118,8 +110,7 @@ impl DBEngine {
                                     && data.type_code() != 0
                                 {
                                     return Err(ExecuteError::wrap(format!(
-                                        "column '{}' type mismatch
-                                        ",
+                                        "column '{}' type mismatch",
                                         column_name
                                     )));
                                 }
@@ -141,7 +132,6 @@ impl DBEngine {
                         });
                     }
 
-                    // 명시되지 않은 컬럼 리스트 처리
                     for column_name in remain_columns.clone() {
                         let column_config_info = columns_map.get(column_name).unwrap();
 
@@ -150,8 +140,7 @@ impl DBEngine {
                             None => {
                                 if column_config_info.not_null {
                                     return Err(ExecuteError::wrap(format!(
-                                        "column '{}' is not null column
-                                        ",
+                                        "column '{}' is not null column",
                                         column_name
                                     )));
                                 }
@@ -170,8 +159,7 @@ impl DBEngine {
                                     && data.type_code() != 0
                                 {
                                     return Err(ExecuteError::wrap(format!(
-                                        "column '{}' type mismatch
-                                        ",
+                                        "column '{}' type mismatch",
                                         column_name
                                     )));
                                 }
@@ -197,14 +185,14 @@ impl DBEngine {
                     rows.push(row);
                 }
 
+                let mut heaps = self.table_heaps.write().await;
+                let heap = heaps
+                    .entry(into_table.clone())
+                    .or_insert_with(TableHeap::new);
                 for row in rows {
-                    let file_name = uuid::Uuid::new_v4().to_string();
-
-                    let row_file_path = rows_path.join(file_name);
-
-                    if let Err(error) = tokio::fs::write(row_file_path, encoder.encode(row)).await {
-                        return Err(ExecuteError::wrap(error.to_string()));
-                    }
+                    let row_bytes = encoder.encode(row);
+                    heap.insert(&row_bytes)
+                        .map_err(|error| ExecuteError::wrap(format!("{:?}", error)))?;
                 }
             }
             InsertData::Select(_select) => {
