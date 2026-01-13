@@ -93,6 +93,8 @@ impl DBEngine {
                 }
             }
         }
+
+        // 삭제 작업
         let mut heaps = self.table_heaps.write().await;
         let heap = heaps.entry(table.clone()).or_insert_with(TableHeap::new);
         for (row_id, _) in rows.into_iter() {
