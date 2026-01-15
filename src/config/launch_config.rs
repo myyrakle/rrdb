@@ -50,13 +50,13 @@ impl LaunchConfig {
         base_path.join(DEFAULT_CONFIG_FILENAME)
     }
 
-    pub fn load_from_path(filepath: Option<String>) -> anyhow::Result<Self> {
+    pub async fn load_from_path(filepath: Option<String>) -> anyhow::Result<Self> {
         let filepath = match filepath {
             Some(path) => PathBuf::from(path),
             None => Self::default_config_path(),
         };
 
-        let config = std::fs::read_to_string(filepath)?;
+        let config = tokio::fs::read_to_string(filepath).await?;
         let decoded = toml::from_str(&config)?;
 
         Ok(decoded)

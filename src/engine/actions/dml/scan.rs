@@ -15,7 +15,7 @@ impl DBEngine {
         &self,
         table_name: TableName,
     ) -> errors::Result<Vec<(PathBuf, TableDataRow)>> {
-        let encoder = StorageEncoder::new();
+
 
         let database_name = table_name.database_name.unwrap();
         let table_name = table_name.table_name;
@@ -29,17 +29,20 @@ impl DBEngine {
         // 데이터 행 파일 경로
         let rows_path = table_path.clone().join("rows");
 
-        match std::fs::read_dir(&rows_path) {
-            Ok(read_dir_result) => {
-                let futures = read_dir_result.map(|e| async {
-                    match e {
-                        Ok(entry) => match entry.file_type() {
+        match tokio::fs::read_dir(&rows_path).await {
+            Ok(mut read_dir_result) => {
+                let mut futures = Vec::new();
+
+                while let Ok(Some(entry)) = read_dir_result.next_entry().await {
+                    futures.push(async move {
+                        match entry.file_type().await {
                             Ok(file_type) => {
                                 if file_type.is_file() {
                                     let path = entry.path();
 
                                     match tokio::fs::read(&path).await {
                                         Ok(result) => {
+                                            let encoder = StorageEncoder::new();
                                             match encoder.decode::<TableDataRow>(result.as_slice())
                                             {
                                                 Some(decoded) => Ok((path.to_path_buf(), decoded)),
@@ -63,12 +66,9 @@ impl DBEngine {
                             Err(error) => {
                                 Err(ExecuteError::wrap(format!("full scan failed {}", error)))
                             }
-                        },
-                        Err(error) => {
-                            Err(ExecuteError::wrap(format!("full scan failed {}", error)))
                         }
-                    }
-                });
+                    });
+                }
 
                 let rows = join_all(futures)
                     .await
