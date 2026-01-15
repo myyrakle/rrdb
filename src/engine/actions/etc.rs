@@ -31,7 +31,7 @@ impl DBEngine {
             .join(&table_name);
         let config_path = table_path.join("table.config");
 
-        match std::fs::read(config_path) {
+        match tokio::fs::read(config_path).await {
             Ok(read_result) => {
                 let table_info: TableSchema =
                     encoder.decode(read_result.as_slice()).ok_or_else(|| {
@@ -94,15 +94,17 @@ impl DBEngine {
         &self,
         _query: ShowDatabasesQuery,
     ) -> errors::Result<ExecuteResult> {
-        let encoder = StorageEncoder::new();
+
 
         let base_path = self.get_data_directory();
 
-        match std::fs::read_dir(&base_path) {
-            Ok(read_dir_result) => {
-                let futures = read_dir_result.map(|e| async {
-                    match e {
-                        Ok(entry) => match entry.file_type() {
+        match tokio::fs::read_dir(&base_path).await {
+            Ok(mut read_dir_result) => {
+                let mut futures = Vec::new();
+
+                while let Ok(Some(entry)) = read_dir_result.next_entry().await {
+                    futures.push(async move {
+                        match entry.file_type().await {
                             Ok(file_type) => {
                                 if file_type.is_dir() {
                                     let mut path = entry.path();
@@ -110,6 +112,7 @@ impl DBEngine {
 
                                     match tokio::fs::read(path).await {
                                         Ok(result) => {
+                                            let encoder = StorageEncoder::new();
                                             let database_config: DatabaseSchema =
                                                 encoder.decode(result.as_slice()).unwrap();
 
@@ -122,10 +125,9 @@ impl DBEngine {
                                 }
                             }
                             Err(_) => None,
-                        },
-                        Err(_) => None,
-                    }
-                });
+                        }
+                    });
+                }
 
                 let database_list = join_all(futures).await.into_iter().flatten();
 
@@ -167,17 +169,19 @@ impl DBEngine {
 
 impl DBEngine {
     pub async fn show_tables(&self, query: ShowTablesQuery) -> errors::Result<ExecuteResult> {
-        let encoder = StorageEncoder::new();
+
 
         let base_path = self.get_data_directory();
         let database_path = base_path.clone().join(query.database);
         let tables_path = database_path.join("tables");
 
-        match std::fs::read_dir(&tables_path) {
-            Ok(read_dir_result) => {
-                let futures = read_dir_result.map(|e| async {
-                    match e {
-                        Ok(entry) => match entry.file_type() {
+        match tokio::fs::read_dir(&tables_path).await {
+            Ok(mut read_dir_result) => {
+                let mut futures = Vec::new();
+
+                while let Ok(Some(entry)) = read_dir_result.next_entry().await {
+                    futures.push(async move {
+                        match entry.file_type().await {
                             Ok(file_type) => {
                                 if file_type.is_dir() {
                                     let mut path = entry.path();
@@ -185,6 +189,7 @@ impl DBEngine {
 
                                     match tokio::fs::read(path).await {
                                         Ok(result) => {
+                                            let encoder = StorageEncoder::new();
                                             let table_config: TableSchema =
                                                 match encoder.decode(result.as_slice()) {
                                                     Some(decoded) => decoded,
@@ -200,10 +205,9 @@ impl DBEngine {
                                 }
                             }
                             Err(_) => None,
-                        },
-                        Err(_) => None,
-                    }
-                });
+                        }
+                    });
+                }
 
                 let table_list = join_all(futures).await.into_iter().flatten();
 

@@ -41,14 +41,12 @@ impl<'a> WALBuilder<'a> {
         let mut max_sequence = 0;
         let mut last_log_path: Option<PathBuf> = None;
 
-        let dir_entries = std::fs::read_dir(&self.config.wal_directory)
+        let mut dir_entries = tokio::fs::read_dir(&self.config.wal_directory)
+            .await
             .map_err(|e| WALError::wrap(e.to_string()))?;
 
-        for entry_result in dir_entries {
-            let path = match entry_result {
-                Ok(entry) => entry.path(),
-                Err(e) => return Err(WALError::wrap(e.to_string())),
-            };
+        while let Ok(Some(entry)) = dir_entries.next_entry().await {
+            let path = entry.path();
 
             if !path.is_file() {
                 continue;
@@ -70,16 +68,16 @@ impl<'a> WALBuilder<'a> {
             }
         }
 
-        let (current_sequence, entries) = last_log_path.map_or_else(
+        let (current_sequence, entries) = match last_log_path {
             // Case 1: WAL 파일이 하나도 없는 초기 상태
-            || {
+            None => {
                 // 첫 번째 WAL 파일이므로 시퀀스는 1로 시작하고, 복구할 엔트리는 없음
                 Ok::<(usize, Vec<WALEntry>), errors::Errors>((1, Vec::new()))
-            },
+            }
             // Case 2: 최신 WAL 파일이 존재하는 상태
-            |log_path| {
+            Some(log_path) => {
                 // 최신 WAL 파일의 내용을 읽음
-                let content = std::fs::read(&log_path).map_err(|e| {
+                let content = tokio::fs::read(&log_path).await.map_err(|e| {
                     WALError::wrap(format!("failed to read log file {:?}: {}", log_path, e))
                 })?;
 
@@ -88,13 +86,14 @@ impl<'a> WALBuilder<'a> {
                     return Ok((max_sequence + 1, Vec::new()));
                 }
 
-                let saved_entries: Vec<WALEntry> = decoder.decode(&content).map_err(|e| {
-                    WALError::wrap(format!(
-                        "failed to decode log file {:?}: {}",
-                        log_path,
-                        e.to_string()
-                    ))
-                })?;
+                let saved_entries: Vec<WALEntry> =
+                    decoder.decode(&content).map_err(|e| {
+                        WALError::wrap(format!(
+                            "failed to decode log file {:?}: {}",
+                            log_path,
+                            e.to_string()
+                        ))
+                    })?;
 
                 let last_entry = match saved_entries.last() {
                     Some(entry) => entry,
@@ -107,8 +106,8 @@ impl<'a> WALBuilder<'a> {
                     // 마지막 엔트리가 체크포인트가 아니면 비정상 종료로 간주
                     Ok((max_sequence, saved_entries))
                 }
-            },
-        )?;
+            }
+        }?;
 
         Ok((current_sequence, entries))
     }
