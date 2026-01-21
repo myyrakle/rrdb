@@ -24,7 +24,7 @@ async fn main() -> errors::Result<()> {
 
     match args.action {
         SubCommand::Init(init) => {
-            let config = LaunchConfig::load_from_path(None).unwrap_or_default();
+            let config = LaunchConfig::load_from_path(None).await.unwrap_or_default();
 
             let _init_option = init.init;
 
@@ -33,7 +33,9 @@ async fn main() -> errors::Result<()> {
             engine.initialize().await?;
         }
         SubCommand::Run(run) => {
-            let config = LaunchConfig::load_from_path(run.value.config).expect("config load error");
+            let config = LaunchConfig::load_from_path(run.value.config)
+                .await
+                .expect("config load error");
 
             let server = Server::new(config);
 

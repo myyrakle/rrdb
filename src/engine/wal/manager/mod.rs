@@ -113,26 +113,31 @@ where
         Ok(())
     }
 
-    fn save_to_file(&mut self) -> errors::Result<()> {
+    async fn save_to_file(&mut self) -> errors::Result<()> {
         let path = self
             .directory
             .join(format!("{:08X}.{}", self.sequence, self.extension));
 
         let encoded = self.encoder.encode(&self.buffers)?;
 
-        fs::write(&path, encoded).map_err(|e| WALError::wrap(e.to_string()))?;
+        tokio::fs::write(&path, encoded)
+            .await
+            .map_err(|e| WALError::wrap(e.to_string()))?;
 
         // fsync 디스크 동기화 보장
-        let file = fs::OpenOptions::new()
+        let file = tokio::fs::OpenOptions::new()
             .write(true)
             .open(path)
+            .await
             .map_err(|e| WALError::wrap(e.to_string()))?;
-        file.sync_all().map_err(|e| WALError::wrap(e.to_string()))?;
+        file.sync_all()
+            .await
+            .map_err(|e| WALError::wrap(e.to_string()))?;
 
         Ok(())
     }
 
-    fn checkpoint(&mut self) -> errors::Result<()> {
+    async fn checkpoint(&mut self) -> errors::Result<()> {
         self.buffers.push(WALEntry {
             data: None,
             entry_type: EntryType::Checkpoint,
@@ -140,13 +145,13 @@ where
             transaction_id: None,
             is_continuation: false,
         });
-        self.save_to_file()?;
+        self.save_to_file().await?;
 
         Ok(())
     }
 
-    pub fn flush(&mut self) -> errors::Result<()> {
-        self.checkpoint()?;
+    pub async fn flush(&mut self) -> errors::Result<()> {
+        self.checkpoint().await?;
         Ok(())
     }
 
@@ -165,10 +170,9 @@ mod tests {
     use crate::engine::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
     use crate::engine::wal::manager::builder::WALBuilder;
     use crate::engine::wal::types::{EntryType, WALEntry};
-    use std::fs::{self, File};
-    use std::io::Write;
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
+    use tokio::io::AsyncWriteExt;
 
     fn get_test_config(wal_dir_path: &Path) -> LaunchConfig {
         LaunchConfig {
@@ -182,14 +186,15 @@ mod tests {
         }
     }
 
-    fn setup_test_wal_dir(test_name: &str) -> PathBuf {
+    async fn setup_test_wal_dir(test_name: &str) -> PathBuf {
         let wal_dir = PathBuf::from(format!("target/test_wal_data/{}", test_name));
         if wal_dir.exists() {
-            fs::remove_dir_all(&wal_dir).unwrap_or_else(|e| {
+            tokio::fs::remove_dir_all(&wal_dir).await.unwrap_or_else(|e| {
                 panic!("Failed to remove old test WAL dir {:?}: {}", wal_dir, e)
             });
         }
-        fs::create_dir_all(&wal_dir)
+        tokio::fs::create_dir_all(&wal_dir)
+            .await
             .unwrap_or_else(|e| panic!("Failed to create test WAL dir {:?}: {}", wal_dir, e));
         wal_dir
     }
@@ -208,23 +213,26 @@ mod tests {
     }
 
     // WAL 파일에 엔트리들을 기록하는 헬퍼 함수
-    fn write_wal_file(config: &LaunchConfig, sequence: usize, entries: &Vec<WALEntry>) {
+    async fn write_wal_file(config: &LaunchConfig, sequence: usize, entries: &Vec<WALEntry>) {
         let encoder = BitcodeEncoder::new();
         let encoded_data = encoder.encode(entries).unwrap();
         let file_path = PathBuf::from(&config.wal_directory)
             .join(format!("{:08X}.{}", sequence, config.wal_extension));
 
-        let mut file = File::create(&file_path)
+        let mut file = tokio::fs::File::create(&file_path)
+            .await
             .unwrap_or_else(|e| panic!("Failed to create wal file {:?}: {}", file_path, e));
         file.write_all(&encoded_data)
+            .await
             .unwrap_or_else(|e| panic!("Failed to write to wal file {:?}: {}", file_path, e));
         file.sync_all()
+            .await
             .unwrap_or_else(|e| panic!("Failed to sync wal file {:?}: {}", file_path, e));
     }
 
     #[tokio::test]
     async fn test_build_no_wal_files() {
-        let wal_dir = setup_test_wal_dir("no_wal_files");
+        let wal_dir = setup_test_wal_dir("no_wal_files").await;
         let config = get_test_config(&wal_dir);
 
         let builder = WALBuilder::new(&config);
@@ -245,7 +253,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_single_file_with_checkpoint() {
-        let wal_dir = setup_test_wal_dir("single_file_checkpoint");
+        let wal_dir = setup_test_wal_dir("single_file_checkpoint").await;
         let config = get_test_config(&wal_dir);
 
         // 테스트용 WAL 파일 생성 (시퀀스 1, 마지막은 체크포인트)
@@ -254,7 +262,7 @@ mod tests {
             create_entry(EntryType::Set, Some("data2")),
             create_entry(EntryType::Checkpoint, None),
         ];
-        write_wal_file(&config, 1, &entries_seq1);
+        write_wal_file(&config, 1, &entries_seq1).await;
 
         let builder = WALBuilder::new(&config);
         let encoder = BitcodeEncoder::new();
@@ -275,7 +283,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_multiple_files() {
-        let wal_dir = setup_test_wal_dir("multiple_files");
+        let wal_dir = setup_test_wal_dir("multiple_files").await;
 
         // 일부러 페이지 사이즈를 작게 설정
         let mut config = get_test_config(&wal_dir);
@@ -297,13 +305,13 @@ mod tests {
             create_entry(EntryType::Insert, Some("helloworld")), // 10바이트
             create_entry(EntryType::Set, Some("data2")),         // 5바이트
         ];
-        write_wal_file(&config, 1, &entries_seq1);
+        write_wal_file(&config, 1, &entries_seq1).await;
 
         // 여기서 기본 페이지 사이즈보다 크게
         let entries_seq2 = vec![
             create_entry(EntryType::Insert, Some("helloworld")), // 10바이트
             create_entry(EntryType::Set, Some("data2")),         // 5바이트
         ];
-        write_wal_file(&config, 2, &entries_seq2);
+        write_wal_file(&config, 2, &entries_seq2).await;
     }
 }
