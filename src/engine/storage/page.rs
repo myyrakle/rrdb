@@ -141,9 +141,69 @@ impl Page {
     }
 
     fn free_space(&self) -> usize {
-        self.header
-            .free_end
-            .saturating_sub(self.header.free_start) as usize
+        self.header.free_end.saturating_sub(self.header.free_start) as usize
+    }
+}
+
+pub struct PageCodec;
+
+impl PageCodec {
+    pub fn encode(page: &Page) -> [u8; PAGE_SIZE] {
+        let mut bytes = [0u8; PAGE_SIZE];
+        if page.data.len() == PAGE_SIZE {
+            bytes.copy_from_slice(&page.data);
+        }
+
+        bytes[0..8].copy_from_slice(&page.header.page_id.to_le_bytes());
+        bytes[8..10].copy_from_slice(&page.header.slot_count.to_le_bytes());
+        bytes[10..12].copy_from_slice(&page.header.free_start.to_le_bytes());
+        bytes[12..14].copy_from_slice(&page.header.free_end.to_le_bytes());
+
+        // 패딩 비트
+        bytes[14..16].copy_from_slice(&0u16.to_le_bytes());
+
+        let slot_count = page.header.slot_count as usize;
+        for index in 0..slot_count {
+            let slot = page.slots[index];
+            let base = HEADER_SIZE + index * SLOT_SIZE;
+            bytes[base..base + 2].copy_from_slice(&slot.offset.to_le_bytes());
+            bytes[base + 2..base + 4].copy_from_slice(&slot.len.to_le_bytes());
+            bytes[base + 4..base + 6].copy_from_slice(&(slot.live as u16).to_le_bytes());
+
+            // 패딩 비트
+            bytes[base + 6..base + 8].copy_from_slice(&0u16.to_le_bytes());
+        }
+
+        bytes
+    }
+
+    pub fn decode(bytes: &[u8; PAGE_SIZE]) -> Page {
+        let page_id = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
+        let slot_count = u16::from_le_bytes(bytes[8..10].try_into().unwrap());
+        let free_start = u16::from_le_bytes(bytes[10..12].try_into().unwrap());
+        let free_end = u16::from_le_bytes(bytes[12..14].try_into().unwrap());
+        let header = PageHeader {
+            page_id,
+            slot_count,
+            free_start,
+            free_end,
+        };
+
+        let mut slots = [EMPTY_SLOT; MAX_SLOTS];
+        let max = usize::min(slot_count as usize, MAX_SLOTS);
+        for index in 0..max {
+            let base = HEADER_SIZE + index * SLOT_SIZE;
+            let offset = u16::from_le_bytes(bytes[base..base + 2].try_into().unwrap());
+            let len = u16::from_le_bytes(bytes[base + 2..base + 4].try_into().unwrap());
+            let live = u16::from_le_bytes(bytes[base + 4..base + 6].try_into().unwrap()) != 0;
+            slots[index] = Slot { offset, len, live };
+        }
+
+        Page {
+            header,
+            slots,
+            data: bytes.to_vec(),
+        }
     }
 }
 
@@ -158,5 +218,17 @@ mod tests {
         assert_eq!(page.read(slot).unwrap().unwrap(), b"hello");
         page.delete(slot).expect("delete failed");
         assert!(page.read(slot).unwrap().is_none());
+    }
+
+    #[test]
+    fn encode_decode_roundtrip() {
+        let mut page = Page::new(7);
+        let slot = page.insert(b"hello").expect("insert failed");
+
+        let bytes = PageCodec::encode(&page);
+        let decoded = PageCodec::decode(&bytes);
+
+        assert_eq!(decoded.header.page_id, page.header.page_id);
+        assert_eq!(decoded.read(slot).unwrap().unwrap(), b"hello");
     }
 }
