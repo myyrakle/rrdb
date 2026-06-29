@@ -105,9 +105,15 @@ jobs:
           force: true
 
       - name: Add comment to PR
+        if: steps.token_check.outputs.has_token == 'true'
         uses: thollander/actions-comment-pull-request@v1
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           message: |
             ✅ **Total Coverage**: ${{ env.COVERAGE }}
             ${{ steps.token_check.outputs.has_token == 'true' && format('🔗 [Coverage View](https://myyrakle.github.io/html_reports/{0}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub>', env.REPORT_NAME) || '<sub>(fork PR: coverage HTML upload skipped)</sub>' }}
+
+      - name: Coverage summary (fork PR fallback)
+        if: steps.token_check.outputs.has_token != 'true'
+        run: |
+          echo "::notice::Total Coverage: ${{ env.COVERAGE }} (fork PR: coverage HTML upload and PR comment skipped)"
