@@ -89,7 +89,19 @@ mod tests {
     fn default_for_base_path_uses_base_path_for_storage_directories() {
         let config = LaunchConfig::default_for_base_path("/tmp/rrdb");
 
-        assert_eq!(config.data_directory, "/tmp/rrdb/data");
-        assert_eq!(config.wal_directory, "/tmp/rrdb/wal");
+        assert_eq!(
+            config.data_directory,
+            PathBuf::from("/tmp/rrdb")
+                .join(DEFAULT_DATA_DIRNAME)
+                .to_string_lossy()
+                .to_string()
+        );
+        assert_eq!(
+            config.wal_directory,
+            PathBuf::from("/tmp/rrdb")
+                .join(DEFAULT_WAL_DIRNAME)
+                .to_string_lossy()
+                .to_string()
+        );
     }
 }

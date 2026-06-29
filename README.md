@@ -23,6 +23,7 @@ cargo install rrdb
 ```
 sudo ln -s /home/$USER/.cargo/bin/rrdb /usr/bin/rrdb
 sudo rrdb init
+sudo rrdb daemon
 ```
 
 - 플랫폼별 초기화 (MacOS)
@@ -32,6 +33,7 @@ sudo rrdb init
 ```
 sudo ln -s /home/$USER/.cargo/bin/rrdb /usr/local/bin/rrdb
 sudo rrdb init
+sudo rrdb daemon
 ```
 
 - 플랫폼별 초기화 (Windows)
@@ -55,6 +57,8 @@ cp ~/.cargo/bin/rrdb.exe 'C:\Program Files\rrdb\'
 cargo run --bin rrdb init
 # 특정 디렉터리에 스토리지 초기화
 cargo run --bin rrdb init --base-path local-test
+# 데몬 등록 및 실행
+cargo run --bin rrdb daemon
 # 서버 실행
 cargo run --bin rrdb run
 ```
