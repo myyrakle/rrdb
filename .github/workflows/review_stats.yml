@@ -21,7 +21,7 @@ jobs:
 
       - name: Run pull request stats
         if: steps.token_check.outputs.has_token == 'true'
-        uses: flowwer-dev/pull-request-stats@11e8058f8f5e8a35e4b239e6d39e1e4f4f3f4f4f # v1.2.0
+        uses: flowwer-dev/pull-request-stats@f687cfd5fc711270c0af58acf72a5d0884e5c43a # v3.2.3
         with:
           token: ${{ secrets.GH_TOKEN }}
           period: 14
