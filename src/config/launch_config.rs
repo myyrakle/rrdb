@@ -45,6 +45,24 @@ impl std::default::Default for LaunchConfig {
 }
 
 impl LaunchConfig {
+    pub fn default_for_base_path(base_path: impl Into<PathBuf>) -> Self {
+        let mut config = Self::default();
+        let base_path = base_path.into();
+
+        config.data_directory = base_path
+            .join(DEFAULT_DATA_DIRNAME)
+            .to_str()
+            .unwrap()
+            .to_string();
+        config.wal_directory = base_path
+            .join(DEFAULT_WAL_DIRNAME)
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        config
+    }
+
     pub fn default_config_path() -> PathBuf {
         let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
         base_path.join(DEFAULT_CONFIG_FILENAME)
@@ -60,5 +78,18 @@ impl LaunchConfig {
         let decoded = toml::from_str(&config)?;
 
         Ok(decoded)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_for_base_path_uses_base_path_for_storage_directories() {
+        let config = LaunchConfig::default_for_base_path("/tmp/rrdb");
+
+        assert_eq!(config.data_directory, "/tmp/rrdb/data");
+        assert_eq!(config.wal_directory, "/tmp/rrdb/wal");
     }
 }

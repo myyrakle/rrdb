@@ -1,9 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use std::io::Error;
 
-use crate::config::launch_config::LaunchConfig;
 use crate::constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME, DEFAULT_DATABASE_NAME};
 use crate::engine::DBEngine;
 use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
@@ -15,19 +14,32 @@ use crate::constants::LAUNCHD_PLIST_PATH;
 
 impl DBEngine {
     pub async fn initialize(&self) -> errors::Result<()> {
-        self.init_config().await?;
+        self.initialize_with_base_path(None).await
+    }
+
+    pub async fn initialize_with_base_path(
+        &self,
+        base_path: Option<PathBuf>,
+    ) -> errors::Result<()> {
+        self.init_config(base_path).await?;
         self.init_database().await?;
 
         Ok(())
     }
 
     // 기본 설정파일 세팅
-    async fn init_config(&self) -> errors::Result<()> {
+    async fn init_config(&self, base_path: Option<PathBuf>) -> errors::Result<()> {
+        let should_install_daemon = base_path.is_none();
+        let base_path = base_path.unwrap_or_else(|| PathBuf::from(DEFAULT_CONFIG_BASEPATH));
+        let config_path = base_path.join(DEFAULT_CONFIG_FILENAME);
+
         // 1. 루트 디렉터리 생성 (없다면)
-        self.create_top_level_directory_if_not_exists().await?;
+        self.create_top_level_directory_if_not_exists(&base_path)
+            .await?;
 
         // 2. 전역 설정파일 생성 (없다면)
-        self.create_global_config_if_not_exists().await?;
+        self.create_global_config_if_not_exists(&config_path)
+            .await?;
 
         // 3. 데이터 디렉터리 생성 (없다면)
         self.create_data_directory_if_not_exists().await?;
@@ -35,11 +47,13 @@ impl DBEngine {
         // 4. WAL 디렉터리 생성 (없다면)
         self.create_wal_directory_if_not_exists().await?;
 
-        // 5. 데몬 설정파일 생성 (없다면)
-        self.create_daemon_config_if_not_exists().await?;
+        if should_install_daemon {
+            // 5. 데몬 설정파일 생성 (없다면)
+            self.create_daemon_config_if_not_exists().await?;
 
-        // 6. 데몬 실행
-        self.start_daemon().await?;
+            // 6. 데몬 실행
+            self.start_daemon().await?;
+        }
 
         Ok(())
     }
@@ -56,8 +70,11 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn create_top_level_directory_if_not_exists(&self) -> errors::Result<()> {
-        let base_path = DEFAULT_CONFIG_BASEPATH;
+    async fn create_top_level_directory_if_not_exists(
+        &self,
+        base_path: &Path,
+    ) -> errors::Result<()> {
+        let base_path = base_path.to_str().unwrap_or_default();
 
         if let Err(error) = self.file_system.create_dir(base_path).await
             && error.kind() != std::io::ErrorKind::AlreadyExists
@@ -70,19 +87,13 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn create_global_config_if_not_exists(&self) -> errors::Result<()> {
-        let base_path = PathBuf::from(DEFAULT_CONFIG_BASEPATH);
-
-        let mut global_path = base_path;
-        global_path.push(DEFAULT_CONFIG_FILENAME);
-
-        let global_info: LaunchConfig = LaunchConfig::default();
-        let global_config = toml::to_string(&global_info).unwrap();
+    async fn create_global_config_if_not_exists(&self, config_path: &Path) -> errors::Result<()> {
+        let global_config = toml::to_string(self.config.as_ref()).unwrap();
 
         if let Err(error) = self
             .file_system
             .write_file(
-                global_path.to_str().unwrap_or_default(),
+                config_path.to_str().unwrap_or_default(),
                 global_config.as_bytes(),
             )
             .await
@@ -199,6 +210,8 @@ impl DBEngine {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::launch_config::LaunchConfig;
+
     #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn test_init_config() {
@@ -579,7 +592,7 @@ wal_extension = "log"
                 command_runner: (test_case.mock_command_runner)(),
             };
 
-            let result = executor.init_config().await;
+            let result = executor.init_config(None).await;
 
             assert_eq!(
                 test_case.want_error,
@@ -590,5 +603,56 @@ wal_extension = "log"
                 result.err(),
             );
         }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn test_init_config_uses_custom_base_path() {
+        use mockall::predicate::eq;
+
+        use crate::{
+            common::{command::MockCommandRunner, fs::MockFileSystem},
+        };
+
+        use super::*;
+        use std::sync::Arc;
+
+        let base_path = PathBuf::from("/tmp/rrdb");
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        let config_bytes = toml::to_string(&config).unwrap().into_bytes();
+
+        let mut file_system = MockFileSystem::new();
+        file_system
+            .expect_create_dir()
+            .times(1)
+            .with(eq("/tmp/rrdb"))
+            .returning(|_| Ok(()));
+        file_system
+            .expect_write_file()
+            .times(1)
+            .with(eq("/tmp/rrdb/rrdb.config"), eq(config_bytes))
+            .returning(|_, _| Ok(()));
+        file_system
+            .expect_create_dir()
+            .times(1)
+            .with(eq("/tmp/rrdb/data"))
+            .returning(|_| Ok(()));
+        file_system
+            .expect_create_dir()
+            .times(1)
+            .with(eq("/tmp/rrdb/wal"))
+            .returning(|_| Ok(()));
+
+        let command_runner = MockCommandRunner::new();
+
+        let executor = DBEngine {
+            config: Arc::new(config),
+            file_system: Arc::new(file_system),
+            command_runner: Arc::new(command_runner),
+        };
+
+        let result = executor.init_config(Some(base_path)).await;
+
+        assert!(result.is_ok(), "error = {:?}", result.err());
     }
 }
