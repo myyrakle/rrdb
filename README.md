@@ -61,6 +61,8 @@ cargo run --bin rrdb init --base-path local-test
 cargo run --bin rrdb daemon
 # 서버 실행
 cargo run --bin rrdb run
+# 특정 디렉터리 설정으로 서버 실행
+cargo run --bin rrdb run --base-path local-test
 ```
 
 #### Client
