@@ -29,7 +29,6 @@ impl DBEngine {
 
     // 기본 설정파일 세팅
     async fn init_config(&self, base_path: Option<PathBuf>) -> errors::Result<()> {
-        let should_install_daemon = base_path.is_none();
         let base_path = base_path.unwrap_or_else(|| PathBuf::from(DEFAULT_CONFIG_BASEPATH));
         let config_path = base_path.join(DEFAULT_CONFIG_FILENAME);
 
@@ -47,15 +46,12 @@ impl DBEngine {
         // 4. WAL 디렉터리 생성 (없다면)
         self.create_wal_directory_if_not_exists().await?;
 
-        if should_install_daemon {
-            // 5. 데몬 설정파일 생성 (없다면)
-            self.create_daemon_config_if_not_exists().await?;
-
-            // 6. 데몬 실행
-            self.start_daemon().await?;
-        }
-
         Ok(())
+    }
+
+    pub async fn install_daemon(&self) -> errors::Result<()> {
+        self.create_daemon_config_if_not_exists().await?;
+        self.start_daemon().await
     }
 
     async fn init_database(&self) -> errors::Result<()> {
@@ -211,6 +207,8 @@ impl DBEngine {
 #[cfg(test)]
 mod tests {
     use crate::config::launch_config::LaunchConfig;
+    #[cfg(target_os = "linux")]
+    use crate::constants::SYSTEMD_DAEMON_SCRIPT;
 
     #[cfg(target_os = "linux")]
     #[tokio::test]
@@ -236,8 +234,6 @@ wal_directory = "/var/lib/rrdb/wal"
 wal_segment_size = 16777216
 wal_extension = "log"
 "##;
-
-        use crate::constants::SYSTEMD_DAEMON_SCRIPT;
 
         struct TestCase {
             name: &'static str,
@@ -290,27 +286,10 @@ wal_extension = "log"
                             + DEFAULT_WAL_DIRNAME))
                         .returning(|_| Ok(()));
 
-                    // 5. 데몬 설정파일 생성
-                    mock.expect_write_file()
-                        .times(1)
-                        .with(
-                            eq("/etc/systemd/system/rrdb.service"),
-                            eq(SYSTEMD_DAEMON_SCRIPT.as_bytes()),
-                        )
-                        .returning(|_, _| Ok(()));
-
                     Arc::new(mock)
                 }),
                 mock_command_runner: Box::new(|| {
-                    let mut mock = MockCommandRunner::new();
-
-                    mock.expect_run().returning(|_| {
-                        Ok(Output {
-                            stderr: Vec::new(),
-                            stdout: Vec::new(),
-                            status: Default::default(),
-                        })
-                    });
+                    let mock = MockCommandRunner::new();
 
                     Arc::new(mock)
                 }),
@@ -585,7 +564,8 @@ wal_extension = "log"
             },
         ];
 
-        for test_case in test_cases[..5].iter() {
+        for index in [0, 2, 4, 5, 6] {
+            let test_case = &test_cases[index];
             let executor = DBEngine {
                 config: (test_case.mock_config)(),
                 file_system: (test_case.mock_file_system)(),
@@ -610,9 +590,7 @@ wal_extension = "log"
     async fn test_init_config_uses_custom_base_path() {
         use mockall::predicate::eq;
 
-        use crate::{
-            common::{command::MockCommandRunner, fs::MockFileSystem},
-        };
+        use crate::common::{command::MockCommandRunner, fs::MockFileSystem};
 
         use super::*;
         use std::sync::Arc;
@@ -652,6 +630,49 @@ wal_extension = "log"
         };
 
         let result = executor.init_config(Some(base_path)).await;
+
+        assert!(result.is_ok(), "error = {:?}", result.err());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn test_install_daemon_registers_and_starts_daemon() {
+        use mockall::predicate::eq;
+
+        use crate::{
+            common::{command::MockCommandRunner, fs::MockFileSystem},
+            constants::SYSTEMD_DAEMON_SCRIPT,
+        };
+
+        use super::*;
+        use std::sync::Arc;
+
+        let mut file_system = MockFileSystem::new();
+        file_system
+            .expect_write_file()
+            .times(1)
+            .with(
+                eq("/etc/systemd/system/rrdb.service"),
+                eq(SYSTEMD_DAEMON_SCRIPT.as_bytes()),
+            )
+            .returning(|_, _| Ok(()));
+
+        let mut command_runner = MockCommandRunner::new();
+        command_runner.expect_run().times(1).returning(|_| {
+            Ok(Output {
+                stderr: Vec::new(),
+                stdout: Vec::new(),
+                status: Default::default(),
+            })
+        });
+
+        let executor = DBEngine {
+            config: Arc::new(LaunchConfig::default()),
+            file_system: Arc::new(file_system),
+            command_runner: Arc::new(command_runner),
+        };
+
+        let result = executor.install_daemon().await;
 
         assert!(result.is_ok(), "error = {:?}", result.err());
     }

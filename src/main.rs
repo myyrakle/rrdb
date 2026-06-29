@@ -54,6 +54,12 @@ async fn main() -> errors::Result<()> {
 
             server.run().await?;
         }
+        SubCommand::Daemon(_) => {
+            let config = LaunchConfig::load_from_path(None).await.unwrap_or_default();
+            let engine = DBEngine::new(config);
+
+            engine.install_daemon().await?;
+        }
         SubCommand::Client => {
             println!("Client");
             unimplemented!();

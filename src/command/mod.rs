@@ -1,3 +1,4 @@
+pub mod daemon;
 pub mod init;
 pub mod run;
 
@@ -16,6 +17,8 @@ pub enum SubCommand {
     Init(init::Command),
     /// DB 서버 실행
     Run(run::Command),
+    /// 데몬 등록 및 실행
+    Daemon(daemon::Command),
     /// DB 클라이언트 실행
     Client,
 }
