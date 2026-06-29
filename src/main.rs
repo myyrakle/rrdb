@@ -7,6 +7,8 @@ pub mod errors;
 pub mod pgwire;
 pub mod utils;
 
+use std::path::PathBuf;
+
 use command::{Command, SubCommand};
 
 use clap::Parser;
@@ -24,13 +26,24 @@ async fn main() -> errors::Result<()> {
 
     match args.action {
         SubCommand::Init(init) => {
-            let config = LaunchConfig::load_from_path(None).await.unwrap_or_default();
-
-            let _init_option = init.init;
+            let base_path = init.init.base_path.map(PathBuf::from);
+            let config_path = base_path
+                .as_ref()
+                .map(|path| path.join(crate::constants::DEFAULT_CONFIG_FILENAME));
+            let config = match config_path.as_ref() {
+                Some(path) => {
+                    LaunchConfig::load_from_path(Some(path.to_string_lossy().to_string()))
+                        .await
+                        .unwrap_or_else(|_| {
+                            LaunchConfig::default_for_base_path(base_path.as_ref().unwrap())
+                        })
+                }
+                None => LaunchConfig::load_from_path(None).await.unwrap_or_default(),
+            };
 
             let engine = DBEngine::new(config);
 
-            engine.initialize().await?;
+            engine.initialize_with_base_path(base_path).await?;
         }
         SubCommand::Run(run) => {
             let config = LaunchConfig::load_from_path(run.value.config)

@@ -19,3 +19,5 @@ Cargo.lock
 .vscode
 
 tarpaulin-report.html
+
+local-test

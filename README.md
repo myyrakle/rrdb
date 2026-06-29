@@ -53,6 +53,8 @@ cp ~/.cargo/bin/rrdb.exe 'C:\Program Files\rrdb\'
 ```
 # 스토리지 초기화
 cargo run --bin rrdb init
+# 특정 디렉터리에 스토리지 초기화
+cargo run --bin rrdb init --base-path local-test
 # 서버 실행
 cargo run --bin rrdb run
 ```
