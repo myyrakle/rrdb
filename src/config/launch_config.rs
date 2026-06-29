@@ -46,21 +46,24 @@ impl std::default::Default for LaunchConfig {
 
 impl LaunchConfig {
     pub fn default_for_base_path(base_path: impl Into<PathBuf>) -> Self {
-        let mut config = Self::default();
+        Self::default().with_base_path(base_path)
+    }
+
+    pub fn with_base_path(mut self, base_path: impl Into<PathBuf>) -> Self {
         let base_path = base_path.into();
 
-        config.data_directory = base_path
+        self.data_directory = base_path
             .join(DEFAULT_DATA_DIRNAME)
             .to_str()
             .unwrap()
             .to_string();
-        config.wal_directory = base_path
+        self.wal_directory = base_path
             .join(DEFAULT_WAL_DIRNAME)
             .to_str()
             .unwrap()
             .to_string();
 
-        config
+        self
     }
 
     pub fn default_config_path() -> PathBuf {
@@ -88,6 +91,30 @@ mod tests {
     #[test]
     fn default_for_base_path_uses_base_path_for_storage_directories() {
         let config = LaunchConfig::default_for_base_path("/tmp/rrdb");
+
+        assert_eq!(
+            config.data_directory,
+            PathBuf::from("/tmp/rrdb")
+                .join(DEFAULT_DATA_DIRNAME)
+                .to_string_lossy()
+                .to_string()
+        );
+        assert_eq!(
+            config.wal_directory,
+            PathBuf::from("/tmp/rrdb")
+                .join(DEFAULT_WAL_DIRNAME)
+                .to_string_lossy()
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn with_base_path_overrides_loaded_storage_directories() {
+        let mut config = LaunchConfig::default();
+        config.data_directory = "/var/lib/rrdb/data".to_string();
+        config.wal_directory = "/var/lib/rrdb/wal".to_string();
+
+        let config = config.with_base_path("/tmp/rrdb");
 
         assert_eq!(
             config.data_directory,
