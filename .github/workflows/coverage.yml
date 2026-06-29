@@ -54,44 +54,58 @@ jobs:
         run: |
           echo "COVERAGE=$(head -n 1 coverage_total_percent.txt)" >> $GITHUB_ENV
 
+      # Steps below push coverage HTML to a separate repo and comment on the PR.
+      # These require a PAT (GH_TOKEN) which is NOT available for fork PRs.
+      # Skip them gracefully when the token is absent.
+
       - name: Clone html_reports repository
+        if: ${{ secrets.GH_TOKEN != '' }}
         run: |
           git clone https://github.com/myyrakle/html_reports
 
       - name: Generate Random Name
+        if: ${{ secrets.GH_TOKEN != '' }}
         run: |
           echo "REPORT_NAME=$(date +%s)" >> $GITHUB_ENV
 
       - name: Copy coverage report
+        if: ${{ secrets.GH_TOKEN != '' }}
         run: |
-          cp ./tarpaulin-report.html ./html_reports/${{ env.REPORT_NAME }}.html | 
+          cp ./tarpaulin-report.html ./html_reports/${{ env.REPORT_NAME }}.html |
           cd ./html_reports
 
       - name: Add
+        if: ${{ secrets.GH_TOKEN != '' }}
         working-directory: html_reports
         run: |
           git add .
 
       - name: Commit
+        if: ${{ secrets.GH_TOKEN != '' }}
         working-directory: html_reports
         run: |
-          git config --global user.email "sssang97@naver.com" && 
-          git config --global user.name "myyrakle" && 
+          git config --global user.email "sssang97@naver.com" &&
+          git config --global user.name "myyrakle" &&
           git commit -m "Add report"
 
       - name: Push changes
+        if: ${{ secrets.GH_TOKEN != '' }}
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           directory: html_reports
           repository: myyrakle/html_reports
           force: true
-          ref: master
+
+      - name: Check coverage output
+        if: ${{ secrets.GH_TOKEN == '' }}
+        run: |
+          echo "::notice::Coverage report upload skipped (fork PR or missing GH_TOKEN). Total coverage: ${{ env.COVERAGE }}"
 
       - name: Add comment to PR
         uses: thollander/actions-comment-pull-request@v1
         with:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            ✅ **Total Coverage**: ${{ env.COVERAGE }}  
-            🔗 [Coverage View](https://myyrakle.github.io/html_reports/${{ env.REPORT_NAME }}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub>
+            ✅ **Total Coverage**: ${{ env.COVERAGE }}
+            ${{ secrets.GH_TOKEN != '' && format('🔗 [Coverage View](https://myyrakle.github.io/html_reports/{0}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub>', env.REPORT_NAME) || '<sub>(fork PR: coverage HTML upload skipped)</sub>' }}
