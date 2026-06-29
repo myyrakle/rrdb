@@ -32,11 +32,11 @@ async fn main() -> errors::Result<()> {
                 .map(|path| path.join(crate::constants::DEFAULT_CONFIG_FILENAME));
             let config = match config_path.as_ref() {
                 Some(path) => {
+                    let base_path = base_path.as_ref().unwrap();
                     LaunchConfig::load_from_path(Some(path.to_string_lossy().to_string()))
                         .await
-                        .unwrap_or_else(|_| {
-                            LaunchConfig::default_for_base_path(base_path.as_ref().unwrap())
-                        })
+                        .unwrap_or_default()
+                        .with_base_path(base_path)
                 }
                 None => LaunchConfig::load_from_path(None).await.unwrap_or_default(),
             };
