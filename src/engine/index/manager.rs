@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::errors;
@@ -36,6 +36,8 @@ pub struct IndexManager {
     /// Base directory for all indices (usually data_directory)
     base_directory: PathBuf,
     encoder: StorageEncoder,
+    /// Serializes create_index calls to prevent TOCTOU races
+    create_lock: Mutex<()>,
 }
 
 impl IndexManager {
@@ -45,6 +47,7 @@ impl IndexManager {
             metas: RwLock::new(HashMap::new()),
             base_directory,
             encoder: StorageEncoder::new(),
+            create_lock: Mutex::new(()),
         }
     }
 
@@ -68,10 +71,14 @@ impl IndexManager {
 
     /// Register a new index: create an empty in-memory B-tree and persist
     /// the metadata to disk.
+    ///
+    /// Holds an exclusive `create_lock` for the entire flow to prevent
+    /// concurrent create_index calls from racing past the existence check.
     pub async fn create_index(&self, meta: IndexMeta) -> errors::Result<()> {
+        let _guard = self.create_lock.lock().await;
         let index_name = meta.index_name.clone();
 
-        // Check if already exists
+        // Check if already exists (under the exclusive lock)
         {
             let metas = self.metas.read().await;
             if metas.contains_key(&index_name) {
@@ -153,54 +160,67 @@ impl IndexManager {
     }
 
     /// Insert a key->row_path into an index. Updates memory and disk.
+    ///
+    /// The write lock is held across both the memory mutation and the disk
+    /// flush. If save_index fails, the in-memory change is reverted so
+    /// memory and disk stay consistent.
     pub async fn insert(
         &self,
         index_name: &str,
         key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        // Update memory first
-        {
-            let mut indices = self.indices.write().await;
-            let tree = indices
-                .get_mut(index_name)
-                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        let mut indices = self.indices.write().await;
+        let tree = indices
+            .get_mut(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
 
-            tree.insert(key.clone(), row_path.clone())
-                .map_err(|e| ExecuteError::wrap(e))?;
+        tree.insert(key.clone(), row_path.clone())
+            .map_err(ExecuteError::wrap)?;
+
+        // Attempt disk flush; rollback on failure
+        if let Err(e) = self.save_index(index_name).await {
+            // Revert the in-memory change
+            tree.remove(&key, &row_path);
+            return Err(e);
         }
-
-        // Then flush to disk
-        self.save_index(index_name).await?;
 
         Ok(())
     }
 
     /// Remove a key->row_path from an index. Updates memory and disk.
+    ///
+    /// The write lock is held across both the memory mutation and the disk
+    /// flush. If save_index fails, the in-memory change is reverted.
     pub async fn remove(
         &self,
         index_name: &str,
         key: &str,
         row_path: &str,
     ) -> errors::Result<bool> {
-        let removed;
-        {
-            let mut indices = self.indices.write().await;
-            let tree = indices
-                .get_mut(index_name)
-                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        let mut indices = self.indices.write().await;
+        let tree = indices
+            .get_mut(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
 
-            removed = tree.remove(key, row_path);
-        }
+        let removed = tree.remove(key, row_path);
 
         if removed {
-            self.save_index(index_name).await?;
+            // Attempt disk flush; re-insert on failure
+            if let Err(e) = self.save_index(index_name).await {
+                tree.insert(key.to_string(), row_path.to_string())
+                    .map_err(ExecuteError::wrap)?;
+                return Err(e);
+            }
         }
 
         Ok(removed)
     }
 
     /// Update a key for a given row path in an index.
+    ///
+    /// The write lock is held across both the memory mutation and the disk
+    /// flush. If save_index fails, the in-memory change is reverted.
     pub async fn update(
         &self,
         index_name: &str,
@@ -208,17 +228,22 @@ impl IndexManager {
         new_key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        {
-            let mut indices = self.indices.write().await;
-            let tree = indices
-                .get_mut(index_name)
-                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        let mut indices = self.indices.write().await;
+        let tree = indices
+            .get_mut(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
 
-            tree.update(old_key, new_key, row_path)
-                .map_err(|e| ExecuteError::wrap(e))?;
+        tree.update(old_key, new_key.clone(), row_path.clone())
+            .map_err(ExecuteError::wrap)?;
+
+        // Attempt disk flush; revert on failure
+        if let Err(e) = self.save_index(index_name).await {
+            // Revert: remove new key, re-insert old key
+            tree.remove(&new_key, &row_path);
+            tree.insert(old_key.to_string(), row_path.to_string())
+                .map_err(ExecuteError::wrap)?;
+            return Err(e);
         }
-
-        self.save_index(index_name).await?;
 
         Ok(())
     }
@@ -330,38 +355,48 @@ impl IndexManager {
             .await
             .map_err(|e| ExecuteError::wrap(format!("failed to read index directory: {}", e)))?;
 
-        while let Ok(Some(entry)) = dir_entries.next_entry().await {
-            let path = entry.path();
+        loop {
+            match dir_entries.next_entry().await {
+                Ok(Some(entry)) => {
+                    let path = entry.path();
 
-            if !path.is_file() {
-                continue;
-            }
+                    if !path.is_file() {
+                        continue;
+                    }
 
-            match path.extension().and_then(|e| e.to_str()) {
-                Some("idx") => {
-                    let data = tokio::fs::read(&path).await.map_err(|e| {
-                        ExecuteError::wrap(format!("failed to read index file {:?}: {}", path, e))
-                    })?;
+                    match path.extension().and_then(|e| e.to_str()) {
+                        Some("idx") => {
+                            let data = tokio::fs::read(&path).await.map_err(|e| {
+                                ExecuteError::wrap(format!("failed to read index file {:?}: {}", path, e))
+                            })?;
 
-                    let file_data: IndexFile =
-                        self.encoder.decode(data.as_slice()).ok_or_else(|| {
-                            ExecuteError::wrap(format!("failed to decode index file {:?}", path))
-                        })?;
+                            let file_data: IndexFile =
+                                self.encoder.decode(data.as_slice()).ok_or_else(|| {
+                                    ExecuteError::wrap(format!("failed to decode index file {:?}", path))
+                                })?;
 
-                    let tree = BTreeIndex::from_entries(
-                        file_data.meta.column_name.clone(),
-                        file_data.meta.is_unique,
-                        file_data.entries,
-                    );
+                            let tree = BTreeIndex::from_entries(
+                                file_data.meta.column_name.clone(),
+                                file_data.meta.is_unique,
+                                file_data.entries,
+                            );
 
-                    let index_name = file_data.meta.index_name.clone();
+                            let index_name = file_data.meta.index_name.clone();
 
-                    let mut indices = self.indices.write().await;
-                    let mut metas = self.metas.write().await;
-                    indices.insert(index_name.clone(), tree);
-                    metas.insert(index_name, file_data.meta);
+                            let mut indices = self.indices.write().await;
+                            let mut metas = self.metas.write().await;
+                            indices.insert(index_name.clone(), tree);
+                            metas.insert(index_name, file_data.meta);
+                        }
+                        _ => continue,
+                    }
                 }
-                _ => continue,
+                Ok(None) => break,       // end of directory
+                Err(e) => {
+                    return Err(ExecuteError::wrap(format!(
+                        "failed to read index directory entry: {}", e
+                    )));
+                }
             }
         }
 
@@ -381,15 +416,25 @@ impl IndexManager {
             .await
             .map_err(|e| ExecuteError::wrap(format!("failed to read tables dir: {}", e)))?;
 
-        while let Ok(Some(table_entry)) = table_entries.next_entry().await {
-            let table_path = table_entry.path();
-            if !table_path.is_dir() {
-                continue;
-            }
+        loop {
+            match table_entries.next_entry().await {
+                Ok(Some(table_entry)) => {
+                    let table_path = table_entry.path();
+                    if !table_path.is_dir() {
+                        continue;
+                    }
 
-            let index_dir = table_path.join("index");
-            if index_dir.exists() {
-                self.load_all(&index_dir).await?;
+                    let index_dir = table_path.join("index");
+                    if index_dir.exists() {
+                        self.load_all(&index_dir).await?;
+                    }
+                }
+                Ok(None) => break,       // end of directory
+                Err(e) => {
+                    return Err(ExecuteError::wrap(format!(
+                        "failed to read table directory entry: {}", e
+                    )));
+                }
             }
         }
 

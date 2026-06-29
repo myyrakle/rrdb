@@ -41,12 +41,38 @@ impl IndexMeta {
     }
 }
 
-/// Convert a TableDataFieldType to a comparable string key for indexing.
-/// This provides a deterministic ordering for the BTree.
+/// Convert a TableDataFieldType to a lexicographically sortable string key.
+///
+/// Integer encoding: flips the sign bit so that negative values sort before
+/// positive values in lexicographic order. The result is zero-padded to a
+/// fixed width so string comparison matches numeric comparison.
+///
+/// Float encoding: uses the IEEE 754 bit-pattern trick -- flip the sign bit
+/// for non-negative floats, flip all bits for negative floats -- producing
+/// a uint64 whose big-endian byte order matches total float ordering.
+/// The resulting u64 is then encoded as a fixed-width hex string.
+///
+/// Boolean and String use natural ordering.
+/// Null sorts before everything (prefix "N:").
 pub fn field_to_key(field: &TableDataFieldType) -> String {
     match field {
-        TableDataFieldType::Integer(v) => format!("I:{:020}", v),
-        TableDataFieldType::Float(v) => format!("F:{:020}", v.value),
+        TableDataFieldType::Integer(v) => {
+            // Flip the sign bit so negative < positive in unsigned comparison
+            let bits = (*v as i64 as u64) ^ (1u64 << 63);
+            format!("I:{:016X}", bits)
+        }
+        TableDataFieldType::Float(v) => {
+            let raw = v.value.to_bits();
+            // For positive floats (sign bit = 0): flip sign bit -> sorts after negatives
+            // For negative floats (sign bit = 1): flip all bits -> reverses order so
+            // more-negative values (larger magnitude) sort first
+            let sortable = if raw & (1u64 << 63) != 0 {
+                !raw
+            } else {
+                raw ^ (1u64 << 63)
+            };
+            format!("F:{:016X}", sortable)
+        }
         TableDataFieldType::Boolean(v) => format!("B:{}", if *v { 1 } else { 0 }),
         TableDataFieldType::String(v) => format!("S:{}", v),
         TableDataFieldType::Array(_) => format!("A:{}", field.to_string()),

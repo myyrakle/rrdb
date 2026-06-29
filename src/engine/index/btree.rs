@@ -181,12 +181,41 @@ impl BTreeIndex {
     }
 
     /// Update a key for a given row path: remove old key, insert new key.
+    /// Validates that the old mapping exists and the new key won't violate
+    /// uniqueness before mutating any state.
     pub fn update(
         &mut self,
         old_key: &str,
         new_key: String,
         row_path: String,
     ) -> Result<(), String> {
+        // Validate: the old_key must contain row_path
+        let old_exists = self
+            .tree
+            .get(old_key)
+            .is_some_and(|paths| paths.iter().any(|p| p == &row_path));
+
+        if !old_exists {
+            return Err(format!(
+                "cannot update: row_path '{}' not found under key '{}'",
+                row_path, old_key
+            ));
+        }
+
+        // Validate: if unique, the new_key must not already exist
+        // (unless old_key == new_key, which is a no-op update)
+        if self.is_unique && old_key != new_key.as_str() {
+            if let Some(existing) = self.tree.get(&new_key) {
+                if !existing.is_empty() {
+                    return Err(format!(
+                        "unique index violation on column '{}': key '{}' already exists",
+                        self.column_name, new_key
+                    ));
+                }
+            }
+        }
+
+        // All validations passed, perform the mutation
         self.remove(old_key, &row_path);
         self.insert(new_key, row_path)
     }

@@ -91,18 +91,17 @@ jobs:
         if: steps.token_check.outputs.has_token == 'true'
         working-directory: html_reports
         run: |
-          git config --global user.email "sssang97@naver.com" &&
-          git config --global user.name "myyrakle" &&
+          git config --global user.email "github-actions[bot]@users.noreply.github.com" &&
+          git config --global user.name "github-actions[bot]" &&
           git commit -m "Add report"
 
       - name: Push changes
         if: steps.token_check.outputs.has_token == 'true'
-        uses: ad-m/github-push-action@master
+        uses: ad-m/github-push-action@7eae5d97ed3a5d4c2bd33e752f1fde2f2e2ad5cb # v0.8.0
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           directory: html_reports
           repository: myyrakle/html_reports
-          force: true
 
       - name: Add comment to PR
         if: steps.token_check.outputs.has_token == 'true'
