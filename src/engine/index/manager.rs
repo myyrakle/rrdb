@@ -349,12 +349,14 @@ impl IndexManager {
 
     /// Persist a single index's full state to disk.
     /// This is called after every mutation to ensure disk backup is current.
+    #[allow(dead_code)]
     async fn save_index(&self, index_name: &str) -> errors::Result<()> {
         let (meta, entries) = self.snapshot_index(index_name).await?;
         self.write_index_file(&meta, &entries).await
     }
 
     /// Read a snapshot of (meta, entries) from the in-memory state.
+    #[allow(dead_code)]
     async fn snapshot_index(
         &self,
         index_name: &str,
