@@ -161,27 +161,39 @@ impl IndexManager {
 
     /// Insert a key->row_path into an index. Updates memory and disk.
     ///
-    /// The write lock is held across both the memory mutation and the disk
-    /// flush. If save_index fails, the in-memory change is reverted so
-    /// memory and disk stay consistent.
+    /// The write lock is held for the in-memory mutation. Then the lock is
+    /// released and a snapshot is written to disk. If save_index fails, the
+    /// in-memory change is reverted.
     pub async fn insert(
         &self,
         index_name: &str,
         key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        let mut indices = self.indices.write().await;
-        let tree = indices
-            .get_mut(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        let (meta, entries) = {
+            let mut indices = self.indices.write().await;
+            let tree = indices
+                .get_mut(index_name)
+                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
 
-        tree.insert(key.clone(), row_path.clone())
-            .map_err(ExecuteError::wrap)?;
+            tree.insert(key.clone(), row_path.clone())
+                .map_err(ExecuteError::wrap)?;
 
-        // Attempt disk flush; rollback on failure
-        if let Err(e) = self.save_index(index_name).await {
+            // Snapshot while we hold the lock
+            let metas = self.metas.read().await;
+            let meta = metas.get(index_name).ok_or_else(|| {
+                ExecuteError::wrap(format!("index meta '{}' not found", index_name))
+            })?;
+            (meta.clone(), tree.to_entries())
+        };
+
+        // Disk I/O outside the lock -- avoids deadlock
+        if let Err(e) = self.write_index_file(&meta, &entries).await {
             // Revert the in-memory change
-            tree.remove(&key, &row_path);
+            let mut indices = self.indices.write().await;
+            if let Some(tree) = indices.get_mut(index_name) {
+                tree.remove(&key, &row_path);
+            }
             return Err(e);
         }
 
@@ -190,28 +202,42 @@ impl IndexManager {
 
     /// Remove a key->row_path from an index. Updates memory and disk.
     ///
-    /// The write lock is held across both the memory mutation and the disk
-    /// flush. If save_index fails, the in-memory change is reverted.
+    /// Lock is released before disk I/O. If save_index fails, the in-memory
+    /// change is reverted.
     pub async fn remove(
         &self,
         index_name: &str,
         key: &str,
         row_path: &str,
     ) -> errors::Result<bool> {
-        let mut indices = self.indices.write().await;
-        let tree = indices
-            .get_mut(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        let (removed, meta, entries) = {
+            let mut indices = self.indices.write().await;
+            let tree = indices
+                .get_mut(index_name)
+                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
 
-        let removed = tree.remove(key, row_path);
+            let removed = tree.remove(key, row_path);
 
-        if removed {
-            // Attempt disk flush; re-insert on failure
-            if let Err(e) = self.save_index(index_name).await {
+            if removed {
+                let metas = self.metas.read().await;
+                let meta = metas.get(index_name).ok_or_else(|| {
+                    ExecuteError::wrap(format!("index meta '{}' not found", index_name))
+                })?;
+                (removed, meta.clone(), tree.to_entries())
+            } else {
+                return Ok(false);
+            }
+        };
+
+        // Disk I/O outside the lock
+        if let Err(e) = self.write_index_file(&meta, &entries).await {
+            // Re-insert on failure
+            let mut indices = self.indices.write().await;
+            if let Some(tree) = indices.get_mut(index_name) {
                 tree.insert(key.to_string(), row_path.to_string())
                     .map_err(ExecuteError::wrap)?;
-                return Err(e);
             }
+            return Err(e);
         }
 
         Ok(removed)
@@ -219,8 +245,8 @@ impl IndexManager {
 
     /// Update a key for a given row path in an index.
     ///
-    /// The write lock is held across both the memory mutation and the disk
-    /// flush. If save_index fails, the in-memory change is reverted.
+    /// Lock is released before disk I/O. If save_index fails, the in-memory
+    /// change is reverted.
     pub async fn update(
         &self,
         index_name: &str,
@@ -228,20 +254,31 @@ impl IndexManager {
         new_key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        let mut indices = self.indices.write().await;
-        let tree = indices
-            .get_mut(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        let (meta, entries) = {
+            let mut indices = self.indices.write().await;
+            let tree = indices
+                .get_mut(index_name)
+                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
 
-        tree.update(old_key, new_key.clone(), row_path.clone())
-            .map_err(ExecuteError::wrap)?;
-
-        // Attempt disk flush; revert on failure
-        if let Err(e) = self.save_index(index_name).await {
-            // Revert: remove new key, re-insert old key
-            tree.remove(&new_key, &row_path);
-            tree.insert(old_key.to_string(), row_path.to_string())
+            tree.update(old_key, new_key.clone(), row_path.clone())
                 .map_err(ExecuteError::wrap)?;
+
+            let metas = self.metas.read().await;
+            let meta = metas.get(index_name).ok_or_else(|| {
+                ExecuteError::wrap(format!("index meta '{}' not found", index_name))
+            })?;
+            (meta.clone(), tree.to_entries())
+        };
+
+        // Disk I/O outside the lock
+        if let Err(e) = self.write_index_file(&meta, &entries).await {
+            // Revert: remove new key, re-insert old key
+            let mut indices = self.indices.write().await;
+            if let Some(tree) = indices.get_mut(index_name) {
+                tree.remove(&new_key, &row_path);
+                tree.insert(old_key.to_string(), row_path.to_string())
+                    .map_err(ExecuteError::wrap)?;
+            }
             return Err(e);
         }
 
@@ -313,25 +350,42 @@ impl IndexManager {
     /// Persist a single index's full state to disk.
     /// This is called after every mutation to ensure disk backup is current.
     async fn save_index(&self, index_name: &str) -> errors::Result<()> {
-        let (meta, entries) = {
-            let indices = self.indices.read().await;
-            let metas = self.metas.read().await;
+        let (meta, entries) = self.snapshot_index(index_name).await?;
+        self.write_index_file(&meta, &entries).await
+    }
 
-            let tree = indices
-                .get(index_name)
-                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-            let meta = metas.get(index_name).ok_or_else(|| {
-                ExecuteError::wrap(format!("index meta '{}' not found", index_name))
-            })?;
+    /// Read a snapshot of (meta, entries) from the in-memory state.
+    async fn snapshot_index(
+        &self,
+        index_name: &str,
+    ) -> errors::Result<(IndexMeta, Vec<IndexEntry>)> {
+        let indices = self.indices.read().await;
+        let metas = self.metas.read().await;
 
-            (meta.clone(), tree.to_entries())
+        let tree = indices
+            .get(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        let meta = metas.get(index_name).ok_or_else(|| {
+            ExecuteError::wrap(format!("index meta '{}' not found", index_name))
+        })?;
+
+        Ok((meta.clone(), tree.to_entries()))
+    }
+
+    /// Write index data to disk atomically (temp file + rename).
+    /// Does not touch any locks -- pure disk I/O.
+    async fn write_index_file(
+        &self,
+        meta: &IndexMeta,
+        entries: &[IndexEntry],
+    ) -> errors::Result<()> {
+        let file_path = self.index_file_path(meta);
+        let file_data = IndexFile {
+            meta: meta.clone(),
+            entries: entries.to_vec(),
         };
-
-        let file_path = self.index_file_path(&meta);
-        let file_data = IndexFile { meta, entries };
         let encoded = self.encoder.encode(&file_data);
 
-        // Write to temp file first, then rename for atomicity
         let temp_path = file_path.with_extension("idx.tmp");
         tokio::fs::write(&temp_path, encoded)
             .await
