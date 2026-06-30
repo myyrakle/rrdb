@@ -15,7 +15,7 @@ use clap::Parser;
 
 use crate::{
     config::launch_config::LaunchConfig,
-    constants::DEFAULT_CONFIG_FILENAME,
+    constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME},
     engine::{DBEngine, server::Server},
     errors::execute_error::ExecuteError,
 };
@@ -57,6 +57,12 @@ fn print_banner() {
     println!("{}", banner());
 }
 
+fn display_base_path(base_path: Option<&PathBuf>) -> String {
+    base_path
+        .map(|base_path| base_path.to_string_lossy().to_string())
+        .unwrap_or_else(|| DEFAULT_CONFIG_BASEPATH.to_string())
+}
+
 #[tokio::main]
 async fn main() -> errors::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -82,6 +88,7 @@ async fn main() -> errors::Result<()> {
             let config = load_launch_config(base_path.as_ref()).await?;
 
             print_banner();
+            log::info!("base path: {}", display_base_path(base_path.as_ref()));
 
             let server = Server::new(config);
 
@@ -112,6 +119,14 @@ mod tests {
 
         assert!(banner.contains("RRDB"));
         assert!(banner.contains(env!("CARGO_PKG_VERSION")));
+    }
+
+    #[test]
+    fn display_base_path_uses_custom_or_default_path() {
+        let base_path = PathBuf::from("local-test");
+
+        assert_eq!(display_base_path(Some(&base_path)), "local-test");
+        assert_eq!(display_base_path(None), DEFAULT_CONFIG_BASEPATH);
     }
 
     #[tokio::test]
