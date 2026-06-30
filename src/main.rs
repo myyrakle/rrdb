@@ -38,6 +38,25 @@ async fn load_launch_config(base_path: Option<&PathBuf>) -> errors::Result<Launc
     }
 }
 
+fn banner() -> String {
+    format!(
+        r#"
+ ____  ____  ____  ____
+|  _ \|  _ \|  _ \| __ )
+| |_) | |_) | | | |  _ \
+|  _ <|  _ <| |_| | |_) |
+|_| \_\_| \_\____/|____/
+
+RRDB v{}
+"#,
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+fn print_banner() {
+    println!("{}", banner());
+}
+
 #[tokio::main]
 async fn main() -> errors::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -62,6 +81,8 @@ async fn main() -> errors::Result<()> {
             let base_path = run.value.base_path.map(PathBuf::from);
             let config = load_launch_config(base_path.as_ref()).await?;
 
+            print_banner();
+
             let server = Server::new(config);
 
             server.run().await?;
@@ -84,6 +105,14 @@ async fn main() -> errors::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn banner_includes_product_name_and_version() {
+        let banner = banner();
+
+        assert!(banner.contains("RRDB"));
+        assert!(banner.contains(env!("CARGO_PKG_VERSION")));
+    }
 
     #[tokio::test]
     async fn load_launch_config_applies_base_path_to_loaded_config() {
