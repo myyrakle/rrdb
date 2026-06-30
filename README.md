@@ -65,6 +65,13 @@ cargo run --bin rrdb run
 cargo run --bin rrdb run --base-path local-test
 ```
 
+#### Docker
+
+```
+docker build -t rrdb:local .
+docker run --rm -p 22208:22208 -v rrdb-data:/var/lib/rrdb rrdb:local
+```
+
 #### Client
 
 ```

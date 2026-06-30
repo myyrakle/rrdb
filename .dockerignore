@@ -1,0 +1,11 @@
+.git
+.github
+target
+data
+wal
+local-test
+local-init-test
+tarpaulin-report.html
+.rrdb.config
+.vscode
+**/*.rs.bk
