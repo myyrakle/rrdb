@@ -101,17 +101,18 @@ mod tests {
     #[test]
     fn default_for_base_path_uses_base_path_for_storage_directories() {
         let config = LaunchConfig::default_for_base_path("/tmp/rrdb");
+        let base_path = absolute_path(PathBuf::from("/tmp/rrdb"));
 
         assert_eq!(
             config.data_directory,
-            PathBuf::from("/tmp/rrdb")
+            base_path
                 .join(DEFAULT_DATA_DIRNAME)
                 .to_string_lossy()
                 .to_string()
         );
         assert_eq!(
             config.wal_directory,
-            PathBuf::from("/tmp/rrdb")
+            base_path
                 .join(DEFAULT_WAL_DIRNAME)
                 .to_string_lossy()
                 .to_string()
@@ -125,17 +126,18 @@ mod tests {
         config.wal_directory = "/var/lib/rrdb/wal".to_string();
 
         let config = config.with_base_path("/tmp/rrdb");
+        let base_path = absolute_path(PathBuf::from("/tmp/rrdb"));
 
         assert_eq!(
             config.data_directory,
-            PathBuf::from("/tmp/rrdb")
+            base_path
                 .join(DEFAULT_DATA_DIRNAME)
                 .to_string_lossy()
                 .to_string()
         );
         assert_eq!(
             config.wal_directory,
-            PathBuf::from("/tmp/rrdb")
+            base_path
                 .join(DEFAULT_WAL_DIRNAME)
                 .to_string_lossy()
                 .to_string()
