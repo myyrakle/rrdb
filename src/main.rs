@@ -158,14 +158,18 @@ wal_extension = "log"
         assert_eq!(config.host, "127.0.0.2");
         assert_eq!(
             config.data_directory,
-            base_path
+            std::env::current_dir()
+                .unwrap()
+                .join(&base_path)
                 .join(constants::DEFAULT_DATA_DIRNAME)
                 .to_string_lossy()
                 .to_string()
         );
         assert_eq!(
             config.wal_directory,
-            base_path
+            std::env::current_dir()
+                .unwrap()
+                .join(&base_path)
                 .join(constants::DEFAULT_WAL_DIRNAME)
                 .to_string_lossy()
                 .to_string()
