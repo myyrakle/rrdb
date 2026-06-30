@@ -10,6 +10,7 @@ RUN cargo build --release --bin rrdb
 FROM debian:bookworm-slim
 
 ENV RRDB_BASE_PATH=/var/lib/rrdb
+ENV RUST_LOG=info
 
 COPY --from=builder /usr/src/rrdb/target/release/rrdb /usr/local/bin/rrdb
 
