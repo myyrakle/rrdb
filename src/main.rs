@@ -59,8 +59,26 @@ fn print_banner() {
 
 fn display_base_path(base_path: Option<&PathBuf>) -> String {
     base_path
-        .map(|base_path| base_path.to_string_lossy().to_string())
+        .map(|base_path| absolute_path(base_path.clone()).to_string_lossy().to_string())
         .unwrap_or_else(|| DEFAULT_CONFIG_BASEPATH.to_string())
+}
+
+fn display_config_path(base_path: Option<&PathBuf>) -> String {
+    base_path
+        .map(|base_path| absolute_path(base_path.clone()).join(DEFAULT_CONFIG_FILENAME))
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_CONFIG_BASEPATH).join(DEFAULT_CONFIG_FILENAME))
+        .to_string_lossy()
+        .to_string()
+}
+
+fn absolute_path(path: PathBuf) -> PathBuf {
+    if path.is_absolute() {
+        path
+    } else {
+        std::env::current_dir()
+            .map(|current_dir| current_dir.join(&path))
+            .unwrap_or(path)
+    }
 }
 
 #[tokio::main]
@@ -88,7 +106,9 @@ async fn main() -> errors::Result<()> {
             let config = load_launch_config(base_path.as_ref()).await?;
 
             print_banner();
-            log::info!("base path: {}", display_base_path(base_path.as_ref()));
+            log::info!("config path: {}", display_config_path(base_path.as_ref()));
+            log::info!("data path: {}", config.data_directory);
+            log::info!("wal path: {}", config.wal_directory);
 
             let server = Server::new(config);
 
@@ -122,11 +142,37 @@ mod tests {
     }
 
     #[test]
-    fn display_base_path_uses_custom_or_default_path() {
+    fn display_base_path_uses_absolute_custom_or_default_path() {
         let base_path = PathBuf::from("local-test");
+        let current_dir = std::env::current_dir().unwrap();
 
-        assert_eq!(display_base_path(Some(&base_path)), "local-test");
+        assert_eq!(
+            display_base_path(Some(&base_path)),
+            current_dir.join("local-test").to_string_lossy().to_string()
+        );
         assert_eq!(display_base_path(None), DEFAULT_CONFIG_BASEPATH);
+    }
+
+    #[test]
+    fn display_config_path_uses_absolute_custom_or_default_config_path() {
+        let base_path = PathBuf::from("local-test");
+        let current_dir = std::env::current_dir().unwrap();
+
+        assert_eq!(
+            display_config_path(Some(&base_path)),
+            current_dir
+                .join("local-test")
+                .join(DEFAULT_CONFIG_FILENAME)
+                .to_string_lossy()
+                .to_string()
+        );
+        assert_eq!(
+            display_config_path(None),
+            PathBuf::from(DEFAULT_CONFIG_BASEPATH)
+                .join(DEFAULT_CONFIG_FILENAME)
+                .to_string_lossy()
+                .to_string()
+        );
     }
 
     #[tokio::test]
