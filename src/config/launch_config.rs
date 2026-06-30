@@ -50,7 +50,7 @@ impl LaunchConfig {
     }
 
     pub fn with_base_path(mut self, base_path: impl Into<PathBuf>) -> Self {
-        let base_path = base_path.into();
+        let base_path = absolute_path(base_path.into());
 
         self.data_directory = base_path
             .join(DEFAULT_DATA_DIRNAME)
@@ -81,6 +81,16 @@ impl LaunchConfig {
         let decoded = toml::from_str(&config)?;
 
         Ok(decoded)
+    }
+}
+
+fn absolute_path(path: PathBuf) -> PathBuf {
+    if path.is_absolute() {
+        path
+    } else {
+        std::env::current_dir()
+            .map(|current_dir| current_dir.join(&path))
+            .unwrap_or(path)
     }
 }
 
@@ -126,6 +136,27 @@ mod tests {
         assert_eq!(
             config.wal_directory,
             PathBuf::from("/tmp/rrdb")
+                .join(DEFAULT_WAL_DIRNAME)
+                .to_string_lossy()
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn with_base_path_converts_relative_path_to_absolute_storage_directories() {
+        let config = LaunchConfig::default_for_base_path("local-test");
+        let base_path = std::env::current_dir().unwrap().join("local-test");
+
+        assert_eq!(
+            config.data_directory,
+            base_path
+                .join(DEFAULT_DATA_DIRNAME)
+                .to_string_lossy()
+                .to_string()
+        );
+        assert_eq!(
+            config.wal_directory,
+            base_path
                 .join(DEFAULT_WAL_DIRNAME)
                 .to_string_lossy()
                 .to_string()
