@@ -37,6 +37,25 @@ fn test_parse_table_column() {
             want_error: false,
         },
         TestCase {
+            name: "key VARCHAR(255)".into(),
+            input: vec![
+                Token::Key,
+                Token::Identifier("VARCHAR".into()),
+                Token::LeftParentheses,
+                Token::Integer(255),
+                Token::RightParentheses,
+            ],
+            expected: Column {
+                name: "key".into(),
+                data_type: DataType::Varchar(255),
+                primary_key: false,
+                comment: "".into(),
+                not_null: false,
+                default: None,
+            },
+            want_error: false,
+        },
+        TestCase {
             name: "오류: id INT PRIMARY".into(),
             input: vec![
                 Token::Identifier("id".into()),
