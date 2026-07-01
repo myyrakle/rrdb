@@ -24,9 +24,11 @@ impl DBEngine {
         if let Err(error) = tokio::fs::remove_dir_all(database_path.clone()).await {
             match error.kind() {
                 IOErrorKind::NotFound => {
-                    return Err(ExecuteError::wrap(
-                        "database not found".to_string(),
-                    ));
+                    if !query.if_exists {
+                        return Err(ExecuteError::wrap(
+                            "database not found".to_string(),
+                        ));
+                    }
                 }
                 _ => {
                     return Err(ExecuteError::wrap(
@@ -48,5 +50,37 @@ impl DBEngine {
                 ))],
             }]),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::config::launch_config::LaunchConfig;
+    use crate::engine::DBEngine;
+    use crate::engine::ast::ddl::drop_database::DropDatabaseQuery;
+
+    #[tokio::test]
+    async fn drop_database_if_exists_succeeds_when_database_is_missing() {
+        let base_path = PathBuf::from("target/test_drop_database/if_exists_missing");
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        tokio::fs::create_dir_all(&config.data_directory)
+            .await
+            .unwrap();
+
+        let engine = DBEngine::new(config);
+        engine
+            .drop_database(
+                DropDatabaseQuery::builder()
+                    .set_name("missing".to_string())
+                    .set_if_exists(true),
+            )
+            .await
+            .unwrap();
     }
 }
