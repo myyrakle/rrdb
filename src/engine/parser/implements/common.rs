@@ -17,13 +17,19 @@ impl Parser {
 
         let current_token = self.get_next_token();
 
-        if let Token::Identifier(name) = current_token {
-            builder = builder.set_name(name);
-        } else {
-            return Err(ParsingError::wrap(format!(
-                "expected identifier. but your input word is '{:?}'",
-                current_token
-            )));
+        match current_token {
+            Token::Identifier(name) => {
+                builder = builder.set_name(name);
+            }
+            Token::Key => {
+                builder = builder.set_name("key".to_string());
+            }
+            _ => {
+                return Err(ParsingError::wrap(format!(
+                    "expected identifier. but your input word is '{:?}'",
+                    current_token
+                )));
+            }
         }
 
         let data_type = self.parse_data_type()?;
