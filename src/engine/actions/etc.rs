@@ -14,8 +14,8 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn desc_table(&self, query: DescTableQuery) -> errors::Result<ExecuteResult> {
@@ -33,10 +33,9 @@ impl DBEngine {
 
         match tokio::fs::read(config_path).await {
             Ok(read_result) => {
-                let table_info: TableSchema =
-                    encoder.decode(read_result.as_slice()).ok_or_else(|| {
-                        ExecuteError::wrap("config decode error".to_string())
-                    })?;
+                let table_info: TableSchema = encoder
+                    .decode(read_result.as_slice())
+                    .ok_or_else(|| ExecuteError::wrap("config decode error".to_string()))?;
 
                 Ok(ExecuteResult {
                     columns: (vec![
@@ -81,9 +80,7 @@ impl DBEngine {
                     "table '{}' not exists",
                     table_name
                 ))),
-                _ => Err(ExecuteError::wrap(
-                    "database listup failed".to_string(),
-                )),
+                _ => Err(ExecuteError::wrap("database listup failed".to_string())),
             },
         }
     }
@@ -94,8 +91,6 @@ impl DBEngine {
         &self,
         _query: ShowDatabasesQuery,
     ) -> errors::Result<ExecuteResult> {
-
-
         let base_path = self.get_data_directory();
 
         match tokio::fs::read_dir(&base_path).await {
@@ -144,33 +139,69 @@ impl DBEngine {
                 })
             }
             Err(error) => match error.kind() {
-                IOErrorKind::NotFound => Err(ExecuteError::wrap(
-                    "base path not exists".to_string(),
-                )),
-                _ => Err(ExecuteError::wrap(
-                    "database listup failed".to_string(),
-                )),
+                IOErrorKind::NotFound => {
+                    Err(ExecuteError::wrap("base path not exists".to_string()))
+                }
+                _ => Err(ExecuteError::wrap("database listup failed".to_string())),
             },
         }
     }
 
     pub async fn find_database(&self, database_name: String) -> errors::Result<bool> {
-        let result = self.show_databases(ShowDatabasesQuery {}).await?;
+        let database_path = self.get_data_directory().join(database_name);
 
-        Ok(result.rows.iter().any(|e| {
-            if let ExecuteField::String(name) = &e.fields[0] {
-                name == &database_name
-            } else {
-                false
-            }
-        }))
+        match tokio::fs::metadata(database_path).await {
+            Ok(metadata) => Ok(metadata.is_dir()),
+            Err(error) => match error.kind() {
+                IOErrorKind::NotFound => Ok(false),
+                _ => Err(ExecuteError::wrap(error.to_string())),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::config::launch_config::LaunchConfig;
+    use crate::engine::DBEngine;
+    use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
+
+    #[tokio::test]
+    async fn find_database_checks_database_directory_directly() {
+        let base_path = PathBuf::from("target/test_find_database/direct_directory_lookup");
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        tokio::fs::create_dir_all(&config.data_directory)
+            .await
+            .unwrap();
+
+        let engine = DBEngine::new(config);
+        engine
+            .create_database(
+                CreateDatabaseQuery::builder()
+                    .set_name("lookup_db".to_string())
+                    .set_if_not_exists(false),
+            )
+            .await
+            .unwrap();
+
+        assert!(engine.find_database("lookup_db".to_string()).await.unwrap());
+        assert!(
+            !engine
+                .find_database("missing_db".to_string())
+                .await
+                .unwrap()
+        );
     }
 }
 
 impl DBEngine {
     pub async fn show_tables(&self, query: ShowTablesQuery) -> errors::Result<ExecuteResult> {
-
-
         let base_path = self.get_data_directory();
         let database_path = base_path.clone().join(query.database);
         let tables_path = database_path.join("tables");
@@ -224,12 +255,10 @@ impl DBEngine {
                 })
             }
             Err(error) => match error.kind() {
-                IOErrorKind::NotFound => Err(ExecuteError::wrap(
-                    "base path not exists".to_string(),
-                )),
-                _ => Err(ExecuteError::wrap(
-                    "table listup failed".to_string(),
-                )),
+                IOErrorKind::NotFound => {
+                    Err(ExecuteError::wrap("base path not exists".to_string()))
+                }
+                _ => Err(ExecuteError::wrap("table listup failed".to_string())),
             },
         }
     }

@@ -15,10 +15,11 @@ use crate::engine::server::shared_state::SharedState;
 use crate::pgwire::connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement};
 use crate::pgwire::engine::{Engine, Portal, RRDBEngine};
 use crate::pgwire::protocol::backend::{
-    AuthenticationOk, BindComplete, CommandComplete, EmptyQueryResponse, ErrorResponse, NoData,
-    ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery, RowDescription,
+    AuthenticationOk, BindComplete, CloseComplete, CommandComplete, EmptyQueryResponse,
+    ErrorResponse, NoData, ParameterDescription, ParameterStatus, ParseComplete, ReadyForQuery,
+    RowDescription,
 };
-use crate::pgwire::protocol::client::{BindFormat, ClientMessage, Describe};
+use crate::pgwire::protocol::client::{BindFormat, ClientMessage, Close, Describe};
 use crate::pgwire::protocol::{ConnectionCodec, DataRowBatch, FormatCode, Severity, SqlState};
 
 /// Describes a connection using a specific engine.
@@ -158,7 +159,7 @@ impl Connection {
                     }
                 }
 
-                framed.send(AuthenticationOk).await?;
+                framed.feed(AuthenticationOk).await?;
 
                 let param_statuses = &[
                     ("server_version", "13"),
@@ -170,7 +171,7 @@ impl Connection {
                 ];
 
                 for &(param, status) in param_statuses {
-                    framed.send(ParameterStatus::new(param, status)).await?;
+                    framed.feed(ParameterStatus::new(param, status)).await?;
                 }
 
                 framed.send(ReadyForQuery).await?;
@@ -245,6 +246,14 @@ impl Connection {
                             Some(portal) => framed.send(portal.row_desc.clone()).await?,
                             None => framed.send(NoData).await?,
                         }
+                    }
+                    ClientMessage::Close(Close::PreparedStatement(statement_name)) => {
+                        self.statements.remove(&statement_name);
+                        framed.send(CloseComplete).await?;
+                    }
+                    ClientMessage::Close(Close::Portal(portal_name)) => {
+                        self.portals.remove(&portal_name);
+                        framed.send(CloseComplete).await?;
                     }
                     ClientMessage::Sync => {
                         framed.send(ReadyForQuery).await?;

@@ -5,9 +5,9 @@ use tokio_util::codec::{Decoder, Encoder};
 use crate::pgwire::protocol::ProtocolError;
 
 use super::{
-    backend::BackendMessage,
-    client::{Bind, BindFormat, ClientMessage, Describe, Execute, Parse, Startup},
     FormatCode, MESSAGE_HEADER_SIZE, STARTUP_HEADER_SIZE,
+    backend::BackendMessage,
+    client::{Bind, BindFormat, ClientMessage, Close, Describe, Execute, Parse, Startup},
 };
 
 #[derive(Default, Debug)]
@@ -132,6 +132,16 @@ impl Decoder for ConnectionCodec {
                     _ => return Err(ProtocolError::ParserError),
                 })
             }
+            b'C' => {
+                let target_type = src.get_u8();
+                let name = read_cstr(src)?;
+
+                ClientMessage::Close(match target_type {
+                    b'P' => Close::Portal(name),
+                    b'S' => Close::PreparedStatement(name),
+                    _ => return Err(ProtocolError::ParserError),
+                })
+            }
             b'S' => ClientMessage::Sync,
             b'B' => {
                 let portal = read_cstr(src)?;
@@ -210,5 +220,59 @@ impl Encoder<char> for ConnectionCodec {
     fn encode(&mut self, item: char, dst: &mut BytesMut) -> Result<(), Self::Error> {
         dst.put_u8(item as u8);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bytes::{BufMut, BytesMut};
+    use tokio_util::codec::Decoder;
+
+    use crate::pgwire::protocol::client::{ClientMessage, Close};
+
+    use super::ConnectionCodec;
+
+    fn close_message(target_type: u8, name: &str) -> BytesMut {
+        let mut message = BytesMut::new();
+        message.put_u8(b'C');
+        message.put_i32((4 + 1 + name.len() + 1) as i32);
+        message.put_u8(target_type);
+        message.put_slice(name.as_bytes());
+        message.put_u8(0);
+        message
+    }
+
+    #[test]
+    fn decodes_close_prepared_statement_message() {
+        let mut codec = ConnectionCodec {
+            startup_received: true,
+        };
+        let mut message = close_message(b'S', "sqlx_s_1");
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        match decoded {
+            ClientMessage::Close(Close::PreparedStatement(name)) => {
+                assert_eq!(name, "sqlx_s_1");
+            }
+            other => panic!("expected prepared statement close, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn decodes_close_portal_message() {
+        let mut codec = ConnectionCodec {
+            startup_received: true,
+        };
+        let mut message = close_message(b'P', "sqlx_p_1");
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        match decoded {
+            ClientMessage::Close(Close::Portal(name)) => {
+                assert_eq!(name, "sqlx_p_1");
+            }
+            other => panic!("expected portal close, got {other:?}"),
+        }
     }
 }
