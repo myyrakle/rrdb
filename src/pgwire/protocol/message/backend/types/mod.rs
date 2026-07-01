@@ -19,6 +19,9 @@ pub use parse_complete::*;
 pub mod bind_complete;
 pub use bind_complete::*;
 
+pub mod close_complete;
+pub use close_complete::*;
+
 pub mod no_data;
 pub use no_data::*;
 

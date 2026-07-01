@@ -1,4 +1,4 @@
-use super::{Bind, Describe, Execute, Parse, Startup};
+use super::{Bind, Close, Describe, Execute, Parse, Startup};
 
 #[derive(Debug)]
 pub enum ClientMessage {
@@ -6,6 +6,7 @@ pub enum ClientMessage {
     Startup(Startup),
     Parse(Parse),
     Describe(Describe),
+    Close(Close),
     Bind(Bind),
     Sync,
     Execute(Execute),
