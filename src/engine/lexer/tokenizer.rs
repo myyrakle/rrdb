@@ -11,7 +11,7 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn new(text: String) -> Self {
-        log::info!("SQL echo: {:?}", text);
+        log::debug!("SQL echo: {:?}", text);
         Self {
             last_char: ' ',
             buffer: text.chars().collect(),

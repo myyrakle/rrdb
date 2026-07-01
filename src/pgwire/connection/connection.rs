@@ -120,7 +120,7 @@ impl Connection {
                                         self.engine.shared_state.client_info.database =
                                             database_name.to_owned();
 
-                                        log::info!(
+                                        log::debug!(
                                             "New Connection=> UUID:{} IP:{} DATABASE:{}",
                                             self.engine.shared_state.client_info.connection_id,
                                             self.engine.shared_state.client_info.ip,
