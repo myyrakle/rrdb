@@ -13,6 +13,7 @@ use crate::engine::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEnco
 use crate::engine::wal::manager::builder::WALBuilder;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
+use crate::pgwire::connection::ConnectionError;
 use crate::pgwire::predule::Connection;
 
 use futures::future::join_all;
@@ -21,6 +22,10 @@ use tokio::sync::mpsc;
 
 pub struct Server {
     pub config: Arc<LaunchConfig>,
+}
+
+fn is_expected_disconnect(error: &ConnectionError) -> bool {
+    matches!(error, ConnectionError::ConnectionClosed)
 }
 
 impl Server {
@@ -123,7 +128,11 @@ impl Server {
                 tokio::spawn(async move {
                     let mut conn = Connection::new(shared_state, config);
                     if let Err(error) = conn.run(stream).await {
-                        log::error!("connection error {:?}", error);
+                        if is_expected_disconnect(&error) {
+                            log::debug!("connection closed");
+                        } else {
+                            log::error!("connection error {:?}", error);
+                        }
                     }
                 });
             }
@@ -138,5 +147,17 @@ impl Server {
         join_all(vec![connection_task, background_task]).await;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::pgwire::connection::ConnectionError;
+
+    use super::is_expected_disconnect;
+
+    #[test]
+    fn connection_closed_is_expected_disconnect() {
+        assert!(is_expected_disconnect(&ConnectionError::ConnectionClosed));
     }
 }
