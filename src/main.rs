@@ -57,12 +57,6 @@ fn print_banner() {
     println!("{}", banner());
 }
 
-fn display_base_path(base_path: Option<&PathBuf>) -> String {
-    base_path
-        .map(|base_path| absolute_path(base_path.clone()).to_string_lossy().to_string())
-        .unwrap_or_else(|| DEFAULT_CONFIG_BASEPATH.to_string())
-}
-
 fn display_config_path(base_path: Option<&PathBuf>) -> String {
     base_path
         .map(|base_path| absolute_path(base_path.clone()).join(DEFAULT_CONFIG_FILENAME))
@@ -139,18 +133,6 @@ mod tests {
 
         assert!(banner.contains("RRDB"));
         assert!(banner.contains(env!("CARGO_PKG_VERSION")));
-    }
-
-    #[test]
-    fn display_base_path_uses_absolute_custom_or_default_path() {
-        let base_path = PathBuf::from("local-test");
-        let current_dir = std::env::current_dir().unwrap();
-
-        assert_eq!(
-            display_base_path(Some(&base_path)),
-            current_dir.join("local-test").to_string_lossy().to_string()
-        );
-        assert_eq!(display_base_path(None), DEFAULT_CONFIG_BASEPATH);
     }
 
     #[test]
