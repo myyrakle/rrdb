@@ -51,7 +51,7 @@ impl DBEngine {
         _wal_manager: Arc<WALManager<BitcodeEncoder>>,
         _connection_id: String,
     ) -> errors::Result<ExecuteResult> {
-        log::info!("AST echo: {:?}", statement);
+        log::debug!("AST echo: {:?}", statement);
 
         // 쿼리 실행
         let result = match statement {
