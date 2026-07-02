@@ -119,10 +119,19 @@ impl SelectQuery {
             None => {
                 self.group_by_clause = Some(GroupByClause {
                     group_by_items: vec![item],
+                    group_by_all: false,
                 })
             }
         }
 
+        self
+    }
+
+    pub fn set_group_by_all(mut self) -> Self {
+        self.group_by_clause = Some(GroupByClause {
+            group_by_items: vec![],
+            group_by_all: true,
+        });
         self
     }
 
