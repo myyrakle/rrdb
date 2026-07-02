@@ -1,6 +1,6 @@
-use bitcode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 
-#[derive(Default, Clone, Debug, Encode, Decode)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
 pub struct WALEntry {
     pub entry_type: EntryType,
     pub data: Option<Vec<u8>>,
@@ -21,7 +21,7 @@ impl WALEntry {
     }
 }
 
-#[derive(Default, Clone, Debug, Encode, Decode)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
 pub enum EntryType {
     #[default]
     Insert,

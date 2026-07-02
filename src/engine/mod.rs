@@ -13,6 +13,7 @@ pub mod expression;
 pub mod initialize;
 pub mod types;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -24,15 +25,20 @@ use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatemen
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
-use crate::engine::wal::endec::implements::bitcode::BitcodeEncoder;
+use crate::engine::wal::endec::implements::bincode::BincodeEncoder;
 use crate::engine::wal::manager::WALManager;
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
+use tokio::sync::{Mutex, RwLock};
+
+pub type SharedWALManager = Arc<Mutex<WALManager<BincodeEncoder>>>;
 
 pub struct DBEngine {
     pub(crate) config: Arc<LaunchConfig>,
     pub(crate) file_system: Arc<dyn FileSystem + Send + Sync>,
     pub(crate) command_runner: Arc<dyn CommandRunner + Send + Sync>,
+    pub(crate) table_config_cache: Arc<RwLock<HashMap<TableName, TableSchema>>>,
+    pub(crate) row_storage_lock: Arc<Mutex<()>>,
 }
 
 impl DBEngine {
@@ -41,6 +47,8 @@ impl DBEngine {
             config: Arc::new(config),
             file_system: Arc::new(RealFileSystem {}),
             command_runner: Arc::new(RealCommandRunner {}),
+            table_config_cache: Arc::new(RwLock::new(HashMap::new())),
+            row_storage_lock: Arc::new(Mutex::new(())),
         }
     }
 
@@ -48,7 +56,7 @@ impl DBEngine {
     pub async fn process_query(
         &self,
         statement: SQLStatement,
-        _wal_manager: Arc<WALManager<BitcodeEncoder>>,
+        wal_manager: SharedWALManager,
         _connection_id: String,
     ) -> errors::Result<ExecuteResult> {
         log::debug!("AST echo: {:?}", statement);
@@ -71,10 +79,16 @@ impl DBEngine {
                 self.alter_table(query).await
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
-            SQLStatement::DML(DMLStatement::InsertQuery(query)) => self.insert(query).await,
+            SQLStatement::DML(DMLStatement::InsertQuery(query)) => {
+                self.insert(query, wal_manager.clone()).await
+            }
             SQLStatement::DML(DMLStatement::SelectQuery(query)) => self.select(query).await,
-            SQLStatement::DML(DMLStatement::UpdateQuery(query)) => self.update(query).await,
-            SQLStatement::DML(DMLStatement::DeleteQuery(query)) => self.delete(query).await,
+            SQLStatement::DML(DMLStatement::UpdateQuery(query)) => {
+                self.update(query, wal_manager.clone()).await
+            }
+            SQLStatement::DML(DMLStatement::DeleteQuery(query)) => {
+                self.delete(query, wal_manager.clone()).await
+            }
             SQLStatement::Other(OtherStatement::ShowDatabases(query)) => {
                 self.show_databases(query).await
             }
@@ -94,6 +108,35 @@ impl DBEngine {
 }
 
 impl DBEngine {
+    pub(crate) async fn get_table_config_cached(
+        &self,
+        table_name: TableName,
+    ) -> errors::Result<TableSchema> {
+        if let Some(table_config) = self.table_config_cache.read().await.get(&table_name) {
+            return Ok(table_config.clone());
+        }
+
+        let table_config = self.get_table_config(table_name.clone()).await?;
+
+        self.table_config_cache
+            .write()
+            .await
+            .insert(table_name, table_config.clone());
+
+        Ok(table_config)
+    }
+
+    pub(crate) async fn cache_table_config(&self, table_config: TableSchema) {
+        self.table_config_cache
+            .write()
+            .await
+            .insert(table_config.table.clone(), table_config);
+    }
+
+    pub(crate) async fn invalidate_table_config_cache(&self, table_name: &TableName) {
+        self.table_config_cache.write().await.remove(table_name);
+    }
+
     pub async fn get_table_config(&self, table_name: TableName) -> errors::Result<TableSchema> {
         let encoder = StorageEncoder::new();
 
@@ -118,15 +161,13 @@ impl DBEngine {
 
                 match table_config {
                     Some(table_config) => Ok(table_config),
-                    None => Err(ExecuteError::wrap(
-                        "invalid config data".to_string(),
-                    )),
+                    None => Err(ExecuteError::wrap("invalid config data".to_string())),
                 }
             }
             Err(error) => match error.kind() {
-                std::io::ErrorKind::NotFound => Err(ExecuteError::wrap(
-                    "table not found".to_string(),
-                )),
+                std::io::ErrorKind::NotFound => {
+                    Err(ExecuteError::wrap("table not found".to_string()))
+                }
                 _ => Err(ExecuteError::wrap(format!("{:?}", error))),
             },
         }
@@ -135,5 +176,64 @@ impl DBEngine {
     // 데이터 저장 경로를 반환합니다..
     pub fn get_data_directory(&self) -> PathBuf {
         PathBuf::from(self.config.data_directory.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::config::launch_config::LaunchConfig;
+    use crate::engine::DBEngine;
+    use crate::engine::ast::types::{Column, DataType, TableName};
+    use crate::engine::encoder::schema_encoder::StorageEncoder;
+    use crate::engine::schema::table::TableSchema;
+
+    #[tokio::test]
+    async fn get_table_config_cached_reuses_loaded_schema() {
+        let base_path = PathBuf::from("target/test_table_config_cache/reuses_loaded_schema");
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        let table_name = TableName::new(Some("rrdb".to_string()), "users".to_string());
+        let table_path = PathBuf::from(&config.data_directory)
+            .join("rrdb")
+            .join("tables")
+            .join("users");
+        let config_path = table_path.join("table.config");
+
+        tokio::fs::create_dir_all(&table_path).await.unwrap();
+
+        let table_config = TableSchema {
+            table: table_name.clone(),
+            columns: vec![
+                Column::builder()
+                    .set_name("id".to_string())
+                    .set_data_type(DataType::Int)
+                    .set_primary_key(true)
+                    .build(),
+            ],
+            primary_key: vec!["id".to_string()],
+            foreign_keys: vec![],
+            unique_keys: vec![],
+        };
+
+        let encoder = StorageEncoder::new();
+        tokio::fs::write(&config_path, encoder.encode(table_config))
+            .await
+            .unwrap();
+
+        let engine = DBEngine::new(config);
+        let first = engine
+            .get_table_config_cached(table_name.clone())
+            .await
+            .unwrap();
+        tokio::fs::remove_file(&config_path).await.unwrap();
+        let second = engine.get_table_config_cached(table_name).await.unwrap();
+
+        assert_eq!(first.columns.len(), 1);
+        assert_eq!(second.columns[0].name, "id");
     }
 }

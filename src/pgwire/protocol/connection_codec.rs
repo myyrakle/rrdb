@@ -24,6 +24,48 @@ impl ConnectionCodec {
             startup_received: false,
         }
     }
+
+    fn read_u8(src: &mut BytesMut) -> Result<u8, ProtocolError> {
+        if src.is_empty() {
+            return Err(ProtocolError::ParserError);
+        }
+
+        Ok(src.get_u8())
+    }
+
+    fn read_i16(src: &mut BytesMut) -> Result<i16, ProtocolError> {
+        if src.len() < size_of::<i16>() {
+            return Err(ProtocolError::ParserError);
+        }
+
+        Ok(src.get_i16())
+    }
+
+    fn read_i32(src: &mut BytesMut) -> Result<i32, ProtocolError> {
+        if src.len() < size_of::<i32>() {
+            return Err(ProtocolError::ParserError);
+        }
+
+        Ok(src.get_i32())
+    }
+
+    fn read_u32(src: &mut BytesMut) -> Result<u32, ProtocolError> {
+        if src.len() < size_of::<u32>() {
+            return Err(ProtocolError::ParserError);
+        }
+
+        Ok(src.get_u32())
+    }
+
+    fn read_cstr(src: &mut BytesMut) -> Result<String, ProtocolError> {
+        let next_null = src
+            .iter()
+            .position(|&b| b == 0)
+            .ok_or(ProtocolError::ParserError)?;
+        let bytes = src[..next_null].to_owned();
+        src.advance(bytes.len() + 1);
+        Ok(String::from_utf8(bytes)?)
+    }
 }
 
 impl Decoder for ConnectionCodec {
@@ -44,6 +86,11 @@ impl Decoder for ConnectionCodec {
             if protocol_version_major == 1234i16 && protocol_version_minor == 5679i16 {
                 src.advance(STARTUP_HEADER_SIZE);
                 return Ok(Some(ClientMessage::SSLRequest));
+            }
+
+            if protocol_version_major == 1234i16 && protocol_version_minor == 5680i16 {
+                src.advance(STARTUP_HEADER_SIZE);
+                return Ok(Some(ClientMessage::GSSENCRequest));
             }
 
             if src.len() < message_len {
@@ -92,29 +139,33 @@ impl Decoder for ConnectionCodec {
         let message_tag = header_buf.get_u8();
         let message_len = header_buf.get_i32() as usize;
 
-        if src.len() < message_len {
-            src.reserve(message_len - src.len());
+        if message_len < size_of::<i32>() {
+            return Err(ProtocolError::ParserError);
+        }
+
+        let total_message_len = 1 + message_len;
+
+        if src.len() < total_message_len {
+            src.reserve(total_message_len - src.len());
             return Ok(None);
         }
 
         src.advance(MESSAGE_HEADER_SIZE);
-
-        let read_cstr = |src: &mut BytesMut| -> Result<String, ProtocolError> {
-            let next_null = src
-                .iter()
-                .position(|&b| b == 0)
-                .ok_or(ProtocolError::ParserError)?;
-            let bytes = src[..next_null].to_owned();
-            src.advance(bytes.len() + 1);
-            Ok(String::from_utf8(bytes)?)
-        };
+        let mut body = src.split_to(message_len - size_of::<i32>());
 
         let message = match message_tag {
             b'P' => {
-                let prepared_statement_name = read_cstr(src)?;
-                let query = read_cstr(src)?;
-                let num_params = src.get_i16();
-                let _params: Vec<_> = (0..num_params).map(|_| src.get_u32()).collect();
+                let prepared_statement_name = Self::read_cstr(&mut body)?;
+                let query = Self::read_cstr(&mut body)?;
+                let num_params = Self::read_i16(&mut body)?;
+
+                if num_params < 0 {
+                    return Err(ProtocolError::ParserError);
+                }
+
+                for _ in 0..num_params {
+                    let _param_type = Self::read_u32(&mut body)?;
+                }
 
                 ClientMessage::Parse(Parse {
                     prepared_statement_name,
@@ -123,8 +174,8 @@ impl Decoder for ConnectionCodec {
                 })
             }
             b'D' => {
-                let target_type = src.get_u8();
-                let name = read_cstr(src)?;
+                let target_type = Self::read_u8(&mut body)?;
+                let name = Self::read_cstr(&mut body)?;
 
                 ClientMessage::Describe(match target_type {
                     b'P' => Describe::Portal(name),
@@ -133,8 +184,8 @@ impl Decoder for ConnectionCodec {
                 })
             }
             b'C' => {
-                let target_type = src.get_u8();
-                let name = read_cstr(src)?;
+                let target_type = Self::read_u8(&mut body)?;
+                let name = Self::read_cstr(&mut body)?;
 
                 ClientMessage::Close(match target_type {
                     b'P' => Close::Portal(name),
@@ -142,30 +193,51 @@ impl Decoder for ConnectionCodec {
                     _ => return Err(ProtocolError::ParserError),
                 })
             }
+            b'H' => ClientMessage::Flush,
             b'S' => ClientMessage::Sync,
             b'B' => {
-                let portal = read_cstr(src)?;
-                let prepared_statement_name = read_cstr(src)?;
+                let portal = Self::read_cstr(&mut body)?;
+                let prepared_statement_name = Self::read_cstr(&mut body)?;
 
-                let num_param_format_codes = src.get_i16();
+                let num_param_format_codes = Self::read_i16(&mut body)?;
+                if num_param_format_codes < 0 {
+                    return Err(ProtocolError::ParserError);
+                }
                 for _ in 0..num_param_format_codes {
-                    let _format_code = src.get_i16();
+                    let _format_code = Self::read_i16(&mut body)?;
                 }
 
-                let num_params = src.get_i16();
+                let num_params = Self::read_i16(&mut body)?;
+                if num_params < 0 {
+                    return Err(ProtocolError::ParserError);
+                }
                 for _ in 0..num_params {
-                    let param_len = src.get_i32() as usize;
-                    let _bytes = &src[0..param_len];
-                    src.advance(param_len);
+                    let param_len = Self::read_i32(&mut body)?;
+                    if param_len == -1 {
+                        continue;
+                    }
+                    if param_len < -1 {
+                        return Err(ProtocolError::ParserError);
+                    }
+
+                    let param_len = param_len as usize;
+                    if body.len() < param_len {
+                        return Err(ProtocolError::ParserError);
+                    }
+                    body.advance(param_len);
                 }
 
-                let result_format = match src.get_i16() {
+                let result_format = match Self::read_i16(&mut body)? {
                     0 => BindFormat::All(FormatCode::Text),
-                    1 => BindFormat::All(src.get_i16().try_into()?),
+                    1 => BindFormat::All(Self::read_i16(&mut body)?.try_into()?),
                     n => {
+                        if n < 0 {
+                            return Err(ProtocolError::ParserError);
+                        }
+
                         let mut result_format_codes = Vec::new();
                         for _ in 0..n {
-                            result_format_codes.push(src.get_i16().try_into()?);
+                            result_format_codes.push(Self::read_i16(&mut body)?.try_into()?);
                         }
                         BindFormat::PerColumn(result_format_codes)
                     }
@@ -178,8 +250,8 @@ impl Decoder for ConnectionCodec {
                 })
             }
             b'E' => {
-                let portal = read_cstr(src)?;
-                let max_rows = match src.get_i32() {
+                let portal = Self::read_cstr(&mut body)?;
+                let max_rows = match Self::read_i32(&mut body)? {
                     0 => None,
                     other => Some(other),
                 };
@@ -187,7 +259,7 @@ impl Decoder for ConnectionCodec {
                 ClientMessage::Execute(Execute { portal, max_rows })
             }
             b'Q' => {
-                let query = read_cstr(src)?;
+                let query = Self::read_cstr(&mut body)?;
                 ClientMessage::Query(query)
             }
             b'X' => ClientMessage::Terminate,
@@ -242,6 +314,31 @@ mod tests {
         message
     }
 
+    fn tag_only_message(tag: u8) -> BytesMut {
+        let mut message = BytesMut::new();
+        message.put_u8(tag);
+        message.put_i32(4);
+        message
+    }
+
+    fn startup_negotiation_message(minor: i16) -> BytesMut {
+        let mut message = BytesMut::new();
+        message.put_i32(8);
+        message.put_i16(1234);
+        message.put_i16(minor);
+        message
+    }
+
+    fn execute_message(portal: &str, max_rows: i32) -> BytesMut {
+        let mut message = BytesMut::new();
+        message.put_u8(b'E');
+        message.put_i32((4 + portal.len() + 1 + 4) as i32);
+        message.put_slice(portal.as_bytes());
+        message.put_u8(0);
+        message.put_i32(max_rows);
+        message
+    }
+
     #[test]
     fn decodes_close_prepared_statement_message() {
         let mut codec = ConnectionCodec {
@@ -274,5 +371,56 @@ mod tests {
             }
             other => panic!("expected portal close, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn decodes_flush_message() {
+        let mut codec = ConnectionCodec {
+            startup_received: true,
+        };
+        let mut message = tag_only_message(b'H');
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        assert!(matches!(decoded, ClientMessage::Flush));
+    }
+
+    #[test]
+    fn decodes_gss_encryption_request_without_consuming_startup_state() {
+        let mut codec = ConnectionCodec::new();
+        let mut message = startup_negotiation_message(5680);
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        assert!(matches!(decoded, ClientMessage::GSSENCRequest));
+        assert!(!codec.startup_received);
+    }
+
+    #[test]
+    fn waits_for_complete_message_body_before_decoding() {
+        let mut codec = ConnectionCodec {
+            startup_received: true,
+        };
+        let mut message = execute_message("", 0);
+        message.truncate(message.len() - 1);
+
+        let decoded = codec.decode(&mut message).unwrap();
+
+        assert!(decoded.is_none());
+    }
+
+    #[test]
+    fn malformed_execute_message_returns_parser_error_without_panicking() {
+        let mut codec = ConnectionCodec {
+            startup_received: true,
+        };
+        let mut message = BytesMut::new();
+        message.put_u8(b'E');
+        message.put_i32(5);
+        message.put_u8(0);
+
+        let decoded = codec.decode(&mut message);
+
+        assert!(decoded.is_err());
     }
 }

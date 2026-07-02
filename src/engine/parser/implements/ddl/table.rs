@@ -9,8 +9,8 @@ use crate::engine::ast::ddl::drop_table::DropTableQuery;
 use crate::engine::lexer::predule::Token;
 use crate::engine::parser::context::ParserContext;
 use crate::engine::parser::predule::Parser;
-use crate::errors::parsing_error::ParsingError;
 use crate::errors;
+use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     // CREATE TABLE 쿼리 분석
@@ -19,9 +19,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap(
-                "need more tokens".to_string(),
-            ));
+            return Err(ParsingError::wrap("need more tokens".to_string()));
         }
 
         let mut query_builder = CreateTableQuery::builder();
@@ -36,9 +34,7 @@ impl Parser {
 
         // 여는 괄호 체크
         if !self.has_next_token() {
-            return Err(ParsingError::wrap(
-                "need more tokens".to_string(),
-            ));
+            return Err(ParsingError::wrap("need more tokens".to_string()));
         }
 
         let current_token = self.get_next_token();
@@ -53,9 +49,7 @@ impl Parser {
         // 닫는 괄호 나올때까지 행 파싱 반복
         loop {
             if !self.has_next_token() {
-                return Err(ParsingError::wrap(
-                    "need more tokens".to_string(),
-                ));
+                return Err(ParsingError::wrap("need more tokens".to_string()));
             }
 
             let current_token = self.get_next_token();
@@ -94,9 +88,7 @@ impl Parser {
         context: ParserContext,
     ) -> errors::Result<SQLStatement> {
         if !self.has_next_token() {
-            return Err(ParsingError::wrap(
-                "need more tokens".to_string(),
-            ));
+            return Err(ParsingError::wrap("need more tokens".to_string()));
         }
 
         let mut query_builder = AlterTableQuery::builder();
@@ -115,9 +107,7 @@ impl Parser {
             Token::SemiColon => return Ok(query_builder.build()),
             Token::Rename => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::wrap(
-                        "need more tokens".to_string(),
-                    ));
+                    return Err(ParsingError::wrap("need more tokens".to_string()));
                 }
 
                 let current_token = self.get_next_token();
@@ -126,9 +116,7 @@ impl Parser {
                     // table name rename
                     Token::To => {
                         if !self.has_next_token() {
-                            return Err(ParsingError::wrap(
-                                "need more tokens".to_string(),
-                            ));
+                            return Err(ParsingError::wrap("need more tokens".to_string()));
                         }
 
                         let current_token = self.get_next_token();
@@ -149,18 +137,14 @@ impl Parser {
                     // table column name rename
                     Token::Column => {
                         if !self.has_next_token() {
-                            return Err(ParsingError::wrap(
-                                "need more tokens".to_string(),
-                            ));
+                            return Err(ParsingError::wrap("need more tokens".to_string()));
                         }
 
                         let current_token = self.get_next_token();
 
                         if let Token::Identifier(from_name) = current_token {
                             if !self.has_next_token() {
-                                return Err(ParsingError::wrap(
-                                    "need more tokens".to_string(),
-                                ));
+                                return Err(ParsingError::wrap("need more tokens".to_string()));
                             }
 
                             let current_token = self.get_next_token();
@@ -173,9 +157,7 @@ impl Parser {
                             }
 
                             if !self.has_next_token() {
-                                return Err(ParsingError::wrap(
-                                    "need more tokens".to_string(),
-                                ));
+                                return Err(ParsingError::wrap("need more tokens".to_string()));
                             }
 
                             let current_token = self.get_next_token();
@@ -200,9 +182,7 @@ impl Parser {
                     // table column name rename
                     Token::Identifier(from_name) => {
                         if !self.has_next_token() {
-                            return Err(ParsingError::wrap(
-                                "need more tokens".to_string(),
-                            ));
+                            return Err(ParsingError::wrap("need more tokens".to_string()));
                         }
 
                         let current_token = self.get_next_token();
@@ -215,9 +195,7 @@ impl Parser {
                         }
 
                         if !self.has_next_token() {
-                            return Err(ParsingError::wrap(
-                                "need more tokens".to_string(),
-                            ));
+                            return Err(ParsingError::wrap("need more tokens".to_string()));
                         }
 
                         let current_token = self.get_next_token();
@@ -242,9 +220,7 @@ impl Parser {
             }
             Token::Add => {
                 if !self.has_next_token() {
-                    return Err(ParsingError::wrap(
-                        "need more tokens".to_string(),
-                    ));
+                    return Err(ParsingError::wrap("need more tokens".to_string()));
                 }
 
                 let current_token = self.get_next_token();
@@ -278,9 +254,7 @@ impl Parser {
                 }
 
                 if !self.has_next_token() {
-                    return Err(ParsingError::wrap(
-                        "need more tokens".to_string(),
-                    ));
+                    return Err(ParsingError::wrap("need more tokens".to_string()));
                 }
 
                 let current_token = self.get_next_token();
@@ -301,18 +275,14 @@ impl Parser {
                 }
 
                 if !self.has_next_token() {
-                    return Err(ParsingError::wrap(
-                        "need more tokens".to_string(),
-                    ));
+                    return Err(ParsingError::wrap("need more tokens".to_string()));
                 }
 
                 let current_token = self.get_next_token();
 
                 if let Token::Identifier(column_name) = current_token {
                     if !self.has_next_token() {
-                        return Err(ParsingError::wrap(
-                            "need more tokens".to_string(),
-                        ));
+                        return Err(ParsingError::wrap("need more tokens".to_string()));
                     }
 
                     let current_token = self.get_next_token();
@@ -335,9 +305,7 @@ impl Parser {
                                 self.get_next_token();
 
                                 if !self.has_next_token() {
-                                    return Err(ParsingError::wrap(
-                                        "need more tokens".to_string(),
-                                    ));
+                                    return Err(ParsingError::wrap("need more tokens".to_string()));
                                 }
 
                                 let data_type = self.parse_data_type()?;
@@ -353,9 +321,7 @@ impl Parser {
                                 self.get_next_token();
 
                                 if !self.has_next_token() {
-                                    return Err(ParsingError::wrap(
-                                        "need more tokens".to_string(),
-                                    ));
+                                    return Err(ParsingError::wrap("need more tokens".to_string()));
                                 }
 
                                 let expression = self.parse_expression(context)?;
@@ -368,9 +334,7 @@ impl Parser {
                                     .into(),
                                 );
                             } else {
-                                return Err(ParsingError::wrap(
-                                    "unexpected tokens".to_string(),
-                                ));
+                                return Err(ParsingError::wrap("unexpected tokens".to_string()));
                             }
                         }
                         Token::Drop => {
@@ -396,16 +360,12 @@ impl Parser {
                                     .into(),
                                 );
                             } else {
-                                return Err(ParsingError::wrap(
-                                    "unexpected tokens".to_string(),
-                                ));
+                                return Err(ParsingError::wrap("unexpected tokens".to_string()));
                             }
                         }
                         Token::Type => {
                             if !self.has_next_token() {
-                                return Err(ParsingError::wrap(
-                                    "need more tokens".to_string(),
-                                ));
+                                return Err(ParsingError::wrap("need more tokens".to_string()));
                             }
 
                             let data_type = self.parse_data_type()?;
@@ -456,9 +416,7 @@ impl Parser {
 
         // 테이블명 획득 로직
         if !self.has_next_token() {
-            return Err(ParsingError::wrap(
-                "need more tokens".to_string(),
-            ));
+            return Err(ParsingError::wrap("need more tokens".to_string()));
         }
 
         let table = self.parse_table_name(context)?;

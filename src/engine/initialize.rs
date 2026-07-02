@@ -570,6 +570,10 @@ wal_extension = "log"
                 config: (test_case.mock_config)(),
                 file_system: (test_case.mock_file_system)(),
                 command_runner: (test_case.mock_command_runner)(),
+                table_config_cache: Arc::new(tokio::sync::RwLock::new(
+                    std::collections::HashMap::new(),
+                )),
+                row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
             };
 
             let result = executor.init_config(None).await;
@@ -627,6 +631,10 @@ wal_extension = "log"
             config: Arc::new(config),
             file_system: Arc::new(file_system),
             command_runner: Arc::new(command_runner),
+            table_config_cache: Arc::new(
+                tokio::sync::RwLock::new(std::collections::HashMap::new()),
+            ),
+            row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
         };
 
         let result = executor.init_config(Some(base_path)).await;
@@ -670,6 +678,10 @@ wal_extension = "log"
             config: Arc::new(LaunchConfig::default()),
             file_system: Arc::new(file_system),
             command_runner: Arc::new(command_runner),
+            table_config_cache: Arc::new(
+                tokio::sync::RwLock::new(std::collections::HashMap::new()),
+            ),
+            row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
         };
 
         let result = executor.install_daemon().await;

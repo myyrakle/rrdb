@@ -1,6 +1,6 @@
 use crate::engine::ast::{
-    types::{Column, TableName},
     DDLStatement, SQLStatement,
+    types::{Column, TableName},
 };
 
 /*
@@ -82,10 +82,12 @@ mod tests {
         let expected = SQLStatement::DDL(DDLStatement::CreateIndexQuery(CreateIndexQuery {
             table: TableName::new(None, "table_name".into()),
             index_name: "index_name".into(),
-            columns: vec![Column::builder()
-                .set_name("column_name".into())
-                .set_data_type(DataType::Boolean)
-                .build()],
+            columns: vec![
+                Column::builder()
+                    .set_name("column_name".into())
+                    .set_data_type(DataType::Boolean)
+                    .build(),
+            ],
             is_unique: true,
             if_not_exists: true,
         }));

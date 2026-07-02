@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 // SQL 데이터 타입
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Default)]
 pub enum DataType {
     #[default]
     Int,
@@ -10,7 +9,6 @@ pub enum DataType {
     Boolean,
     Varchar(i64),
 }
-
 
 impl DataType {
     pub fn type_code(&self) -> isize {

@@ -31,6 +31,7 @@ impl DBEngine {
         let mut table_infos = vec![];
 
         let mut rows = vec![];
+        let mut aggregate_total_count = None;
 
         let mut no_from_clause = true;
 
@@ -42,7 +43,7 @@ impl DBEngine {
 
                     let table_name = from.table_name.clone();
 
-                    let table_config = self.get_table_config(table_name.clone()).await?;
+                    let table_config = self.get_table_config_cached(table_name.clone()).await?;
 
                     table_infos.push(table_config);
 
@@ -172,6 +173,7 @@ impl DBEngine {
                         .collect();
                 }
                 SelectPlanItem::GroupAll => {
+                    aggregate_total_count = Some(rows.len());
                     let mut fields = vec![];
 
                     for row in rows {
@@ -381,7 +383,7 @@ impl DBEngine {
             .collect::<Vec<_>>();
 
         // 필요한 SELECT Item만 최종 계산
-        let total_count = rows.len();
+        let total_count = aggregate_total_count.unwrap_or(rows.len());
         let rows = rows.into_iter().map(|row| {
             let table_alias_map = table_alias_map.clone();
             let select_items = select_items.clone();
@@ -464,4 +466,117 @@ impl DBEngine {
     pub async fn order_by(&self) {}
 
     pub async fn inner_join(&self) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    use tokio::sync::Mutex;
+
+    use crate::config::launch_config::LaunchConfig;
+    use crate::engine::ast::dml::insert::InsertQuery;
+    use crate::engine::ast::dml::parts::insert_values::InsertValue;
+    use crate::engine::ast::types::{SQLExpression, TableName};
+    use crate::engine::parser::predule::{Parser, ParserContext};
+    use crate::engine::types::ExecuteField;
+    use crate::engine::wal::endec::implements::bincode::{BincodeDecoder, BincodeEncoder};
+    use crate::engine::wal::manager::builder::WALBuilder;
+    use crate::engine::{DBEngine, SharedWALManager};
+
+    async fn build_test_engine(test_name: &str) -> (DBEngine, SharedWALManager) {
+        let base_path = PathBuf::from("target").join(test_name);
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        tokio::fs::create_dir_all(&config.data_directory)
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(&config.wal_directory)
+            .await
+            .unwrap();
+
+        let wal = WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .unwrap();
+
+        (DBEngine::new(config), Arc::new(Mutex::new(wal)))
+    }
+
+    async fn execute_sql(
+        engine: &DBEngine,
+        wal: SharedWALManager,
+        sql: &str,
+    ) -> crate::errors::Result<crate::engine::types::ExecuteResult> {
+        let mut parser = Parser::with_string(sql.to_string())?;
+        let mut statements =
+            parser.parse(ParserContext::default().set_default_database("rrdb".to_string()))?;
+        let statement = statements.remove(0);
+
+        engine
+            .process_query(statement, wal, "test-connection".to_string())
+            .await
+    }
+
+    async fn insert_id(engine: &DBEngine, wal: SharedWALManager, value: i64) {
+        engine
+            .insert(
+                InsertQuery::builder()
+                    .set_into_table(TableName::new(
+                        Some("rrdb".to_string()),
+                        "key_value".to_string(),
+                    ))
+                    .set_columns(vec!["id".to_string()])
+                    .set_values(vec![InsertValue {
+                        list: vec![Some(SQLExpression::Integer(value))],
+                    }])
+                    .build(),
+                wal,
+            )
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn select_count_constant_returns_zero_for_empty_table() {
+        let (engine, wal) = build_test_engine("test_select_count_constant_empty").await;
+
+        execute_sql(&engine, wal.clone(), "create database rrdb;")
+            .await
+            .unwrap();
+        execute_sql(&engine, wal.clone(), "create table key_value (id integer);")
+            .await
+            .unwrap();
+
+        let result = execute_sql(&engine, wal, "select count(1) from key_value;")
+            .await
+            .unwrap();
+
+        assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(0));
+    }
+
+    #[tokio::test]
+    async fn select_count_constant_returns_inserted_row_count() {
+        let (engine, wal) = build_test_engine("test_select_count_constant_rows").await;
+
+        execute_sql(&engine, wal.clone(), "create database rrdb;")
+            .await
+            .unwrap();
+        execute_sql(&engine, wal.clone(), "create table key_value (id integer);")
+            .await
+            .unwrap();
+        insert_id(&engine, wal.clone(), 1).await;
+        insert_id(&engine, wal.clone(), 2).await;
+        insert_id(&engine, wal.clone(), 3).await;
+
+        let result = execute_sql(&engine, wal, "select count(1) from key_value;")
+            .await
+            .unwrap();
+
+        assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(3));
+    }
 }

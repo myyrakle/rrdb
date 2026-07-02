@@ -86,14 +86,13 @@ impl<'a> WALBuilder<'a> {
                     return Ok((max_sequence + 1, Vec::new()));
                 }
 
-                let saved_entries: Vec<WALEntry> =
-                    decoder.decode(&content).map_err(|e| {
-                        WALError::wrap(format!(
-                            "failed to decode log file {:?}: {}",
-                            log_path,
-                            e.to_string()
-                        ))
-                    })?;
+                let saved_entries: Vec<WALEntry> = decoder.decode(&content).map_err(|e| {
+                    WALError::wrap(format!(
+                        "failed to decode log file {:?}: {}",
+                        log_path,
+                        e.to_string()
+                    ))
+                })?;
 
                 let last_entry = match saved_entries.last() {
                     Some(entry) => entry,

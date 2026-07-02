@@ -1,6 +1,6 @@
 use super::predule::OperatorToken;
 use crate::engine::ast::dml::expressions::operators::BinaryOperator;
-use crate::errors::{self, Errors, ErrorKind};
+use crate::errors::{self, ErrorKind, Errors};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
@@ -141,13 +141,17 @@ impl Token {
             Token::Not => match second_token {
                 Token::Like => Ok(BinaryOperator::NotLike),
                 Token::In => Ok(BinaryOperator::NotIn),
-                _ => Err(Errors::new(ErrorKind::IntoError("BinaryOperator Cast Error".to_string()))),
+                _ => Err(Errors::new(ErrorKind::IntoError(
+                    "BinaryOperator Cast Error".to_string(),
+                ))),
             },
             Token::Is => match second_token {
                 Token::Not => Ok(BinaryOperator::IsNot),
                 _ => Ok(BinaryOperator::Is),
             },
-            _ => Err(Errors::new(ErrorKind::IntoError("BinaryOperator Cast Error".to_string()))),
+            _ => Err(Errors::new(ErrorKind::IntoError(
+                "BinaryOperator Cast Error".to_string(),
+            ))),
         }
     }
 
@@ -178,7 +182,9 @@ impl TryInto<BinaryOperator> for Token {
             Token::Like => Ok(BinaryOperator::Like),
             Token::In => Ok(BinaryOperator::In),
             Token::Is => Ok(BinaryOperator::Is),
-            _ => Err(Errors::new(ErrorKind::IntoError("BinaryOperator Cast Error".to_string()))),
+            _ => Err(Errors::new(ErrorKind::IntoError(
+                "BinaryOperator Cast Error".to_string(),
+            ))),
         }
     }
 }

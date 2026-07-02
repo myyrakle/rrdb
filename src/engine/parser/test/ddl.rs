@@ -1,13 +1,17 @@
 #![cfg(test)]
 
-use crate::engine::ast::ddl::alter_database::{AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo};
-use crate::engine::ast::ddl::alter_table::{AlterTableAction, AlterTableQuery, AlterTableRenameColumn};
+use crate::engine::ast::SQLStatement;
+use crate::engine::ast::ddl::alter_database::{
+    AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo,
+};
+use crate::engine::ast::ddl::alter_table::{
+    AlterTableAction, AlterTableQuery, AlterTableRenameColumn,
+};
 use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
 use crate::engine::ast::ddl::create_table::CreateTableQuery;
 use crate::engine::ast::ddl::drop_database::DropDatabaseQuery;
 use crate::engine::ast::ddl::drop_table::DropTableQuery;
 use crate::engine::ast::types::{Column, DataType, TableName};
-use crate::engine::ast::SQLStatement;
 use crate::engine::lexer::tokens::Token;
 use crate::engine::parser::parser::Parser;
 

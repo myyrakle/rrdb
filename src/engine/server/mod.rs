@@ -1,4 +1,3 @@
-pub mod channel;
 pub mod client;
 pub mod shared_state;
 
@@ -6,19 +5,17 @@ use std::sync::Arc;
 
 use crate::config::launch_config::LaunchConfig;
 use crate::engine::DBEngine;
-use crate::engine::server::channel::{ChannelRequest, ChannelResponse};
 use crate::engine::server::client::ClientInfo;
 use crate::engine::server::shared_state::SharedState;
-use crate::engine::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
+use crate::engine::wal::endec::implements::bincode::{BincodeDecoder, BincodeEncoder};
 use crate::engine::wal::manager::builder::WALBuilder;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use crate::pgwire::connection::ConnectionError;
 use crate::pgwire::predule::Connection;
 
-use futures::future::join_all;
 use tokio::net::TcpListener;
-use tokio::sync::mpsc;
+use tokio::sync::Mutex;
 
 pub struct Server {
     pub config: Arc<LaunchConfig>,
@@ -43,56 +40,15 @@ impl Server {
         let engine = Arc::new(DBEngine::new(self.config.as_ref().clone()));
 
         // WAL 관리자 생성
-        let encoder = BitcodeEncoder::new();
-        let decoder = BitcodeDecoder::new();
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
 
-        let wal_manager = Arc::new(
+        let wal_manager = Arc::new(Mutex::new(
             WALBuilder::new(&self.config)
                 .build(decoder, encoder)
                 .await
                 .map_err(|error| ExecuteError::wrap(error.to_string()))?,
-        );
-
-        let (request_sender, mut request_receiver) = mpsc::channel::<ChannelRequest>(1000);
-
-        // background task
-        // 쿼리 실행 요청을 전달받음
-        let wal_manager_cloned = wal_manager.clone();
-
-        let background_task = tokio::spawn(async move {
-            while let Some(request) = request_receiver.recv().await {
-                let wal_manager_cloned = wal_manager_cloned.clone();
-
-                // 쿼리 실행 태스크
-                let engine = engine.clone();
-                tokio::spawn(async move {
-                    let engine = Arc::clone(&engine);
-
-                    let result = engine
-                        .process_query(request.statement, wal_manager_cloned, request.connection_id)
-                        .await;
-
-                    match result {
-                        Ok(result) => {
-                            if let Err(_response) = request
-                                .response_sender
-                                .send(ChannelResponse { result: Ok(result) })
-                            {
-                                log::error!("channel send failed");
-                            }
-                        }
-                        Err(error) => {
-                            let error = error.to_string();
-                            if let Err(_response) = request.response_sender.send(ChannelResponse {
-                                result: Err(ExecuteError::wrap(error)),
-                            }) {
-                                log::error!("channel send failed");
-                            }
-                        }
-                    }
-                });
-            }
-        });
+        ));
 
         // connection task
         // client와의 커넥션 처리 루프
@@ -100,7 +56,6 @@ impl Server {
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
-        let config = self.config.clone();
         let connection_task = tokio::spawn(async move {
             loop {
                 let accepted = listener.accept().await;
@@ -120,13 +75,13 @@ impl Server {
                 };
 
                 let shared_state = SharedState {
-                    sender: request_sender.clone(),
+                    engine: engine.clone(),
+                    wal_manager: wal_manager.clone(),
                     client_info,
                 };
 
-                let config = config.clone();
                 tokio::spawn(async move {
-                    let mut conn = Connection::new(shared_state, config);
+                    let mut conn = Connection::new(shared_state);
                     if let Err(error) = conn.run(stream).await {
                         if is_expected_disconnect(&error) {
                             log::debug!("connection closed");
@@ -144,7 +99,9 @@ impl Server {
             self.config.port
         );
 
-        join_all(vec![connection_task, background_task]).await;
+        connection_task
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
         Ok(())
     }

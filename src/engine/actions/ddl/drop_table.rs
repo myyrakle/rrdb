@@ -6,17 +6,21 @@ use crate::engine::ast::types::TableName;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn drop_table(&self, query: DropTableQuery) -> errors::Result<ExecuteResult> {
         let base_path = self.get_data_directory();
 
+        let table = query.table.unwrap();
+
+        self.invalidate_table_config_cache(&table).await;
+
         let TableName {
             database_name,
             table_name,
-        } = query.table.unwrap();
+        } = table;
 
         let table_path = base_path
             .clone()
@@ -28,15 +32,11 @@ impl DBEngine {
             match error.kind() {
                 IOErrorKind::NotFound => {
                     if !query.if_exists {
-                        return Err(ExecuteError::wrap(
-                            "table not found".to_string(),
-                        ));
+                        return Err(ExecuteError::wrap("table not found".to_string()));
                     }
                 }
                 _ => {
-                    return Err(ExecuteError::wrap(
-                        "table drop failed".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("table drop failed".to_string()));
                 }
             }
         }
@@ -85,7 +85,10 @@ mod tests {
         engine
             .drop_table(
                 DropTableQuery::builder()
-                    .set_table(TableName::new(Some("rrdb".to_string()), "missing".to_string()))
+                    .set_table(TableName::new(
+                        Some("rrdb".to_string()),
+                        "missing".to_string(),
+                    ))
                     .set_if_exists(true),
             )
             .await

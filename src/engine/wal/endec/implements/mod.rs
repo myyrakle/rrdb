@@ -1,1 +1,1 @@
-pub mod bitcode;
+pub mod bincode;

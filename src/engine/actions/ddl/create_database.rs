@@ -8,8 +8,8 @@ use crate::engine::schema::database::DatabaseSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn create_database(
@@ -43,15 +43,11 @@ impl DBEngine {
                             }]),
                         });
                     } else {
-                        return Err(ExecuteError::wrap(
-                            "already exists database".to_string(),
-                        ));
+                        return Err(ExecuteError::wrap("already exists database".to_string()));
                     }
                 }
                 _ => {
-                    return Err(ExecuteError::wrap(
-                        "database create failed".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("database create failed".to_string()));
                 }
             }
         }
@@ -62,14 +58,10 @@ impl DBEngine {
         if let Err(error) = tokio::fs::create_dir(&tables_path).await {
             match error.kind() {
                 IOErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::wrap(
-                        "already exists tables".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("already exists tables".to_string()));
                 }
                 _ => {
-                    return Err(ExecuteError::wrap(
-                        "tables create failed".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("tables create failed".to_string()));
                 }
             }
         }

@@ -1,11 +1,11 @@
 #![cfg(test)]
 
+use crate::engine::ast::SQLStatement;
 use crate::engine::ast::other::desc_table::DescTableQuery;
 use crate::engine::ast::other::show_databases::ShowDatabasesQuery;
 use crate::engine::ast::other::show_tables::ShowTablesQuery;
 use crate::engine::ast::other::use_database::UseDatabaseQuery;
 use crate::engine::ast::types::TableName;
-use crate::engine::ast::SQLStatement;
 use crate::engine::lexer::tokens::Token;
 use crate::engine::parser::context::ParserContext;
 use crate::engine::parser::predule::Parser;

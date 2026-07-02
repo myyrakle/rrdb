@@ -124,6 +124,10 @@ impl Parser {
                     names.push(identifier);
                     continue;
                 }
+                Token::Key => {
+                    names.push("key".to_string());
+                    continue;
+                }
                 Token::Comma => {
                     continue;
                 }
@@ -172,6 +176,10 @@ impl Parser {
 
             let current_token = self.get_next_token();
 
+            if matches!(current_token, Token::EOF | Token::SemiColon) {
+                break;
+            }
+
             if current_token != Token::LeftParentheses {
                 return Err(ParsingError::wrap(format!(
                     "expected '('. but your input word is '{:?}'",
@@ -213,14 +221,24 @@ impl Parser {
                 }
             }
 
-            // 쉼표가 있으면 삼키기
-            if self.has_next_token() && self.pick_next_token() == Token::Comma {
-                self.get_next_token();
-            }
-
             let value = InsertValue { list };
 
             values.push(value);
+
+            if !self.has_next_token() {
+                break;
+            }
+
+            match self.pick_next_token() {
+                Token::Comma => {
+                    self.get_next_token();
+                }
+                Token::SemiColon | Token::EOF => {
+                    self.get_next_token();
+                    break;
+                }
+                _ => break,
+            }
         }
 
         Ok(values)

@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use crate::engine::ast::ddl::alter_table::{
-    AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault,
-    AlterColumnSetNotNull, AlterColumnSetType, AlterTableAddColumn, AlterTableAlterColumn,
-    AlterTableDropColumn, AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
+    AlterColumnDropDefault, AlterColumnDropNotNull, AlterColumnSetDefault, AlterColumnSetNotNull,
+    AlterColumnSetType, AlterTableAddColumn, AlterTableAlterColumn, AlterTableDropColumn,
+    AlterTableQuery, AlterTableRenameColumn, AlterTableRenameTo,
 };
 use crate::engine::ast::types::{Column, DataType, SQLExpression, TableName};
 use crate::engine::parser::predule::{Parser, ParserContext};

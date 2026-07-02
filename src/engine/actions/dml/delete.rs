@@ -1,8 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use futures::future::join_all;
 
-use crate::engine::DBEngine;
 use crate::engine::ast::dml::delete::DeleteQuery;
 use crate::engine::ast::dml::plan::delete::delete_plan::DeletePlanItem;
 use crate::engine::ast::dml::plan::select::scan::ScanType;
@@ -12,12 +11,21 @@ use crate::engine::schema::row::TableDataFieldType;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
+use crate::engine::wal::types::EntryType;
+use crate::engine::{DBEngine, SharedWALManager};
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::type_error::TypeError;
 
 impl DBEngine {
-    pub async fn delete(&self, query: DeleteQuery) -> errors::Result<ExecuteResult> {
+    pub async fn delete(
+        &self,
+        query: DeleteQuery,
+        wal_manager: SharedWALManager,
+    ) -> errors::Result<ExecuteResult> {
+        let wal_payload =
+            bson::to_vec(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
         let table = query.from_table.as_ref().unwrap().table.clone();
 
         // 최적화 작업
@@ -36,7 +44,7 @@ impl DBEngine {
                 DeletePlanItem::DeleteFrom(from) => {
                     let table_name = from.table_name.clone();
 
-                    let table_config = self.get_table_config(table_name.clone()).await?;
+                    let table_config = self.get_table_config_cached(table_name.clone()).await?;
 
                     table_infos.push(table_config);
 
@@ -98,14 +106,18 @@ impl DBEngine {
             }
         }
 
-        // 삭제 작업
-        for (path, _) in rows.into_iter() {
-            if let Err(error) = tokio::fs::remove_file(&path).await {
-                return Err(ExecuteError::wrap(format!(
-                    "file {:?} remove failed: {}",
-                    path, error
-                )));
-            }
+        let row_indexes = rows
+            .into_iter()
+            .map(|(location, _)| location.row_index)
+            .collect::<HashSet<_>>();
+
+        if !row_indexes.is_empty() {
+            wal_manager
+                .lock()
+                .await
+                .append_record(EntryType::Delete, Some(wal_payload), None)
+                .await?;
+            self.delete_table_rows(&table, row_indexes).await?;
         }
 
         Ok(ExecuteResult {
