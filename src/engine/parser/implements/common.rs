@@ -843,11 +843,11 @@ impl Parser {
                         let second_token = self.get_next_token();
 
                         match second_token {
-                            Token::Join => match current_token {
-                                Token::Left => Some(JoinType::LeftOuterJoin),
-                                Token::Right => Some(JoinType::RightOuterJoin),
-                                _ => unreachable!(),
-                            },
+                            Token::Join => Some(if current_token == Token::Left {
+                                JoinType::LeftOuterJoin
+                            } else {
+                                JoinType::RightOuterJoin
+                            }),
                             Token::Outer => {
                                 if !self.has_next_token() {
                                     self.unget_next_token(second_token);
@@ -857,11 +857,11 @@ impl Parser {
                                     let third_token = self.get_next_token();
 
                                     match third_token {
-                                        Token::Join => match current_token {
-                                            Token::Left => Some(JoinType::LeftOuterJoin),
-                                            Token::Right => Some(JoinType::RightOuterJoin),
-                                            _ => unreachable!(),
-                                        },
+                                        Token::Join => Some(if current_token == Token::Left {
+                                            JoinType::LeftOuterJoin
+                                        } else {
+                                            JoinType::RightOuterJoin
+                                        }),
                                         _ => {
                                             self.unget_next_token(third_token);
                                             self.unget_next_token(second_token);
