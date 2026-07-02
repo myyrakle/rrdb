@@ -123,39 +123,60 @@ impl Parser {
             self.get_next_token();
             self.get_next_token();
 
-            loop {
-                if !self.has_next_token() {
-                    break;
-                }
+            // GROUP BY ALL 체크
+            let next_token = self.get_next_token();
+            if next_token == Token::All {
+                query_builder = query_builder.set_group_by_all();
+            } else {
+                self.unget_next_token(next_token);
 
-                let current_token = self.get_next_token();
-
-                match current_token {
-                    Token::SemiColon => {
-                        return Ok(query_builder.build());
-                    }
-                    Token::RightParentheses => {
-                        self.unget_next_token(current_token);
-                        return Ok(query_builder.build());
-                    }
-                    Token::Comma => continue,
-                    Token::Having | Token::Limit | Token::Offset | Token::Order => {
-                        self.unget_next_token(current_token);
+                loop {
+                    if !self.has_next_token() {
                         break;
                     }
-                    _ => {
-                        if current_token.is_expression() {
+
+                    let current_token = self.get_next_token();
+
+                    match current_token {
+                        Token::SemiColon => {
+                            return Ok(query_builder.build());
+                        }
+                        Token::RightParentheses => {
                             self.unget_next_token(current_token);
-                            let group_by_item = self.parse_group_by_item(context.clone())?;
-                            query_builder = query_builder.add_group_by(group_by_item);
-                        } else {
-                            return Err(ParsingError::wrap(format!(
-                                "unexpected token '{:?}'",
-                                current_token
-                            )));
+                            return Ok(query_builder.build());
+                        }
+                        Token::Comma => continue,
+                        Token::Having | Token::Limit | Token::Offset | Token::Order => {
+                            self.unget_next_token(current_token);
+                            break;
+                        }
+                        _ => {
+                            if current_token.is_expression() {
+                                self.unget_next_token(current_token);
+                                let group_by_item = self.parse_group_by_item(context.clone())?;
+                                query_builder = query_builder.add_group_by(group_by_item);
+                            } else {
+                                return Err(ParsingError::wrap(format!(
+                                    "unexpected token '{:?}'",
+                                    current_token
+                                )));
+                            }
                         }
                     }
                 }
+            }
+        }
+
+        // GROUP BY ALL: expand to all non-aggregate columns
+        let needs_expand = query_builder.group_by_clause.as_ref().map_or(false, |c| c.group_by_all);
+        if needs_expand {
+            let non_aggregate = query_builder.get_non_aggregate_column();
+            if let Some(ref mut clause) = query_builder.group_by_clause {
+                clause.group_by_items = non_aggregate
+                    .into_iter()
+                    .map(|item| GroupByItem { item })
+                    .collect();
+                clause.group_by_all = false;
             }
         }
 

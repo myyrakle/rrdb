@@ -2473,3 +2473,38 @@ fn test_parse_limit() {
         }
     }
 }
+
+#[test]
+fn test_parse_group_by_all() {
+    // SELECT a, b, SUM(c) FROM t GROUP BY ALL
+    // Should auto-expand GROUP BY to a, b (all non-aggregate columns)
+    let tokens = vec![
+        Token::Select,
+        Token::Identifier("a".into()),
+        Token::Comma,
+        Token::Identifier("b".into()),
+        Token::Comma,
+        Token::Identifier("sum".into()),
+        Token::LeftParentheses,
+        Token::Identifier("c".into()),
+        Token::RightParentheses,
+        Token::From,
+        Token::Identifier("t".into()),
+        Token::Group,
+        Token::By,
+        Token::All,
+    ];
+
+    let mut parser = Parser::new(tokens);
+    let select: SelectQuery = parser.handle_select_query(Default::default()).unwrap();
+
+    assert!(select.has_group_by());
+
+    let group_by = select.group_by_clause.unwrap();
+    assert_eq!(group_by.group_by_items.len(), 2, "GROUP BY ALL should expand to 2 non-aggregate columns");
+
+    let columns: Vec<&str> = group_by.group_by_items.iter().map(|item| item.item.column_name.as_str()).collect();
+    assert!(columns.contains(&"a"), "GROUP BY ALL should include column 'a'");
+    assert!(columns.contains(&"b"), "GROUP BY ALL should include column 'b'");
+    assert!(!columns.contains(&"c"), "GROUP BY ALL should NOT include aggregate column 'c'");
+}

@@ -128,6 +128,7 @@ mod tests {
     fn From_GroupByClause_for_SelectPlanItem() {
         let group_by = GroupByClause {
             group_by_items: vec![],
+            group_by_all: false,
         };
         let select_plan_item: SelectPlanItem = group_by.clone().into();
         assert_eq!(select_plan_item, SelectPlanItem::Group(group_by));
