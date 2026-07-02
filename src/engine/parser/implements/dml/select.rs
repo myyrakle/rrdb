@@ -82,7 +82,7 @@ impl Parser {
         // 이 지점에 도달했다면 위 루프는 Token::From을 발견해 unget한 뒤 탈출한 것이므로,
         // 항상 Token::From이 반환된다.
         let current_token = self.get_next_token();
-        debug_assert_eq!(current_token, Token::From);
+        assert_eq!(current_token, Token::From);
 
         if self.next_token_is_left_parentheses() {
             let subquery = self.parse_subquery(context.clone())?;
