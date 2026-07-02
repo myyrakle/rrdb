@@ -1,63 +1,27 @@
 use std::collections::HashSet;
-use std::io::ErrorKind as IOErrorKind;
 
-use crate::engine::DBEngine;
 use crate::engine::ast::dml::insert::{InsertData, InsertQuery};
 use crate::engine::ast::types::SQLExpression;
-use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::{TableDataField, TableDataRow};
-use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
+use crate::engine::wal::types::EntryType;
+use crate::engine::{DBEngine, SharedWALManager};
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
-    pub async fn insert(&self, query: InsertQuery) -> errors::Result<ExecuteResult> {
-        let encoder = StorageEncoder::new();
-
+    pub async fn insert(
+        &self,
+        query: InsertQuery,
+        wal_manager: SharedWALManager,
+    ) -> errors::Result<ExecuteResult> {
         let into_table = query.into_table.as_ref().unwrap();
 
-        let database_name = into_table.clone().database_name.unwrap();
         let table_name = into_table.clone().table_name;
 
-        let base_path = self.get_data_directory();
-
-        let database_path = base_path.clone().join(&database_name);
-
-        let table_path = database_path.clone().join("tables").join(&table_name);
-
-        // 데이터 행 파일 경로
-        let rows_path = table_path.clone().join("rows");
-
-        // 설정파일 경로
-        let config_path = table_path.join("table.config");
-
-        let table_config = match tokio::fs::read(&config_path).await {
-            Ok(data) => {
-                let table_config: Option<TableSchema> = encoder.decode(data.as_slice());
-
-                match table_config {
-                    Some(table_config) => table_config,
-                    None => {
-                        return Err(ExecuteError::wrap(
-                            "invalid config data".to_string(),
-                        ));
-                    }
-                }
-            }
-            Err(error) => match error.kind() {
-                IOErrorKind::NotFound => {
-                    return Err(ExecuteError::wrap(
-                        "table not found".to_string(),
-                    ));
-                }
-                _ => {
-                    return Err(ExecuteError::wrap(format!("{:?}", error)));
-                }
-            },
-        };
+        let table_config = self.get_table_config_cached(into_table.clone()).await?;
 
         // 입력된 컬럼
         let input_columns_set: HashSet<String> = HashSet::from_iter(query.columns.iter().cloned());
@@ -197,15 +161,15 @@ impl DBEngine {
                     rows.push(row);
                 }
 
-                for row in rows {
-                    let file_name = uuid::Uuid::new_v4().to_string();
+                let wal_payload =
+                    bson::to_vec(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
+                wal_manager
+                    .lock()
+                    .await
+                    .append_record(EntryType::Insert, Some(wal_payload), None)
+                    .await?;
 
-                    let row_file_path = rows_path.join(file_name);
-
-                    if let Err(error) = tokio::fs::write(row_file_path, encoder.encode(row)).await {
-                        return Err(ExecuteError::wrap(error.to_string()));
-                    }
-                }
+                self.append_table_rows(into_table, &rows).await?;
             }
             InsertData::Select(_select) => {
                 todo!("아직 미구현")

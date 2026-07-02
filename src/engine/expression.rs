@@ -11,9 +11,9 @@ use crate::engine::ast::types::{Column, SQLExpression, TableName};
 use crate::engine::schema::row::TableDataFieldType;
 use crate::engine::schema::row::TableDataRow;
 use crate::engine::types::ExecuteColumnType;
+use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use crate::errors::type_error::TypeError;
-use crate::errors;
 
 #[derive(Debug, Default, Clone)]
 pub struct ReduceContext {
@@ -442,18 +442,7 @@ impl DBEngine {
                                     Ok(TableDataFieldType::Integer(value as i64))
                                 }
                                 TableDataFieldType::Null => Ok(TableDataFieldType::Integer(0)),
-                                _ => match context.row {
-                                    Some(row) => {
-                                        if let TableDataFieldType::Array(array) =
-                                            &row.fields[0].data
-                                        {
-                                            Ok(TableDataFieldType::Integer(array.len() as i64))
-                                        } else {
-                                            Ok(TableDataFieldType::Integer(0))
-                                        }
-                                    }
-                                    None => Ok(TableDataFieldType::Integer(0)),
-                                },
+                                _ => Ok(TableDataFieldType::Integer(context.total_count as i64)),
                             }
                         }
                         AggregateFunction::Sum => {
@@ -725,5 +714,39 @@ impl DBEngine {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::launch_config::LaunchConfig;
+    use crate::engine::ast::dml::expressions::call::CallExpression;
+    use crate::engine::ast::types::SQLExpression;
+    use crate::engine::ast::types::function::{AggregateFunction, BuiltInFunction, Function};
+    use crate::engine::schema::row::{TableDataFieldType, TableDataRow};
+    use crate::engine::{DBEngine, expression::ReduceContext};
+
+    #[tokio::test]
+    async fn count_constant_uses_total_count() {
+        let engine = DBEngine::new(LaunchConfig::default());
+
+        let result = engine
+            .reduce_expression(
+                SQLExpression::FunctionCall(CallExpression {
+                    function: Function::BuiltIn(BuiltInFunction::Aggregate(
+                        AggregateFunction::Count,
+                    )),
+                    arguments: vec![SQLExpression::Integer(1)],
+                }),
+                ReduceContext {
+                    row: Some(TableDataRow { fields: vec![] }),
+                    total_count: 3,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(result, TableDataFieldType::Integer(3));
     }
 }

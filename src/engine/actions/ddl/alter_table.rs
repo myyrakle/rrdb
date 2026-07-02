@@ -8,19 +8,22 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn alter_table(&self, query: AlterTableQuery) -> errors::Result<ExecuteResult> {
         let encoder = StorageEncoder::new();
 
         let base_path = self.get_data_directory();
+        let original_table = query.table.clone().unwrap();
 
         let TableName {
             database_name,
             table_name,
-        } = query.table.clone().unwrap();
+        } = original_table.clone();
+
+        self.invalidate_table_config_cache(&original_table).await;
 
         let database_name = database_name.unwrap();
 
@@ -158,9 +161,7 @@ impl DBEngine {
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(ExecuteError::wrap(
-                                        "table not found".to_string(),
-                                    ));
+                                    return Err(ExecuteError::wrap("table not found".to_string()));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));
@@ -214,9 +215,7 @@ impl DBEngine {
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(ExecuteError::wrap(
-                                        "table not found".to_string(),
-                                    ));
+                                    return Err(ExecuteError::wrap("table not found".to_string()));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));
@@ -270,9 +269,7 @@ impl DBEngine {
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(ExecuteError::wrap(
-                                        "table not found".to_string(),
-                                    ));
+                                    return Err(ExecuteError::wrap("table not found".to_string()));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));
@@ -325,9 +322,7 @@ impl DBEngine {
                             }
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
-                                    return Err(ExecuteError::wrap(
-                                        "table not found".to_string(),
-                                    ));
+                                    return Err(ExecuteError::wrap("table not found".to_string()));
                                 }
                                 _ => {
                                     return Err(ExecuteError::wrap(format!("{:?}", error)));

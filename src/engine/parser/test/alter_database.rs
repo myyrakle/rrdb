@@ -1,8 +1,8 @@
 #![cfg(test)]
+use crate::engine::ast::SQLStatement;
 use crate::engine::ast::ddl::alter_database::{
     AlterDatabaseAction, AlterDatabaseQuery, AlterDatabaseRenameTo,
 };
-use crate::engine::ast::SQLStatement;
 use crate::engine::lexer::tokens::Token;
 use crate::engine::parser::predule::Parser;
 

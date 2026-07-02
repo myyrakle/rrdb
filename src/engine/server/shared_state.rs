@@ -1,9 +1,12 @@
-use tokio::sync::mpsc::Sender;
+use std::sync::Arc;
 
-use super::{channel::ChannelRequest, client::ClientInfo};
+use crate::engine::{DBEngine, SharedWALManager};
 
-#[derive(Clone, Debug)]
+use super::client::ClientInfo;
+
+#[derive(Clone)]
 pub struct SharedState {
-    pub sender: Sender<ChannelRequest>,
+    pub engine: Arc<DBEngine>,
+    pub wal_manager: SharedWALManager,
     pub client_info: ClientInfo,
 }

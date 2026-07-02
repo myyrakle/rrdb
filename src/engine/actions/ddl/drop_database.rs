@@ -6,8 +6,8 @@ use crate::engine::ast::ddl::drop_database::DropDatabaseQuery;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn drop_database(&self, query: DropDatabaseQuery) -> errors::Result<ExecuteResult> {
@@ -25,15 +25,11 @@ impl DBEngine {
             match error.kind() {
                 IOErrorKind::NotFound => {
                     if !query.if_exists {
-                        return Err(ExecuteError::wrap(
-                            "database not found".to_string(),
-                        ));
+                        return Err(ExecuteError::wrap("database not found".to_string()));
                     }
                 }
                 _ => {
-                    return Err(ExecuteError::wrap(
-                        "database drop failed".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("database drop failed".to_string()));
                 }
             }
         }

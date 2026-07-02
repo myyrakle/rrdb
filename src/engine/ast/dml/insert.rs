@@ -1,15 +1,16 @@
-use crate::engine::ast::{types::TableName, DMLStatement, SQLStatement};
+use crate::engine::ast::{DMLStatement, SQLStatement, types::TableName};
+use serde::{Deserialize, Serialize};
 
 use super::{parts::insert_values::InsertValue, select::SelectQuery};
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub struct InsertQuery {
     pub into_table: Option<TableName>,
     pub columns: Vec<String>,
     pub data: InsertData,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub enum InsertData {
     Select(Box<SelectQuery>),
     Values(Vec<InsertValue>),

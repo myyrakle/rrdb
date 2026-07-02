@@ -1,13 +1,11 @@
 //! Contains the [Connection] struct, which represents an individual Postgres session, and related types.
 
 use futures::{SinkExt, StreamExt};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
-use crate::config::launch_config::LaunchConfig;
-use crate::engine::DBEngine;
-use crate::engine::ast::{OtherStatement, SQLStatement};
+use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::lexer::predule::Tokenizer;
 use crate::engine::parser::context::ParserContext;
 use crate::engine::parser::predule::Parser;
@@ -29,21 +27,16 @@ pub struct Connection {
     state: ConnectionState,
     statements: HashMap<String, PreparedStatement>,
     portals: HashMap<String, Option<BoundPortal<RRDBEngine>>>,
-    config: Arc<LaunchConfig>,
 }
 
 impl Connection {
     /// Create a new connection from an engine instance.
-    pub fn new(shared_state: SharedState, config: Arc<LaunchConfig>) -> Self {
+    pub fn new(shared_state: SharedState) -> Self {
         Self {
             state: ConnectionState::Startup,
             statements: HashMap::new(),
             portals: HashMap::new(),
-            engine: RRDBEngine {
-                shared_state,
-                portal: None,
-            },
-            config,
+            engine: RRDBEngine { shared_state },
         }
     }
 
@@ -97,6 +90,36 @@ impl Connection {
         }
     }
 
+    fn returns_rows(statement: &SQLStatement) -> bool {
+        matches!(
+            statement,
+            SQLStatement::DML(DMLStatement::SelectQuery(_))
+                | SQLStatement::Other(OtherStatement::ShowDatabases(_))
+                | SQLStatement::Other(OtherStatement::ShowTables(_))
+                | SQLStatement::Other(OtherStatement::DescTable(_))
+                | SQLStatement::Other(OtherStatement::UseDatabase(_))
+        )
+    }
+
+    fn command_tag(statement: &SQLStatement, num_rows: usize) -> String {
+        match statement {
+            SQLStatement::DML(DMLStatement::SelectQuery(_)) => format!("SELECT {}", num_rows),
+            SQLStatement::DML(DMLStatement::InsertQuery(_)) => format!("INSERT 0 {}", num_rows),
+            SQLStatement::DML(DMLStatement::UpdateQuery(_)) => format!("UPDATE {}", num_rows),
+            SQLStatement::DML(DMLStatement::DeleteQuery(_)) => format!("DELETE {}", num_rows),
+            SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(_)) => {
+                "CREATE DATABASE".to_string()
+            }
+            SQLStatement::DDL(DDLStatement::CreateTableQuery(_)) => "CREATE TABLE".to_string(),
+            SQLStatement::DDL(DDLStatement::DropDatabaseQuery(_)) => "DROP DATABASE".to_string(),
+            SQLStatement::DDL(DDLStatement::DropTableQuery(_)) => "DROP TABLE".to_string(),
+            SQLStatement::DDL(DDLStatement::AlterDatabase(_)) => "ALTER DATABASE".to_string(),
+            SQLStatement::DDL(DDLStatement::AlterTableQuery(_)) => "ALTER TABLE".to_string(),
+            SQLStatement::DDL(DDLStatement::CreateIndexQuery(_)) => "CREATE INDEX".to_string(),
+            _ => format!("SELECT {}", num_rows),
+        }
+    }
+
     async fn step(
         &mut self,
         framed: &mut Framed<impl AsyncRead + AsyncWrite + Unpin, ConnectionCodec>,
@@ -111,8 +134,12 @@ impl Connection {
                     ClientMessage::Startup(startup) => {
                         if let Some(database_name) = startup.parameters.get("database") {
                             // 해당 데이터베이스가 존재하는지 검사
-                            let executor = DBEngine::new((*self.config).clone());
-                            let result = executor.find_database(database_name.clone()).await;
+                            let result = self
+                                .engine
+                                .shared_state
+                                .engine
+                                .find_database(database_name.clone())
+                                .await;
 
                             match result {
                                 Ok(has_match) => {
@@ -147,6 +174,12 @@ impl Connection {
                     ClientMessage::SSLRequest => {
                         // we don't support SSL for now
                         // client will retry with startup packet
+                        framed.send('N').await?;
+                        return Ok(Some(ConnectionState::Startup));
+                    }
+                    ClientMessage::GSSENCRequest => {
+                        // we don't support GSSAPI encryption for now
+                        // libpq will retry with a regular startup packet
                         framed.send('N').await?;
                         return Ok(Some(ConnectionState::Startup));
                     }
@@ -217,12 +250,34 @@ impl Connection {
                         let portal = match prepared.statement {
                             Some(statement) => {
                                 let portal = self.engine.create_portal(&statement).await?;
+                                let returns_rows = Self::returns_rows(&statement);
+                                let fields = if returns_rows {
+                                    portal
+                                        .execute_result
+                                        .columns
+                                        .iter()
+                                        .map(|e| {
+                                            crate::pgwire::protocol::backend::FieldDescription {
+                                                name: e.name.to_owned(),
+                                                data_type: e.data_type.to_owned().into(),
+                                            }
+                                        })
+                                        .collect()
+                                } else {
+                                    Vec::new()
+                                };
+                                let command_tag =
+                                    Self::command_tag(&statement, portal.execute_result.rows.len());
                                 let row_desc = RowDescription {
-                                    fields: prepared.fields.clone(),
+                                    fields,
                                     format_code,
                                 };
 
-                                Some(BoundPortal { portal, row_desc })
+                                Some(BoundPortal {
+                                    portal,
+                                    row_desc,
+                                    command_tag,
+                                })
                             }
                             None => None,
                         };
@@ -234,16 +289,26 @@ impl Connection {
                     ClientMessage::Describe(Describe::PreparedStatement(ref statement_name)) => {
                         let fields = self.prepared_statement(statement_name)?.fields.clone();
                         framed.send(ParameterDescription {}).await?;
-                        framed
-                            .send(RowDescription {
-                                fields,
-                                format_code: FormatCode::Text,
-                            })
-                            .await?;
+                        if fields.is_empty() {
+                            framed.send(NoData).await?;
+                        } else {
+                            framed
+                                .send(RowDescription {
+                                    fields,
+                                    format_code: FormatCode::Text,
+                                })
+                                .await?;
+                        }
                     }
                     ClientMessage::Describe(Describe::Portal(ref portal_name)) => {
                         match self.portal(portal_name)? {
-                            Some(portal) => framed.send(portal.row_desc.clone()).await?,
+                            Some(portal) => {
+                                if portal.row_desc.fields.is_empty() {
+                                    framed.send(NoData).await?;
+                                } else {
+                                    framed.send(portal.row_desc.clone()).await?;
+                                }
+                            }
                             None => framed.send(NoData).await?,
                         }
                     }
@@ -255,20 +320,23 @@ impl Connection {
                         self.portals.remove(&portal_name);
                         framed.send(CloseComplete).await?;
                     }
+                    ClientMessage::Flush => {
+                        futures::SinkExt::<NoData>::flush(framed).await?;
+                    }
                     ClientMessage::Sync => {
                         framed.send(ReadyForQuery).await?;
                     }
                     ClientMessage::Execute(exec) => match self.portal_mut(&exec.portal)? {
                         Some(bound) => {
-                            let mut batch_writer = DataRowBatch::from_row_desc(&bound.row_desc);
-                            bound.portal.fetch(&mut batch_writer).await?;
-                            let num_rows = batch_writer.num_rows();
-
-                            framed.send(batch_writer).await?;
+                            if !bound.row_desc.fields.is_empty() {
+                                let mut batch_writer = DataRowBatch::from_row_desc(&bound.row_desc);
+                                bound.portal.fetch(&mut batch_writer).await?;
+                                framed.send(batch_writer).await?;
+                            }
 
                             framed
                                 .send(CommandComplete {
-                                    command_tag: format!("SELECT {}", num_rows),
+                                    command_tag: bound.command_tag.clone(),
                                 })
                                 .await?;
                         }
@@ -279,27 +347,64 @@ impl Connection {
                     ClientMessage::Query(query) => {
                         if let Some(parsed) = self.parse_statement(&query)? {
                             let fields = self.engine.prepare(&parsed).await?;
+                            let returns_rows = Self::returns_rows(&parsed);
                             let row_desc = RowDescription {
                                 fields,
                                 format_code: FormatCode::Text,
                             };
                             let mut portal = self.engine.create_portal(&parsed).await?;
 
+                            let mut num_rows = portal.execute_result.rows.len();
                             let mut batch_writer = DataRowBatch::from_row_desc(&row_desc);
-                            portal.fetch(&mut batch_writer).await?;
-                            let num_rows = batch_writer.num_rows();
-
-                            if let SQLStatement::Other(OtherStatement::UseDatabase(query)) = parsed
-                            {
-                                self.engine.shared_state.client_info.database = query.database_name;
+                            if returns_rows {
+                                batch_writer = DataRowBatch::from_row_desc(&RowDescription {
+                                    fields: portal
+                                        .execute_result
+                                        .columns
+                                        .iter()
+                                        .map(|e| {
+                                            crate::pgwire::protocol::backend::FieldDescription {
+                                                name: e.name.to_owned(),
+                                                data_type: e.data_type.to_owned().into(),
+                                            }
+                                        })
+                                        .collect(),
+                                    format_code: FormatCode::Text,
+                                });
+                                portal.fetch(&mut batch_writer).await?;
+                                num_rows = batch_writer.num_rows();
                             }
 
-                            framed.send(row_desc).await?;
-                            framed.send(batch_writer).await?;
+                            if let SQLStatement::Other(OtherStatement::UseDatabase(ref query)) =
+                                parsed
+                            {
+                                self.engine.shared_state.client_info.database =
+                                    query.database_name.clone();
+                            }
+
+                            if returns_rows {
+                                framed
+                                    .send(RowDescription {
+                                        fields: portal
+                                            .execute_result
+                                            .columns
+                                            .iter()
+                                            .map(|e| {
+                                                crate::pgwire::protocol::backend::FieldDescription {
+                                                    name: e.name.to_owned(),
+                                                    data_type: e.data_type.to_owned().into(),
+                                                }
+                                            })
+                                            .collect(),
+                                        format_code: FormatCode::Text,
+                                    })
+                                    .await?;
+                                framed.send(batch_writer).await?;
+                            }
 
                             framed
                                 .send(CommandComplete {
-                                    command_tag: format!("SELECT {}", num_rows),
+                                    command_tag: Self::command_tag(&parsed, num_rows),
                                 })
                                 .await?;
                         } else {

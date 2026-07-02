@@ -6,7 +6,7 @@ use crate::engine::ast::dml::parts::select_item::SelectItem;
 use crate::engine::ast::dml::select::SelectQuery;
 use crate::engine::ast::types::{SQLExpression, SelectColumn, TableName};
 use crate::engine::lexer::tokens::Token;
-use crate::engine::parser::predule::Parser;
+use crate::engine::parser::predule::{Parser, ParserContext};
 
 #[test]
 fn test_insert_query() {
@@ -436,6 +436,28 @@ fn test_insert_query() {
             assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
         }
     }
+}
+
+#[test]
+fn test_insert_values_accepts_statement_terminator() {
+    let mut parser =
+        Parser::with_string("insert into rrdb.key_value(id) values (1);".to_string()).unwrap();
+
+    let statements = parser.parse(ParserContext::default()).unwrap();
+
+    assert_eq!(statements.len(), 1);
+}
+
+#[test]
+fn test_insert_query_accepts_key_column_name() {
+    let mut parser = Parser::with_string(
+        "insert into rrdb.key_value(key, value) values ('a', 'b');".to_string(),
+    )
+    .unwrap();
+
+    let statements = parser.parse(ParserContext::default()).unwrap();
+
+    assert_eq!(statements.len(), 1);
 }
 
 #[test]

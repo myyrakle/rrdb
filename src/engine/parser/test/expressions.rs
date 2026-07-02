@@ -10,7 +10,9 @@ use crate::engine::ast::dml::expressions::parentheses::ParenthesesExpression;
 use crate::engine::ast::dml::expressions::unary::UnaryOperatorExpression;
 use crate::engine::ast::dml::parts::select_item::SelectItem;
 use crate::engine::ast::dml::select::SelectQuery;
-use crate::engine::ast::types::{ConditionalFunction, SQLExpression, SelectColumn, UserDefinedFunction};
+use crate::engine::ast::types::{
+    ConditionalFunction, SQLExpression, SelectColumn, UserDefinedFunction,
+};
 use crate::engine::lexer::predule::OperatorToken;
 use crate::engine::lexer::tokens::Token;
 use crate::engine::parser::predule::Parser;

@@ -1,15 +1,13 @@
 use async_trait::async_trait;
-use tokio::sync::oneshot;
 
 use crate::engine::ast::SQLStatement;
-use crate::engine::server::channel::{ChannelRequest, ChannelResponse};
 use crate::engine::server::shared_state::SharedState;
 use crate::engine::types::{ExecuteField, ExecuteResult};
 use crate::pgwire::engine::{Engine, Portal};
 use crate::pgwire::protocol::backend::{ErrorResponse, FieldDescription};
 use crate::pgwire::protocol::{DataRowBatch, SqlState};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RRDBPortal {
     pub shared_state: SharedState,
     pub execute_result: ExecuteResult,
@@ -49,7 +47,6 @@ impl Portal for RRDBPortal {
 
 pub struct RRDBEngine {
     pub shared_state: SharedState,
-    pub portal: Option<RRDBPortal>,
 }
 
 #[async_trait]
@@ -59,71 +56,29 @@ impl Engine for RRDBEngine {
     // 결과 데이터 리스트의 컬럼 정보 전송
     async fn prepare(
         &mut self,
-        statement: &SQLStatement,
+        _statement: &SQLStatement,
     ) -> Result<Vec<FieldDescription>, ErrorResponse> {
-        // Server Background Loop와의 통신용 채널
-        let (response_sender, response_receiver) = oneshot::channel::<ChannelResponse>();
-
-        if let Err(error) = self
-            .shared_state
-            .sender
-            .send(ChannelRequest {
-                statement: statement.to_owned(),
-                response_sender,
-                connection_id: self.shared_state.client_info.connection_id.clone(),
-            })
-            .await
-        {
-            return Err(ErrorResponse::fatal(
-                SqlState::CONNECTION_EXCEPTION,
-                error.to_string(),
-            ));
-        }
-
-        match response_receiver.await {
-            Ok(response) => match response.result {
-                Ok(result) => {
-                    let return_value = Ok(result
-                        .columns
-                        .iter()
-                        .map(|e| FieldDescription {
-                            name: e.name.to_owned(),
-                            data_type: e.data_type.to_owned().into(),
-                        })
-                        .collect());
-
-                    self.portal = Some(RRDBPortal {
-                        execute_result: result,
-                        shared_state: self.shared_state.clone(),
-                    });
-
-                    return return_value;
-                }
-                Err(error) => {
-                    return Err(ErrorResponse::error(
-                        SqlState::SYNTAX_ERROR,
-                        error.to_string(),
-                    ));
-                }
-            },
-            Err(error) => {
-                return Err(ErrorResponse::fatal(
-                    SqlState::CONNECTION_EXCEPTION,
-                    error.to_string(),
-                ));
-            }
-        }
+        Ok(Vec::new())
     }
 
-    async fn create_portal(&mut self, _: &SQLStatement) -> Result<Self::PortalType, ErrorResponse> {
-        match &self.portal {
-            Some(portal) => Ok(portal.to_owned()),
-            None => {
-                return Err(ErrorResponse::fatal(
-                    SqlState::CONNECTION_EXCEPTION,
-                    "not prepared yet".to_string(),
-                ));
-            }
-        }
+    async fn create_portal(
+        &mut self,
+        statement: &SQLStatement,
+    ) -> Result<Self::PortalType, ErrorResponse> {
+        let result = self
+            .shared_state
+            .engine
+            .process_query(
+                statement.to_owned(),
+                self.shared_state.wal_manager.clone(),
+                self.shared_state.client_info.connection_id.clone(),
+            )
+            .await
+            .map_err(|error| ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string()))?;
+
+        Ok(RRDBPortal {
+            execute_result: result,
+            shared_state: self.shared_state.clone(),
+        })
     }
 }

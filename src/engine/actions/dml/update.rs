@@ -2,24 +2,29 @@ use std::collections::HashMap;
 
 use futures::future::join_all;
 
-use crate::engine::DBEngine;
 use crate::engine::ast::dml::plan::select::scan::ScanType;
 use crate::engine::ast::dml::plan::update::update_plan::UpdatePlanItem;
 use crate::engine::ast::dml::update::UpdateQuery;
-use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::expression::ReduceContext;
 use crate::engine::optimizer::predule::Optimizer;
 use crate::engine::schema::row::TableDataFieldType;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
+use crate::engine::wal::types::EntryType;
+use crate::engine::{DBEngine, SharedWALManager};
 use crate::errors;
-use crate::errors::type_error::TypeError;
 use crate::errors::execute_error::ExecuteError;
+use crate::errors::type_error::TypeError;
 
 impl DBEngine {
-    pub async fn update(&self, query: UpdateQuery) -> errors::Result<ExecuteResult> {
-        let encoder = StorageEncoder::new();
+    pub async fn update(
+        &self,
+        query: UpdateQuery,
+        wal_manager: SharedWALManager,
+    ) -> errors::Result<ExecuteResult> {
+        let wal_payload =
+            bson::to_vec(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
         let table = query.target_table.clone().unwrap().table;
         let update_items = query.update_items.clone();
@@ -40,7 +45,7 @@ impl DBEngine {
                 UpdatePlanItem::UpdateFrom(from) => {
                     let table_name = from.table_name.clone();
 
-                    let table_config = self.get_table_config(table_name.clone()).await?;
+                    let table_config = self.get_table_config_cached(table_name.clone()).await?;
 
                     table_infos.push(table_config);
 
@@ -114,7 +119,9 @@ impl DBEngine {
             .collect::<Vec<_>>();
 
         // 수정 작업
-        for (path, mut row) in rows.into_iter() {
+        let mut replacements = HashMap::new();
+
+        for (location, mut row) in rows.into_iter() {
             let reduce_context = ReduceContext {
                 row: None,
                 table_alias_map: table_alias_map.clone(),
@@ -143,12 +150,16 @@ impl DBEngine {
                 }
             }
 
-            if let Err(error) = tokio::fs::write(&path, encoder.encode(row)).await {
-                return Err(ExecuteError::wrap(format!(
-                    "path '{:?}' write failed: {}",
-                    path, error
-                )));
-            }
+            replacements.insert(location.row_index, row);
+        }
+
+        if !replacements.is_empty() {
+            wal_manager
+                .lock()
+                .await
+                .append_record(EntryType::Set, Some(wal_payload), None)
+                .await?;
+            self.update_table_rows(&table, replacements).await?;
         }
 
         Ok(ExecuteResult {

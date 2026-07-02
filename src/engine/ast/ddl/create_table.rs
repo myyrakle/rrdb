@@ -1,6 +1,6 @@
 use crate::engine::ast::{
-    types::{Column, ForeignKey, TableName, TableOptions, UniqueKey},
     DDLStatement, SQLStatement,
+    types::{Column, ForeignKey, TableName, TableOptions, UniqueKey},
 };
 
 /*

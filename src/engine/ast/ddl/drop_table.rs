@@ -1,4 +1,4 @@
-use crate::engine::ast::{types::TableName, DDLStatement, SQLStatement};
+use crate::engine::ast::{DDLStatement, SQLStatement, types::TableName};
 
 /*
 DROP TABLE [IF EXISTS] [database_name.]table_name;

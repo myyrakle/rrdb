@@ -14,20 +14,16 @@ pub struct OrderByItem {
     pub nulls: OrderByNulls,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Default)]
 pub enum OrderByType {
     #[default]
     Asc,
     Desc,
 }
 
-
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Default)]
 pub enum OrderByNulls {
     First,
     #[default]
     Last,
 }
-

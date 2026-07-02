@@ -1,14 +1,12 @@
 pub mod builder;
 
+use std::io::ErrorKind;
+use std::path::PathBuf;
 use std::time::SystemTime;
-#[allow(dead_code)]
-#[allow(unused_variables)]
-#[allow(unused_assignments)]
-#[allow(unused_imports)]
-use std::{fs, io::BufWriter, path::PathBuf};
 
 use crate::errors;
 use crate::errors::wal_errors::WALError;
+use tokio::io::AsyncWriteExt;
 
 use super::{
     endec::WALEncoder,
@@ -57,95 +55,98 @@ where
         }
     }
 
-    pub fn append(&mut self, mut entry: WALEntry) -> errors::Result<()> {
-        let entire_data_size = self.buffers.iter().map(|entry| entry.size()).sum::<usize>();
+    pub async fn append(&mut self, entry: WALEntry) -> errors::Result<()> {
+        self.write_entry(entry).await
+    }
 
-        // 원본 WAL 객체 정보
-        let original_entry_type = entry.entry_type.clone();
-        let original_timestamp = entry.timestamp;
-        let original_transaction_id = entry.transaction_id;
-        let original_entry_full_size = entry.size();
-        let data_option = entry.data.take();
+    pub async fn append_record(
+        &mut self,
+        entry_type: EntryType,
+        data: Option<Vec<u8>>,
+        transaction_id: Option<u64>,
+    ) -> errors::Result<()> {
+        self.append(WALEntry {
+            data,
+            entry_type,
+            timestamp: Self::get_current_secs()?,
+            transaction_id,
+            is_continuation: false,
+        })
+        .await
+    }
 
-        // 데이터 분배 필요 여부 확인
-        if entire_data_size + original_entry_full_size > self.page_size {
-            if let Some(mut distributed_entry_data) = data_option {
-                let mut first_chunk = true;
+    async fn write_entry(&mut self, entry: WALEntry) -> errors::Result<()> {
+        self.rotate_if_needed(entry.size()).await?;
 
-                // 데이터 분배
-                while !distributed_entry_data.is_empty() {
-                    let chunk_size = std::cmp::min(
-                        distributed_entry_data.len(),
-                        self.page_size - entire_data_size,
-                    );
+        let encoded = self.encoder.encode(&vec![entry.clone()])?;
+        let frame_len = u32::try_from(encoded.len())
+            .map_err(|_| WALError::wrap("wal entry is too large".to_string()))?;
 
-                    let chunk: Vec<u8> = distributed_entry_data.drain(..chunk_size).collect();
+        let mut frame = Vec::with_capacity(size_of::<u32>() + encoded.len());
+        frame.extend_from_slice(&frame_len.to_le_bytes());
+        frame.extend_from_slice(&encoded);
 
-                    self.buffers.push(WALEntry {
-                        entry_type: original_entry_type.clone(),
-                        data: Some(chunk),
-                        timestamp: original_timestamp,
-                        transaction_id: original_transaction_id,
-                        is_continuation: !first_chunk,
-                    });
+        let path = self.current_path();
 
-                    first_chunk = false;
-                }
-            } else {
-                self.buffers.push(WALEntry {
-                    entry_type: original_entry_type,
-                    data: None,
-                    timestamp: original_timestamp,
-                    transaction_id: original_transaction_id,
-                    is_continuation: false,
-                });
-            }
-        } else {
-            self.buffers.push(WALEntry {
-                entry_type: original_entry_type,
-                data: data_option,
-                timestamp: original_timestamp,
-                transaction_id: original_transaction_id,
-                is_continuation: false,
-            });
+        let mut file = tokio::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .await
+            .map_err(|e| WALError::wrap(e.to_string()))?;
+
+        file.write_all(&frame)
+            .await
+            .map_err(|e| WALError::wrap(e.to_string()))?;
+
+        self.buffers.push(entry);
+
+        Ok(())
+    }
+
+    async fn rotate_if_needed(&mut self, incoming_size: usize) -> errors::Result<()> {
+        let current_size = self.buffers.iter().map(|entry| entry.size()).sum::<usize>();
+
+        if !self.buffers.is_empty() && current_size + incoming_size > self.page_size {
+            self.sync_current_file().await?;
+            self.sequence += 1;
+            self.buffers.clear();
         }
 
         Ok(())
     }
 
-    async fn save_to_file(&mut self) -> errors::Result<()> {
-        let path = self
-            .directory
-            .join(format!("{:08X}.{}", self.sequence, self.extension));
+    fn current_path(&self) -> PathBuf {
+        self.directory
+            .join(format!("{:08X}.{}", self.sequence, self.extension))
+    }
 
-        let encoded = self.encoder.encode(&self.buffers)?;
+    async fn sync_current_file(&self) -> errors::Result<()> {
+        let path = self.current_path();
 
-        tokio::fs::write(&path, encoded)
-            .await
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-
-        // fsync 디스크 동기화 보장
-        let file = tokio::fs::OpenOptions::new()
+        match tokio::fs::OpenOptions::new()
+            .read(true)
             .write(true)
             .open(path)
             .await
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-        file.sync_all()
-            .await
-            .map_err(|e| WALError::wrap(e.to_string()))?;
+        {
+            Ok(file) => file
+                .sync_data()
+                .await
+                .map_err(|e| WALError::wrap(e.to_string()))?,
+            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(error) => return Err(WALError::wrap(error.to_string())),
+        }
 
         Ok(())
     }
 
     async fn checkpoint(&mut self) -> errors::Result<()> {
-        self.buffers.push(WALEntry {
-            data: None,
-            entry_type: EntryType::Checkpoint,
-            timestamp: Self::get_current_secs()?,
-            transaction_id: None,
-            is_continuation: false,
-        });
-        self.save_to_file().await?;
+        self.append_record(EntryType::Checkpoint, None, None)
+            .await?;
+        self.sync_current_file().await?;
+        self.sequence += 1;
+        self.buffers.clear();
 
         Ok(())
     }
@@ -167,7 +168,8 @@ where
 mod tests {
     use super::*;
     use crate::config::launch_config::LaunchConfig;
-    use crate::engine::wal::endec::implements::bitcode::{BitcodeDecoder, BitcodeEncoder};
+    use crate::engine::wal::endec::WALDecoder;
+    use crate::engine::wal::endec::implements::bincode::{BincodeDecoder, BincodeEncoder};
     use crate::engine::wal::manager::builder::WALBuilder;
     use crate::engine::wal::types::{EntryType, WALEntry};
     use std::path::{Path, PathBuf};
@@ -189,9 +191,11 @@ mod tests {
     async fn setup_test_wal_dir(test_name: &str) -> PathBuf {
         let wal_dir = PathBuf::from(format!("target/test_wal_data/{}", test_name));
         if wal_dir.exists() {
-            tokio::fs::remove_dir_all(&wal_dir).await.unwrap_or_else(|e| {
-                panic!("Failed to remove old test WAL dir {:?}: {}", wal_dir, e)
-            });
+            tokio::fs::remove_dir_all(&wal_dir)
+                .await
+                .unwrap_or_else(|e| {
+                    panic!("Failed to remove old test WAL dir {:?}: {}", wal_dir, e)
+                });
         }
         tokio::fs::create_dir_all(&wal_dir)
             .await
@@ -214,17 +218,24 @@ mod tests {
 
     // WAL 파일에 엔트리들을 기록하는 헬퍼 함수
     async fn write_wal_file(config: &LaunchConfig, sequence: usize, entries: &Vec<WALEntry>) {
-        let encoder = BitcodeEncoder::new();
-        let encoded_data = encoder.encode(entries).unwrap();
+        let encoder = BincodeEncoder::new();
         let file_path = PathBuf::from(&config.wal_directory)
             .join(format!("{:08X}.{}", sequence, config.wal_extension));
 
         let mut file = tokio::fs::File::create(&file_path)
             .await
             .unwrap_or_else(|e| panic!("Failed to create wal file {:?}: {}", file_path, e));
-        file.write_all(&encoded_data)
-            .await
-            .unwrap_or_else(|e| panic!("Failed to write to wal file {:?}: {}", file_path, e));
+
+        for entry in entries {
+            let encoded_data = encoder.encode(&vec![entry.clone()]).unwrap();
+            file.write_all(&(encoded_data.len() as u32).to_le_bytes())
+                .await
+                .unwrap_or_else(|e| panic!("Failed to write to wal file {:?}: {}", file_path, e));
+            file.write_all(&encoded_data)
+                .await
+                .unwrap_or_else(|e| panic!("Failed to write to wal file {:?}: {}", file_path, e));
+        }
+
         file.sync_all()
             .await
             .unwrap_or_else(|e| panic!("Failed to sync wal file {:?}: {}", file_path, e));
@@ -236,8 +247,8 @@ mod tests {
         let config = get_test_config(&wal_dir);
 
         let builder = WALBuilder::new(&config);
-        let encoder = BitcodeEncoder::new();
-        let decoder = BitcodeDecoder::new();
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
 
         let wal_manager = builder.build(decoder, encoder).await.unwrap();
 
@@ -265,8 +276,8 @@ mod tests {
         write_wal_file(&config, 1, &entries_seq1).await;
 
         let builder = WALBuilder::new(&config);
-        let encoder = BitcodeEncoder::new();
-        let decoder = BitcodeDecoder::new();
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
 
         let wal_manager = builder.build(decoder, encoder).await.unwrap();
 
@@ -282,6 +293,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_append_record_writes_framed_bincode_entries() {
+        let wal_dir = setup_test_wal_dir("append_record_framed_bincode").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+        let mut wal_manager = builder.build(decoder.clone(), encoder).await.unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+        wal_manager
+            .append_record(EntryType::Delete, Some(b"row-2".to_vec()), Some(2))
+            .await
+            .unwrap();
+
+        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let content = tokio::fs::read(wal_path).await.unwrap();
+        let entries = decoder.decode(&content).unwrap();
+
+        assert_eq!(entries.len(), 2);
+        assert!(matches!(entries[0].entry_type, EntryType::Insert));
+        assert_eq!(entries[0].transaction_id, Some(1));
+        assert_eq!(entries[0].data, Some(b"row-1".to_vec()));
+        assert!(matches!(entries[1].entry_type, EntryType::Delete));
+        assert_eq!(entries[1].transaction_id, Some(2));
+    }
+
+    #[tokio::test]
     async fn test_build_multiple_files() {
         let wal_dir = setup_test_wal_dir("multiple_files").await;
 
@@ -290,8 +332,8 @@ mod tests {
         config.wal_segment_size = 20; // 20 바이트
 
         let builder = WALBuilder::new(&config);
-        let encoder = BitcodeEncoder::new();
-        let decoder = BitcodeDecoder::new();
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
 
         let wal_manager = builder
             .build(decoder, encoder)

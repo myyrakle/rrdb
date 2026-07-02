@@ -1,8 +1,9 @@
-use crate::engine::ast::{types::TableName, DMLStatement, SQLStatement};
+use crate::engine::ast::{DMLStatement, SQLStatement, types::TableName};
+use serde::{Deserialize, Serialize};
 
 use super::parts::{_where::WhereClause, target::UpdateTarget, update_item::UpdateItem};
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub struct UpdateQuery {
     pub target_table: Option<UpdateTarget>,
     pub where_clause: Option<WhereClause>,

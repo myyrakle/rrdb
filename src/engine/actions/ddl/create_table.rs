@@ -7,8 +7,8 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::errors::execute_error::ExecuteError;
 use crate::errors;
+use crate::errors::execute_error::ExecuteError;
 
 impl DBEngine {
     pub async fn create_table(&self, query: CreateTableQuery) -> errors::Result<ExecuteResult> {
@@ -25,14 +25,10 @@ impl DBEngine {
         if let Err(error) = tokio::fs::create_dir(&table_path).await {
             match error.kind() {
                 IOErrorKind::AlreadyExists => {
-                    return Err(ExecuteError::wrap(
-                        "already exists table".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("already exists table".to_string()));
                 }
                 _ => {
-                    return Err(ExecuteError::wrap(
-                        "table create failed".to_string(),
-                    ));
+                    return Err(ExecuteError::wrap("table create failed".to_string()));
                 }
             }
         }
@@ -41,7 +37,8 @@ impl DBEngine {
         let config_path = table_path.clone().join("table.config");
         let table_info: TableSchema = query.into();
 
-        if let Err(error) = tokio::fs::write(&config_path, encoder.encode(table_info)).await {
+        if let Err(error) = tokio::fs::write(&config_path, encoder.encode(table_info.clone())).await
+        {
             return Err(ExecuteError::wrap(error.to_string()));
         }
 
@@ -62,6 +59,8 @@ impl DBEngine {
         // TODO: primary key 데이터 생성
         // TODO: unique key 데이터 생성
         // TODO: foreign key 데이터 생성
+
+        self.cache_table_config(table_info).await;
 
         Ok(ExecuteResult {
             columns: (vec![ExecuteColumn {

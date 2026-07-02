@@ -12,8 +12,7 @@ pub struct JoinClause {
 
 impl JoinClause {}
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, Default)]
 pub enum JoinType {
     #[default]
     InnerJoin,
@@ -21,4 +20,3 @@ pub enum JoinType {
     RightOuterJoin,
     FullOuterJoin,
 }
-

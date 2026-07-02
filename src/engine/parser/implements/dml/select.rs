@@ -7,10 +7,10 @@ use crate::engine::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::engine::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
 use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
 use crate::engine::ast::dml::select::SelectQuery;
-use crate::errors;
-use crate::errors::parsing_error::ParsingError;
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
+use crate::errors;
+use crate::errors::parsing_error::ParsingError;
 
 impl Parser {
     pub(crate) fn handle_select_query(
@@ -205,9 +205,7 @@ impl Parser {
                 let having_clause = self.parse_having(context.clone())?;
                 query_builder = query_builder.set_having(having_clause);
             } else {
-                return Err(ParsingError::wrap(
-                    "Having without group by is invalid.",
-                ));
+                return Err(ParsingError::wrap("Having without group by is invalid."));
             }
         }
 
@@ -396,7 +394,7 @@ impl Parser {
                         return Err(ParsingError::wrap(format!(
                             "expected keyword is FIRST or LAST, but your input is {:?}",
                             current_token
-                        )))
+                        )));
                     }
                 }
 
@@ -485,10 +483,7 @@ impl Parser {
         Ok(expression.into())
     }
 
-    pub(crate) fn parse_having(
-        &mut self,
-        context: ParserContext,
-    ) -> errors::Result<HavingClause> {
+    pub(crate) fn parse_having(&mut self, context: ParserContext) -> errors::Result<HavingClause> {
         if !self.has_next_token() {
             return Err(ParsingError::wrap("need more tokens"));
         }
