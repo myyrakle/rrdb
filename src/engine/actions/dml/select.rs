@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use futures::future::join_all;
 
 use crate::engine::DBEngine;
+use crate::engine::ast::dml::parts::from::FromTarget;
 use crate::engine::ast::dml::parts::order_by::{OrderByNulls, OrderByType};
 use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectKind};
 use crate::engine::ast::dml::plan::select::scan::ScanType;
@@ -18,6 +19,133 @@ use crate::errors;
 use crate::errors::type_error::TypeError;
 
 impl DBEngine {
+    pub async fn describe_select_columns(
+        &self,
+        query: SelectQuery,
+    ) -> errors::Result<Vec<ExecuteColumn>> {
+        let mut table_alias_map = HashMap::new();
+        let mut table_infos = vec![];
+
+        if let Some(from) = query.from_table.clone() {
+            match from.from {
+                FromTarget::Table(table_name) => {
+                    let table_config = self.get_table_config_cached(table_name.clone()).await?;
+                    if let Some(alias) = from.alias {
+                        table_alias_map.insert(alias, table_name);
+                    }
+                    table_infos.push(table_config);
+                }
+                FromTarget::Subquery(_) => {
+                    return Err(crate::errors::execute_error::ExecuteError::wrap(
+                        "subquery describe is not implemented",
+                    ));
+                }
+            }
+        }
+
+        for join in query.join_clause.iter().cloned() {
+            let table_config = self.get_table_config_cached(join.right.clone()).await?;
+            if let Some(alias) = join.right_alias {
+                table_alias_map.insert(alias, join.right);
+            }
+            table_infos.push(table_config);
+        }
+
+        let config_columns = table_infos
+            .into_iter()
+            .flat_map(|table_info| {
+                table_info
+                    .columns
+                    .iter()
+                    .cloned()
+                    .map(|column| (table_info.table.to_owned(), column))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        let select_items = query
+            .select_items
+            .into_iter()
+            .flat_map(|e| match e {
+                SelectKind::SelectItem(item) => vec![item],
+                SelectKind::WildCard(wildcard) => match wildcard.alias {
+                    Some(alias) => match table_alias_map.get(&alias) {
+                        Some(found_table_name) => config_columns
+                            .iter()
+                            .filter(|(table_name, _)| {
+                                found_table_name.table_name == table_name.table_name
+                            })
+                            .map(|(table_name, column_name)| {
+                                SelectItem::builder()
+                                    .set_item(
+                                        SelectColumn::new(
+                                            Some(table_name.table_name.clone()),
+                                            column_name.name.clone(),
+                                        )
+                                        .into(),
+                                    )
+                                    .build()
+                            })
+                            .collect(),
+                        None => config_columns
+                            .iter()
+                            .filter(|(table_name, _)| alias == table_name.table_name)
+                            .map(|(table_name, column_name)| {
+                                SelectItem::builder()
+                                    .set_item(
+                                        SelectColumn::new(
+                                            Some(table_name.table_name.clone()),
+                                            column_name.name.clone(),
+                                        )
+                                        .into(),
+                                    )
+                                    .build()
+                            })
+                            .collect(),
+                    },
+                    None => config_columns
+                        .iter()
+                        .map(|(table_name, column_name)| {
+                            SelectItem::builder()
+                                .set_item(
+                                    SelectColumn::new(
+                                        Some(table_name.table_name.clone()),
+                                        column_name.name.clone(),
+                                    )
+                                    .into(),
+                                )
+                                .build()
+                        })
+                        .collect(),
+                },
+            })
+            .collect::<Vec<_>>();
+
+        let reduce_context = ReduceContext {
+            row: None,
+            table_alias_map,
+            config_columns,
+            total_count: 0,
+        };
+
+        select_items
+            .into_iter()
+            .map(|e| {
+                let item = e.item.unwrap();
+                let name = match e.alias {
+                    Some(alias) => alias,
+                    None => match &item {
+                        SQLExpression::SelectColumn(column) => column.column_name.to_owned(),
+                        _ => "?column?".into(),
+                    },
+                };
+                let data_type = self.reduce_type(item, reduce_context.clone())?;
+
+                Ok::<ExecuteColumn, errors::Errors>(ExecuteColumn { name, data_type })
+            })
+            .collect::<Result<Vec<_>, _>>()
+    }
+
     pub async fn select(&self, query: SelectQuery) -> errors::Result<ExecuteResult> {
         // 최적화 작업
         let optimizer = Optimizer::new();
@@ -456,7 +584,7 @@ impl DBEngine {
             .collect::<Result<Vec<_>, _>>()?;
 
         match rows {
-            Ok(rows) => Ok(ExecuteResult { columns, rows }),
+            Ok(rows) => Ok(ExecuteResult::new(columns, rows)),
             Err(error) => Err(error),
         }
     }

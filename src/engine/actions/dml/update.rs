@@ -153,6 +153,8 @@ impl DBEngine {
             replacements.insert(location.row_index, row);
         }
 
+        let affected_rows = replacements.len();
+
         if !replacements.is_empty() {
             wal_manager
                 .lock()
@@ -162,17 +164,18 @@ impl DBEngine {
             self.update_table_rows(&table, replacements).await?;
         }
 
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
+        Ok(ExecuteResult::with_affected_rows(
+            vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
-            }]),
-            rows: (vec![ExecuteRow {
+            }],
+            vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "updated from {:?}",
                     table.table_name
                 ))],
-            }]),
-        })
+            }],
+            affected_rows,
+        ))
     }
 }

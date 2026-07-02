@@ -37,8 +37,8 @@ impl DBEngine {
                     .decode(read_result.as_slice())
                     .ok_or_else(|| ExecuteError::wrap("config decode error".to_string()))?;
 
-                Ok(ExecuteResult {
-                    columns: (vec![
+                Ok(ExecuteResult::new(
+                    vec![
                         ExecuteColumn {
                             name: "Field".into(),
                             data_type: ExecuteColumnType::String,
@@ -59,8 +59,8 @@ impl DBEngine {
                             name: "Comment".into(),
                             data_type: ExecuteColumnType::String,
                         },
-                    ]),
-                    rows: table_info
+                    ],
+                    table_info
                         .columns
                         .iter()
                         .map(|e| ExecuteRow {
@@ -73,7 +73,7 @@ impl DBEngine {
                             ],
                         })
                         .collect(),
-                })
+                ))
             }
             Err(error) => match error.kind() {
                 IOErrorKind::NotFound => Err(ExecuteError::wrap(format!(
@@ -126,17 +126,17 @@ impl DBEngine {
 
                 let database_list = join_all(futures).await.into_iter().flatten();
 
-                Ok(ExecuteResult {
-                    columns: (vec![ExecuteColumn {
+                Ok(ExecuteResult::new(
+                    vec![ExecuteColumn {
                         name: "database name".into(),
                         data_type: ExecuteColumnType::String,
-                    }]),
-                    rows: database_list
+                    }],
+                    database_list
                         .map(|e| ExecuteRow {
                             fields: vec![ExecuteField::String(e)],
                         })
                         .collect(),
-                })
+                ))
             }
             Err(error) => match error.kind() {
                 IOErrorKind::NotFound => {
@@ -242,17 +242,17 @@ impl DBEngine {
 
                 let table_list = join_all(futures).await.into_iter().flatten();
 
-                Ok(ExecuteResult {
-                    columns: (vec![ExecuteColumn {
+                Ok(ExecuteResult::new(
+                    vec![ExecuteColumn {
                         name: "table name".into(),
                         data_type: ExecuteColumnType::String,
-                    }]),
-                    rows: table_list
+                    }],
+                    table_list
                         .map(|e| ExecuteRow {
                             fields: vec![ExecuteField::String(e)],
                         })
                         .collect(),
-                })
+                ))
             }
             Err(error) => match error.kind() {
                 IOErrorKind::NotFound => {
@@ -266,17 +266,17 @@ impl DBEngine {
 
 impl DBEngine {
     pub async fn use_databases(&self, query: UseDatabaseQuery) -> errors::Result<ExecuteResult> {
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
+        Ok(ExecuteResult::new(
+            vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
-            }]),
-            rows: (vec![ExecuteRow {
+            }],
+            vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "database changed: {}",
                     query.database_name
                 ))],
-            }]),
-        })
+            }],
+        ))
     }
 }

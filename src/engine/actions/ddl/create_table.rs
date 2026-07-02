@@ -62,17 +62,17 @@ impl DBEngine {
 
         self.cache_table_config(table_info).await;
 
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
+        Ok(ExecuteResult::new(
+            vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
-            }]),
-            rows: (vec![ExecuteRow {
+            }],
+            vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "table created: {}",
                     table_name
                 ))],
-            }]),
-        })
+            }],
+        ))
     }
 }
