@@ -39,6 +39,16 @@ fn test_parse_show_query() {
             want_error: false,
         },
         TestCase {
+            name: "Show Tables without a default database".into(),
+            input: vec![Token::Tables],
+            context: Default::default(),
+            expected: ShowTablesQuery {
+                database: "None".into(),
+            }
+            .into(),
+            want_error: false,
+        },
+        TestCase {
             name: "오류: 빈 토큰".into(),
             input: vec![],
             context: Default::default(),

@@ -79,30 +79,22 @@ impl Parser {
         }
 
         // FROM 절 파싱
+        // 이 지점에 도달했다면 위 루프는 Token::From을 발견해 unget한 뒤 탈출한 것이므로,
+        // 항상 Token::From이 반환된다.
         let current_token = self.get_next_token();
+        assert_eq!(current_token, Token::From);
 
-        match current_token {
-            Token::From => {
-                if self.next_token_is_left_parentheses() {
-                    let subquery = self.parse_subquery(context.clone())?;
-                    query_builder = query_builder.set_from_subquery(subquery);
-                } else {
-                    let table_name = self.parse_table_name(context.clone())?;
-                    query_builder = query_builder.set_from_table(table_name);
-                }
+        if self.next_token_is_left_parentheses() {
+            let subquery = self.parse_subquery(context.clone())?;
+            query_builder = query_builder.set_from_subquery(subquery);
+        } else {
+            let table_name = self.parse_table_name(context.clone())?;
+            query_builder = query_builder.set_from_table(table_name);
+        }
 
-                if self.next_token_is_table_alias() {
-                    let alias = self.parse_table_alias()?;
-                    query_builder = query_builder.set_from_alias(alias);
-                }
-            }
-            _ => {
-                // From이어야만 이전 루프를 탈출하기 때문에, From이 아닐 수 없음
-                unreachable!(
-                    "expected 'FROM' clause. but your input word is '{:?}'",
-                    current_token
-                );
-            }
+        if self.next_token_is_table_alias() {
+            let alias = self.parse_table_alias()?;
+            query_builder = query_builder.set_from_alias(alias);
         }
 
         // JOIN 절 파싱
