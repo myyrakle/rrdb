@@ -10,6 +10,7 @@ use crate::engine::lexer::predule::Tokenizer;
 use crate::engine::parser::context::ParserContext;
 use crate::engine::parser::predule::Parser;
 use crate::engine::server::shared_state::SharedState;
+use crate::engine::types::{ExecuteColumn, ExecuteResult};
 use crate::pgwire::connection::{BoundPortal, ConnectionError, ConnectionState, PreparedStatement};
 use crate::pgwire::engine::{Engine, Portal, RRDBEngine};
 use crate::pgwire::protocol::backend::{
@@ -101,7 +102,9 @@ impl Connection {
         )
     }
 
-    fn command_tag(statement: &SQLStatement, num_rows: usize) -> String {
+    fn command_tag(statement: &SQLStatement, result: &ExecuteResult) -> String {
+        let num_rows = result.affected_rows.unwrap_or(result.rows.len());
+
         match statement {
             SQLStatement::DML(DMLStatement::SelectQuery(_)) => format!("SELECT {}", num_rows),
             SQLStatement::DML(DMLStatement::InsertQuery(_)) => format!("INSERT 0 {}", num_rows),
@@ -117,6 +120,26 @@ impl Connection {
             SQLStatement::DDL(DDLStatement::AlterTableQuery(_)) => "ALTER TABLE".to_string(),
             SQLStatement::DDL(DDLStatement::CreateIndexQuery(_)) => "CREATE INDEX".to_string(),
             _ => format!("SELECT {}", num_rows),
+        }
+    }
+
+    fn row_description_fields(
+        columns: &[ExecuteColumn],
+    ) -> Vec<crate::pgwire::protocol::backend::FieldDescription> {
+        columns
+            .iter()
+            .map(
+                |column| crate::pgwire::protocol::backend::FieldDescription {
+                    name: column.name.to_owned(),
+                    data_type: column.data_type.to_owned().into(),
+                },
+            )
+            .collect()
+    }
+
+    fn apply_statement_side_effects(&mut self, statement: &SQLStatement) {
+        if let SQLStatement::Other(OtherStatement::UseDatabase(query)) = statement {
+            self.engine.shared_state.client_info.database = query.database_name.clone();
         }
     }
 
@@ -250,24 +273,11 @@ impl Connection {
                         let portal = match prepared.statement {
                             Some(statement) => {
                                 let portal = self.engine.create_portal(&statement).await?;
-                                let returns_rows = Self::returns_rows(&statement);
-                                let fields = if returns_rows {
-                                    portal
-                                        .execute_result
-                                        .columns
-                                        .iter()
-                                        .map(|e| {
-                                            crate::pgwire::protocol::backend::FieldDescription {
-                                                name: e.name.to_owned(),
-                                                data_type: e.data_type.to_owned().into(),
-                                            }
-                                        })
-                                        .collect()
+                                let fields = if Self::returns_rows(&statement) {
+                                    prepared.fields.clone()
                                 } else {
                                     Vec::new()
                                 };
-                                let command_tag =
-                                    Self::command_tag(&statement, portal.execute_result.rows.len());
                                 let row_desc = RowDescription {
                                     fields,
                                     format_code,
@@ -276,7 +286,7 @@ impl Connection {
                                 Some(BoundPortal {
                                     portal,
                                     row_desc,
-                                    command_tag,
+                                    statement,
                                 })
                             }
                             None => None,
@@ -328,6 +338,9 @@ impl Connection {
                     }
                     ClientMessage::Execute(exec) => match self.portal_mut(&exec.portal)? {
                         Some(bound) => {
+                            let result = bound.portal.execute().await?;
+                            let statement = bound.statement.clone();
+
                             if !bound.row_desc.fields.is_empty() {
                                 let mut batch_writer = DataRowBatch::from_row_desc(&bound.row_desc);
                                 bound.portal.fetch(&mut batch_writer).await?;
@@ -336,9 +349,11 @@ impl Connection {
 
                             framed
                                 .send(CommandComplete {
-                                    command_tag: bound.command_tag.clone(),
+                                    command_tag: Self::command_tag(&statement, &result),
                                 })
                                 .await?;
+
+                            self.apply_statement_side_effects(&statement);
                         }
                         None => {
                             framed.send(EmptyQueryResponse).await?;
@@ -346,67 +361,29 @@ impl Connection {
                     },
                     ClientMessage::Query(query) => {
                         if let Some(parsed) = self.parse_statement(&query)? {
-                            let fields = self.engine.prepare(&parsed).await?;
                             let returns_rows = Self::returns_rows(&parsed);
-                            let row_desc = RowDescription {
-                                fields,
-                                format_code: FormatCode::Text,
-                            };
-                            let mut portal = self.engine.create_portal(&parsed).await?;
+                            let result = self.engine.execute_statement(&parsed).await?;
 
-                            let mut num_rows = portal.execute_result.rows.len();
-                            let mut batch_writer = DataRowBatch::from_row_desc(&row_desc);
                             if returns_rows {
-                                batch_writer = DataRowBatch::from_row_desc(&RowDescription {
-                                    fields: portal
-                                        .execute_result
-                                        .columns
-                                        .iter()
-                                        .map(|e| {
-                                            crate::pgwire::protocol::backend::FieldDescription {
-                                                name: e.name.to_owned(),
-                                                data_type: e.data_type.to_owned().into(),
-                                            }
-                                        })
-                                        .collect(),
+                                let row_desc = RowDescription {
+                                    fields: Self::row_description_fields(&result.columns),
                                     format_code: FormatCode::Text,
-                                });
+                                };
+                                let mut batch_writer = DataRowBatch::from_row_desc(&row_desc);
+                                let mut portal = self.engine.create_portal(&parsed).await?;
+                                portal.execute_result = Some(result.clone());
                                 portal.fetch(&mut batch_writer).await?;
-                                num_rows = batch_writer.num_rows();
-                            }
-
-                            if let SQLStatement::Other(OtherStatement::UseDatabase(ref query)) =
-                                parsed
-                            {
-                                self.engine.shared_state.client_info.database =
-                                    query.database_name.clone();
-                            }
-
-                            if returns_rows {
-                                framed
-                                    .send(RowDescription {
-                                        fields: portal
-                                            .execute_result
-                                            .columns
-                                            .iter()
-                                            .map(|e| {
-                                                crate::pgwire::protocol::backend::FieldDescription {
-                                                    name: e.name.to_owned(),
-                                                    data_type: e.data_type.to_owned().into(),
-                                                }
-                                            })
-                                            .collect(),
-                                        format_code: FormatCode::Text,
-                                    })
-                                    .await?;
+                                framed.send(row_desc).await?;
                                 framed.send(batch_writer).await?;
                             }
 
                             framed
                                 .send(CommandComplete {
-                                    command_tag: Self::command_tag(&parsed, num_rows),
+                                    command_tag: Self::command_tag(&parsed, &result),
                                 })
                                 .await?;
+
+                            self.apply_statement_side_effects(&parsed);
                         } else {
                             framed.send(EmptyQueryResponse).await?;
                         }

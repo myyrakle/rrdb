@@ -31,17 +31,17 @@ impl DBEngine {
             match error.kind() {
                 IOErrorKind::AlreadyExists => {
                     if query.if_not_exists {
-                        return Ok(ExecuteResult {
-                            columns: (vec![ExecuteColumn {
+                        return Ok(ExecuteResult::new(
+                            vec![ExecuteColumn {
                                 name: "desc".into(),
                                 data_type: ExecuteColumnType::String,
-                            }]),
-                            rows: (vec![ExecuteRow {
+                            }],
+                            vec![ExecuteRow {
                                 fields: vec![ExecuteField::String(
                                     "database already exists".into(),
                                 )],
-                            }]),
-                        });
+                            }],
+                        ));
                     } else {
                         return Err(ExecuteError::wrap("already exists database".to_string()));
                     }
@@ -76,17 +76,17 @@ impl DBEngine {
             return Err(ExecuteError::wrap(error.to_string()));
         }
 
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
+        Ok(ExecuteResult::new(
+            vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
-            }]),
-            rows: (vec![ExecuteRow {
+            }],
+            vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "database created: {}",
                     database_name
                 ))],
-            }]),
-        })
+            }],
+        ))
     }
 }

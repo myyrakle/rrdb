@@ -8,6 +8,29 @@ use crate::pgwire::protocol::DataTypeOid;
 pub struct ExecuteResult {
     pub rows: Vec<ExecuteRow>,       // 데이터 행 -> 실 데이터
     pub columns: Vec<ExecuteColumn>, // 데이터 열에 대한 메타데이터
+    pub affected_rows: Option<usize>,
+}
+
+impl ExecuteResult {
+    pub fn new(columns: Vec<ExecuteColumn>, rows: Vec<ExecuteRow>) -> Self {
+        Self {
+            columns,
+            rows,
+            affected_rows: None,
+        }
+    }
+
+    pub fn with_affected_rows(
+        columns: Vec<ExecuteColumn>,
+        rows: Vec<ExecuteRow>,
+        affected_rows: usize,
+    ) -> Self {
+        Self {
+            columns,
+            rows,
+            affected_rows: Some(affected_rows),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

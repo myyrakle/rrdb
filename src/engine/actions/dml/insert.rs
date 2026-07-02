@@ -169,7 +169,22 @@ impl DBEngine {
                     .append_record(EntryType::Insert, Some(wal_payload), None)
                     .await?;
 
+                let affected_rows = rows.len();
                 self.append_table_rows(into_table, &rows).await?;
+
+                return Ok(ExecuteResult::with_affected_rows(
+                    vec![ExecuteColumn {
+                        name: "desc".into(),
+                        data_type: ExecuteColumnType::String,
+                    }],
+                    vec![ExecuteRow {
+                        fields: vec![ExecuteField::String(format!(
+                            "inserted into {}",
+                            table_name
+                        ))],
+                    }],
+                    affected_rows,
+                ));
             }
             InsertData::Select(_select) => {
                 todo!("아직 미구현")
@@ -177,17 +192,18 @@ impl DBEngine {
             InsertData::None => {}
         }
 
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
+        Ok(ExecuteResult::with_affected_rows(
+            vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
-            }]),
-            rows: (vec![ExecuteRow {
+            }],
+            vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "inserted into {}",
                     table_name
                 ))],
-            }]),
-        })
+            }],
+            0,
+        ))
     }
 }

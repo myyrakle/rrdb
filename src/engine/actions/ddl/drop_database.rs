@@ -34,18 +34,18 @@ impl DBEngine {
             }
         }
 
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
+        Ok(ExecuteResult::new(
+            vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
-            }]),
-            rows: (vec![ExecuteRow {
+            }],
+            vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "database dropped: {}",
                     database_name
                 ))],
-            }]),
-        })
+            }],
+        ))
     }
 }
 

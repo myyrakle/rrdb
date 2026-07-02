@@ -111,6 +111,8 @@ impl DBEngine {
             .map(|(location, _)| location.row_index)
             .collect::<HashSet<_>>();
 
+        let affected_rows = row_indexes.len();
+
         if !row_indexes.is_empty() {
             wal_manager
                 .lock()
@@ -120,17 +122,18 @@ impl DBEngine {
             self.delete_table_rows(&table, row_indexes).await?;
         }
 
-        Ok(ExecuteResult {
-            columns: (vec![ExecuteColumn {
+        Ok(ExecuteResult::with_affected_rows(
+            vec![ExecuteColumn {
                 name: "desc".into(),
                 data_type: ExecuteColumnType::String,
-            }]),
-            rows: (vec![ExecuteRow {
+            }],
+            vec![ExecuteRow {
                 fields: vec![ExecuteField::String(format!(
                     "deleted from {:?}",
                     table.table_name
                 ))],
-            }]),
-        })
+            }],
+            affected_rows,
+        ))
     }
 }
