@@ -3,9 +3,9 @@ name: Test & Coverage
 on:
   pull_request:
 
-permissions: # Job-level permissions configuration starts here
-  contents: write # 'write' access to repository contents
-  pull-requests: write # 'write' access to pull requests
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   check:
@@ -54,44 +54,65 @@ jobs:
         run: |
           echo "COVERAGE=$(head -n 1 coverage_total_percent.txt)" >> $GITHUB_ENV
 
+      - name: Check token availability
+        id: token_check
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Clone html_reports repository
+        if: steps.token_check.outputs.has_token == 'true'
         run: |
           git clone https://github.com/myyrakle/html_reports
 
       - name: Generate Random Name
+        if: steps.token_check.outputs.has_token == 'true'
         run: |
           echo "REPORT_NAME=$(date +%s)" >> $GITHUB_ENV
 
       - name: Copy coverage report
+        if: steps.token_check.outputs.has_token == 'true'
         run: |
-          cp ./tarpaulin-report.html ./html_reports/${{ env.REPORT_NAME }}.html | 
+          cp ./tarpaulin-report.html ./html_reports/${{ env.REPORT_NAME }}.html |
           cd ./html_reports
 
       - name: Add
+        if: steps.token_check.outputs.has_token == 'true'
         working-directory: html_reports
         run: |
           git add .
 
       - name: Commit
+        if: steps.token_check.outputs.has_token == 'true'
         working-directory: html_reports
         run: |
-          git config --global user.email "sssang97@naver.com" && 
-          git config --global user.name "myyrakle" && 
+          git config --global user.email "github-actions[bot]@users.noreply.github.com" &&
+          git config --global user.name "github-actions[bot]" &&
           git commit -m "Add report"
 
       - name: Push changes
-        uses: ad-m/github-push-action@master
+        if: steps.token_check.outputs.has_token == 'true'
+        uses: ad-m/github-push-action@d91a481090679876dfc4178fef17f286781251df # v0.8.0
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           directory: html_reports
           repository: myyrakle/html_reports
-          force: true
-          ref: master
 
       - name: Add comment to PR
+        if: steps.token_check.outputs.has_token == 'true'
         uses: thollander/actions-comment-pull-request@v1
         with:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           message: |
-            ✅ **Total Coverage**: ${{ env.COVERAGE }}  
-            🔗 [Coverage View](https://myyrakle.github.io/html_reports/${{ env.REPORT_NAME }}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub>
+            ✅ **Total Coverage**: ${{ env.COVERAGE }}
+            ${{ steps.token_check.outputs.has_token == 'true' && format('🔗 [Coverage View](https://myyrakle.github.io/html_reports/{0}) <sub>(최대 몇분 정도의 지연시간이 발생할 수 있습니다.)</sub>', env.REPORT_NAME) || '<sub>(fork PR: coverage HTML upload skipped)</sub>' }}
+
+      - name: Coverage summary (fork PR fallback)
+        if: steps.token_check.outputs.has_token != 'true'
+        run: |
+          echo "::notice::Total Coverage: ${{ env.COVERAGE }} (fork PR: coverage HTML upload and PR comment skipped)"

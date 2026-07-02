@@ -44,6 +44,10 @@ log = "0.4.28"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
 
+[lib]
+name = "rrdb"
+path = "./src/lib.rs"
+
 [[bin]]
 name = "rrdb"
 path = "./src/main.rs"
@@ -52,6 +56,11 @@ required-features = ["rrdb"]
 [[bin]]
 name = "test"
 path = "./src/test.rs"
+
+[[bench]]
+name = "index_benchmark"
+path = "./benches/index_benchmark.rs"
+harness = false
 
 [features]
 default = ["rrdb"]
