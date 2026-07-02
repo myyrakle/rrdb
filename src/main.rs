@@ -1,24 +1,14 @@
-pub mod command;
-pub mod common;
-pub mod config;
-pub mod constants;
-pub mod engine;
-pub mod errors;
-pub mod pgwire;
-pub mod utils;
-
-use std::path::PathBuf;
-
-use command::{Command, SubCommand};
+use rrdb::command::{Command, SubCommand};
 
 use clap::Parser;
 
-use crate::{
+use rrdb::{
     config::launch_config::LaunchConfig,
     constants::{DEFAULT_CONFIG_BASEPATH, DEFAULT_CONFIG_FILENAME},
     engine::{DBEngine, server::Server},
     errors::execute_error::ExecuteError,
 };
+use rrdb::errors;
 
 async fn load_launch_config(base_path: Option<&PathBuf>) -> errors::Result<LaunchConfig> {
     match base_path {
