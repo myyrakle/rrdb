@@ -6,7 +6,7 @@ Engine 모듈은 SQL 텍스트를 받아 실행 가능한 액션으로 변환하
 
 ## 아키텍처: 쿼리 처리 파이프라인
 
-```
+```text
 SQL Text (String)
     │
     ▼
@@ -18,7 +18,7 @@ SQL Text (String)
 ┌──────────┐
 │  parser  │  ← 토큰 → AST (SQLStatement)
 └────┬─────┘
-     │ AST: DDLStatement | DMLStatement | OtherStatement
+     │ AST: DDLStatement | DMLStatement | DCLStatement | TCLStatement | OtherStatement | None
      ▼
 ┌───────────┐
 │ optimizer │  ← AST 정규화/최적화 (선택적)
@@ -26,7 +26,7 @@ SQL Text (String)
      │
      ▼
 ┌──────────┐
-│  actions │  ← AST → 실제 DB 조작 (DDL/DML/Other)
+│  actions │  ← AST → 실제 DB 조작 (DDL/DML/DCL/TCL/Other)
 │ DBEngine │     각 match arm에서 실행
 └────┬─────┘
      │ WAL 기록 (wal_enabled = true 시)
@@ -39,8 +39,10 @@ SQL Text (String)
 ## 모듈 책임
 
 ### `ast/` — 추상 구문 트리
-- `SQLStatement`: DDL / DML / Other 3가지 변형
-- `DDLStatement`: CREATE DATABASE, CREATE TABLE, ALTER DATABASE, ALTER TABLE, DROP DATABASE, DROP TABLE
+- `SQLStatement`: DDL / DML / DCL / TCL / Other / None 6가지 변형
+- `DDLStatement`: CREATE DATABASE, CREATE TABLE, ALTER DATABASE, ALTER TABLE, DROP DATABASE, DROP TABLE, CREATE INDEX
+- `DCLStatement`: (현재 빈 enum, 향후 GRANT/REVOKE 등)
+- `TCLStatement`: BEGIN TRANSACTION, COMMIT, ROLLBACK
 - `DMLStatement`: INSERT, SELECT, UPDATE, DELETE
 - `OtherStatement`: SHOW DATABASES, USE DATABASE, SHOW TABLES, DESC TABLE
 - `TableName { database_name: Option<String>, table_name: String }`

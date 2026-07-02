@@ -112,7 +112,7 @@ let server = Server::new_with_arc_config(config.clone());
 
 ## main.rs에서의 설정 흐름
 
-```
+```text
 main()
   │
   ├── SubCommand::Init

@@ -48,11 +48,17 @@ pub enum SubCommand {
 
 ```rust
 // src/command/init.rs
-pub struct Command {
-    /// 베이스 경로 (optional)
-    #[clap(short, long)]
+#[derive(Clone, Debug, Default, Deserialize, Args)]
+pub struct ConfigOptions {
+    #[clap(name = "base-path", long, short)]
     pub base_path: Option<String>,
-    // init 내부에서 init::CommandAttr 참조
+}
+
+#[derive(Clone, Debug, Args)]
+#[clap(name = "init")]
+pub struct Command {
+    #[clap(flatten)]
+    pub init: ConfigOptions,
 }
 ```
 
@@ -67,10 +73,17 @@ cargo run -- init --base-path /custom/path
 
 ```rust
 // src/command/run.rs
-pub struct Command {
-    /// 베이스 경로 (optional)
-    #[clap(short, long)]
+#[derive(Clone, Debug, Default, Deserialize, Args)]
+pub struct ConfigOptions {
+    #[clap(name = "base-path", long, short)]
     pub base_path: Option<String>,
+}
+
+#[derive(Clone, Debug, Args)]
+#[clap(name = "run")]
+pub struct Command {
+    #[clap(flatten)]
+    pub value: ConfigOptions,
 }
 ```
 
@@ -148,18 +161,23 @@ async fn main() -> errors::Result<()> {
 
 ## 새 서브커맨드 추가 방법
 
-1. `src/command/<name>/` 디렉토리 생성
-2. `mod.rs`에 `Command` 구조체 정의 (`#[derive(clap::Args, Debug)]`)
-3. `src/command/mod.rs`에 `pub mod <name>;` 추가
-4. `SubCommand` enum에 새 변형 추가
-5. `main.rs`의 match에 처리 로직 추가
+1. `src/command/<name>.rs` 파일 추가
+2. 해당 파일에 `Command`/`ConfigOptions`를 정의하고, 필요하면 `#[clap(flatten)]`으로 감싼다.
+3. `src/command/mod.rs`에 `pub mod <name>;`와 `SubCommand` 변형을 추가한다.
+4. `main.rs`의 match에 처리 로직을 추가한다.
 
 ```rust
-// 1. src/command/dump/mod.rs
-#[derive(clap::Args, Debug)]
+// 1. src/command/dump.rs
+#[derive(Clone, Debug, Default, Deserialize, Args)]
+pub struct ConfigOptions {
+    #[clap(name = "output-path", long, short)]
+    pub output_path: Option<String>,
+}
+
+#[derive(Clone, Debug, Args)]
 pub struct Command {
-    #[clap(short, long)]
-    pub output_path: String,
+    #[clap(flatten)]
+    pub value: ConfigOptions,
 }
 
 // 2. src/command/mod.rs

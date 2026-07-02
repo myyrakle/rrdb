@@ -4,7 +4,7 @@
 
 RRDB는 계층화된 오류 처리 시스템을 사용합니다:
 
-```
+```text
 main.rs ── anyhow::Result   (바이너리 레벨)
   │
   ▼
@@ -79,6 +79,7 @@ impl std::fmt::Display for ExecuteError {
 ```
 
 하위 에러 타입들:
+
 | 타입 | Display 형식 | ErrorKind 매핑 |
 |---|---|---|
 | `ExecuteError` | `"{message}"` | `ErrorKind::ExecuteError` |

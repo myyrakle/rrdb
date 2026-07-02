@@ -107,6 +107,7 @@ mod tests {
             .times(1)
             .returning(|_| Ok(()));
 
+        // 직접 struct literal로 목 주입 (테스트 전용 패턴)
         let engine = DBEngine {
             config: Arc::new(LaunchConfig::default()),
             file_system: Arc::new(mock_fs),
@@ -117,6 +118,8 @@ mod tests {
     }
 }
 ```
+
+> **참고**: `DBEngine::new()`는 Real 구현체를 기본 주입하므로, 목(mock)을 주입하려면 위와 같이 struct literal로 직접 생성해야 합니다. 프로덕션 코드에서는 항상 `DBEngine::new()` 생성자를 사용하세요.
 
 ## 트레이트 확장 가이드
 
