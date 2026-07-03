@@ -5,7 +5,7 @@ use crate::engine::ast::dml::parts::group_by::GroupByItem;
 use crate::engine::ast::dml::parts::having::HavingClause;
 use crate::engine::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::engine::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
-use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
+use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectKind, SelectWildCard};
 use crate::engine::ast::dml::select::SelectQuery;
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
@@ -115,12 +115,15 @@ impl Parser {
             self.get_next_token();
             self.get_next_token();
 
-            // GROUP BY ALL 체크
-            let next_token = self.get_next_token();
-            if next_token == Token::All {
+            if !self.has_next_token() {
+                return Err(ParsingError::wrap("need more tokens"));
+            }
+
+            let current_token = self.get_next_token();
+            if current_token == Token::All {
                 query_builder = query_builder.set_group_by_all();
             } else {
-                self.unget_next_token(next_token);
+                self.unget_next_token(current_token);
 
                 loop {
                     if !self.has_next_token() {
@@ -159,9 +162,21 @@ impl Parser {
             }
         }
 
-        // GROUP BY ALL: expand to all non-aggregate columns
-        let needs_expand = query_builder.group_by_clause.as_ref().map_or(false, |c| c.group_by_all);
+        let needs_expand = query_builder
+            .group_by_clause
+            .as_ref()
+            .is_some_and(|clause| clause.group_by_all);
         if needs_expand {
+            let has_wildcard = query_builder
+                .select_items
+                .iter()
+                .any(|item| matches!(item, SelectKind::WildCard(_)));
+            if has_wildcard {
+                return Err(ParsingError::wrap(
+                    "GROUP BY ALL cannot be used with a wildcard select list",
+                ));
+            }
+
             let non_aggregate = query_builder.get_non_aggregate_column();
             if let Some(ref mut clause) = query_builder.group_by_clause {
                 clause.group_by_items = non_aggregate

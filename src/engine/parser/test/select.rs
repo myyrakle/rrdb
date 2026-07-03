@@ -2476,8 +2476,6 @@ fn test_parse_limit() {
 
 #[test]
 fn test_parse_group_by_all() {
-    // SELECT a, b, SUM(c) FROM t GROUP BY ALL
-    // Should auto-expand GROUP BY to a, b (all non-aggregate columns)
     let tokens = vec![
         Token::Select,
         Token::Identifier("a".into()),
@@ -2496,15 +2494,67 @@ fn test_parse_group_by_all() {
     ];
 
     let mut parser = Parser::new(tokens);
-    let select: SelectQuery = parser.handle_select_query(Default::default()).unwrap();
+    let select = parser.handle_select_query(Default::default()).unwrap();
 
     assert!(select.has_group_by());
 
     let group_by = select.group_by_clause.unwrap();
-    assert_eq!(group_by.group_by_items.len(), 2, "GROUP BY ALL should expand to 2 non-aggregate columns");
+    assert_eq!(group_by.group_by_items.len(), 2);
+    assert!(!group_by.group_by_all);
 
-    let columns: Vec<&str> = group_by.group_by_items.iter().map(|item| item.item.column_name.as_str()).collect();
-    assert!(columns.contains(&"a"), "GROUP BY ALL should include column 'a'");
-    assert!(columns.contains(&"b"), "GROUP BY ALL should include column 'b'");
-    assert!(!columns.contains(&"c"), "GROUP BY ALL should NOT include aggregate column 'c'");
+    let columns: Vec<&str> = group_by
+        .group_by_items
+        .iter()
+        .map(|item| item.item.column_name.as_str())
+        .collect();
+    assert!(columns.contains(&"a"));
+    assert!(columns.contains(&"b"));
+    assert!(!columns.contains(&"c"));
+}
+
+#[test]
+fn test_parse_group_by_all_with_wildcard_fails() {
+    let tokens = vec![
+        Token::Select,
+        Token::Operator(OperatorToken::Asterisk),
+        Token::From,
+        Token::Identifier("t".into()),
+        Token::Group,
+        Token::By,
+        Token::All,
+    ];
+
+    let mut parser = Parser::new(tokens);
+    let got = parser.handle_select_query(Default::default());
+
+    assert!(got.is_err());
+    assert_eq!(
+        got.err().unwrap().to_string(),
+        "parsing error: GROUP BY ALL cannot be used with a wildcard select list"
+    );
+}
+
+#[test]
+fn test_parse_group_by_all_with_only_aggregates() {
+    let tokens = vec![
+        Token::Select,
+        Token::Identifier("sum".into()),
+        Token::LeftParentheses,
+        Token::Identifier("c".into()),
+        Token::RightParentheses,
+        Token::From,
+        Token::Identifier("t".into()),
+        Token::Group,
+        Token::By,
+        Token::All,
+    ];
+
+    let mut parser = Parser::new(tokens);
+    let select = parser.handle_select_query(Default::default()).unwrap();
+
+    assert!(!select.has_group_by());
+
+    let group_by = select.group_by_clause.unwrap();
+    assert!(group_by.group_by_items.is_empty());
+    assert!(!group_by.group_by_all);
 }

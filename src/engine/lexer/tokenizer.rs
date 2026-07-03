@@ -171,6 +171,7 @@ impl Tokenizer {
                 "BEGIN" => Token::Begin,
                 "TRANSACTION" => Token::Transaction,
                 "COMMIT" => Token::Commit,
+                "ALL" => Token::All,
                 "ROLLBACK" => Token::Rollback,
                 _ => Token::Identifier(identifier),
             };

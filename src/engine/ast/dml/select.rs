@@ -128,10 +128,11 @@ impl SelectQuery {
     }
 
     pub fn set_group_by_all(mut self) -> Self {
-        self.group_by_clause = Some(GroupByClause {
+        let group_by_clause = self.group_by_clause.get_or_insert_with(|| GroupByClause {
             group_by_items: vec![],
-            group_by_all: true,
+            group_by_all: false,
         });
+        group_by_clause.group_by_all = true;
         self
     }
 
