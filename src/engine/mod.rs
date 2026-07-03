@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod encoder;
+pub mod index;
 pub mod lexer;
 pub mod optimizer;
 pub mod parser;
