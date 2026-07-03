@@ -19,3 +19,6 @@ pub(crate) mod tcl;
 pub(crate) mod common;
 
 pub(crate) mod ddl;
+
+pub(crate) mod parser;
+pub(crate) mod coverage;
