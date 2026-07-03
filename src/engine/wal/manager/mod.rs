@@ -98,6 +98,9 @@ where
         file.write_all(&frame)
             .await
             .map_err(|e| WALError::wrap(e.to_string()))?;
+        file.flush()
+            .await
+            .map_err(|e| WALError::wrap(e.to_string()))?;
 
         self.buffers.push(entry);
 
@@ -189,7 +192,15 @@ mod tests {
     }
 
     async fn setup_test_wal_dir(test_name: &str) -> PathBuf {
-        let wal_dir = PathBuf::from(format!("target/test_wal_data/{}", test_name));
+        let test_binary = std::env::current_exe()
+            .ok()
+            .and_then(|path| path.file_stem().map(|stem| stem.to_os_string()))
+            .and_then(|stem| stem.into_string().ok())
+            .unwrap_or_else(|| "unknown".to_string());
+        let wal_dir = PathBuf::from("target")
+            .join("test_wal_data")
+            .join(test_binary)
+            .join(test_name);
         if wal_dir.exists() {
             tokio::fs::remove_dir_all(&wal_dir)
                 .await
