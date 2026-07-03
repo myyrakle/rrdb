@@ -8,8 +8,20 @@ jobs:
   stats:
     runs-on: ubuntu-latest
     steps:
+      - name: Check token availability
+        id: token_check
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run pull request stats
-        uses: flowwer-dev/pull-request-stats@master
+        if: steps.token_check.outputs.has_token == 'true'
+        uses: flowwer-dev/pull-request-stats@f687cfd5fc711270c0af58acf72a5d0884e5c43a # v3.2.3
         with:
           token: ${{ secrets.GH_TOKEN }}
           period: 14
