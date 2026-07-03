@@ -22,8 +22,8 @@ cargo install rrdb
 
 ```
 sudo ln -s /home/$USER/.cargo/bin/rrdb /usr/bin/rrdb
-sudo rrdb init
-sudo rrdb daemon
+sudo rrdb init # initialize data directory
+sudo rrdb daemon # register daemon 
 ```
 
 - 플랫폼별 초기화 (MacOS)
