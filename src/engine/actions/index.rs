@@ -168,9 +168,14 @@ impl DBEngine {
     }
 
     /// 옵티마이저 컨텍스트를 구성합니다.
-    /// 실패해도 쿼리는 FullScan으로 동작해야 하므로 오류는 빈 컨텍스트로 흡수합니다.
+    /// 실패해도 쿼리는 FullScan으로 동작해야 하므로 오류는 빈 컨텍스트로 흡수하지만,
+    /// 디버깅을 위해 warn 로그를 남깁니다.
     pub(crate) async fn build_optimizer_context(&self, table_name: &TableName) -> OptimizerContext {
-        if self.ensure_indices_loaded().await.is_err() {
+        if let Err(error) = self.ensure_indices_loaded().await {
+            log::warn!(
+                "build_optimizer_context: ensure_indices_loaded failed for {:?}: {}",
+                table_name, error
+            );
             return OptimizerContext::default();
         }
 
@@ -180,7 +185,16 @@ impl DBEngine {
             return OptimizerContext::default();
         }
 
-        let statistics = self.table_statistics(table_name).await.ok();
+        let statistics = match self.table_statistics(table_name).await {
+            Ok(statistics) => Some(statistics),
+            Err(error) => {
+                log::warn!(
+                    "build_optimizer_context: table_statistics failed for {:?}: {}",
+                    table_name, error
+                );
+                None
+            }
+        };
 
         OptimizerContext {
             indexes,
