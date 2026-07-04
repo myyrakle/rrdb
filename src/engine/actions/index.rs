@@ -174,7 +174,8 @@ impl DBEngine {
         if let Err(error) = self.ensure_indices_loaded().await {
             log::warn!(
                 "build_optimizer_context: ensure_indices_loaded failed for {:?}: {}",
-                table_name, error
+                table_name,
+                error
             );
             return OptimizerContext::default();
         }
@@ -190,7 +191,8 @@ impl DBEngine {
             Err(error) => {
                 log::warn!(
                     "build_optimizer_context: table_statistics failed for {:?}: {}",
-                    table_name, error
+                    table_name,
+                    error
                 );
                 None
             }

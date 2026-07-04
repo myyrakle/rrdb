@@ -63,13 +63,12 @@ impl StatisticsManager {
             let old_row_count = statistics.row_count;
             statistics.row_count = statistics.row_count.saturating_sub(count);
 
-            // 블록 개수를 비례적으로 감소
+            // 블록 개수를 비례적으로 감소 (소량 삭제는 block_count에 영향 없음)
             if old_row_count > 0 {
                 let avg_rows_per_block = old_row_count / statistics.block_count.max(1);
                 if avg_rows_per_block > 0 {
                     let removed_blocks = count / avg_rows_per_block;
-                    statistics.block_count =
-                        statistics.block_count.saturating_sub(removed_blocks.max(1));
+                    statistics.block_count = statistics.block_count.saturating_sub(removed_blocks);
                 }
             }
         }
@@ -152,5 +151,40 @@ mod tests {
         manager.invalidate_database("rrdb").await;
         assert_eq!(manager.get(&table()).await, None);
         assert!(manager.get(&other).await.is_some());
+    }
+
+    #[tokio::test]
+    async fn record_delete_block_count_is_not_over_decremented_for_small_deletes() {
+        let manager = StatisticsManager::new();
+
+        // 100 rows, 10 blocks → 10 rows/block
+        manager
+            .set(
+                table(),
+                TableStatistics {
+                    row_count: 100,
+                    block_count: 10,
+                    distinct_values: HashMap::new(),
+                },
+            )
+            .await;
+
+        // 3 rows 삭제: 1 block 미만이므로 block_count는 변하지 않아야 함
+        manager.record_delete(&table(), 3).await;
+        let stats = manager.get(&table()).await.unwrap();
+        assert_eq!(stats.row_count, 97);
+        assert_eq!(
+            stats.block_count, 10,
+            "small delete should not reduce block_count"
+        );
+
+        // 10 rows 추가 삭제: 정확히 1 block 분량
+        manager.record_delete(&table(), 10).await;
+        let stats = manager.get(&table()).await.unwrap();
+        assert_eq!(stats.row_count, 87);
+        assert_eq!(
+            stats.block_count, 9,
+            "10 rows = 1 block should reduce block_count by 1"
+        );
     }
 }
