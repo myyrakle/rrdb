@@ -206,9 +206,36 @@ impl DBEngine {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    use tokio::sync::{Mutex, OnceCell, RwLock};
+
     use crate::config::launch_config::LaunchConfig;
     #[cfg(target_os = "linux")]
     use crate::constants::SYSTEMD_DAEMON_SCRIPT;
+    use crate::engine::DBEngine;
+    use crate::engine::index::manager::IndexManager;
+    use crate::engine::optimizer::statistics::StatisticsManager;
+
+    fn build_test_engine(
+        config: Arc<LaunchConfig>,
+        file_system: Arc<dyn crate::common::fs::FileSystem + Send + Sync>,
+        command_runner: Arc<dyn crate::common::command::CommandRunner + Send + Sync>,
+    ) -> DBEngine {
+        let data_directory = PathBuf::from(config.data_directory.clone());
+
+        DBEngine {
+            config,
+            file_system,
+            command_runner,
+            table_config_cache: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            row_storage_lock: Arc::new(Mutex::new(())),
+            index_manager: Arc::new(IndexManager::new(data_directory)),
+            statistics_manager: Arc::new(StatisticsManager::new()),
+            indices_loaded: Arc::new(OnceCell::new()),
+        }
+    }
 
     #[cfg(target_os = "linux")]
     #[tokio::test]
@@ -566,15 +593,11 @@ wal_extension = "log"
 
         for index in [0, 2, 4, 5, 6] {
             let test_case = &test_cases[index];
-            let executor = DBEngine {
-                config: (test_case.mock_config)(),
-                file_system: (test_case.mock_file_system)(),
-                command_runner: (test_case.mock_command_runner)(),
-                table_config_cache: Arc::new(tokio::sync::RwLock::new(
-                    std::collections::HashMap::new(),
-                )),
-                row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
-            };
+            let executor = build_test_engine(
+                (test_case.mock_config)(),
+                (test_case.mock_file_system)(),
+                (test_case.mock_command_runner)(),
+            );
 
             let result = executor.init_config(None).await;
 
@@ -627,15 +650,11 @@ wal_extension = "log"
 
         let command_runner = MockCommandRunner::new();
 
-        let executor = DBEngine {
-            config: Arc::new(config),
-            file_system: Arc::new(file_system),
-            command_runner: Arc::new(command_runner),
-            table_config_cache: Arc::new(
-                tokio::sync::RwLock::new(std::collections::HashMap::new()),
-            ),
-            row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
-        };
+        let executor = build_test_engine(
+            Arc::new(config),
+            Arc::new(file_system),
+            Arc::new(command_runner),
+        );
 
         let result = executor.init_config(Some(base_path)).await;
 
@@ -674,15 +693,11 @@ wal_extension = "log"
             })
         });
 
-        let executor = DBEngine {
-            config: Arc::new(LaunchConfig::default()),
-            file_system: Arc::new(file_system),
-            command_runner: Arc::new(command_runner),
-            table_config_cache: Arc::new(
-                tokio::sync::RwLock::new(std::collections::HashMap::new()),
-            ),
-            row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
-        };
+        let executor = build_test_engine(
+            Arc::new(LaunchConfig::default()),
+            Arc::new(file_system),
+            Arc::new(command_runner),
+        );
 
         let result = executor.install_daemon().await;
 
