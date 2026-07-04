@@ -21,6 +21,15 @@ impl DBEngine {
 
         database_path.push(&database_name);
 
+        // 인덱스 메모리 상태 및 통계 정리 (인덱스 파일은 데이터베이스 디렉토리와 함께 삭제됨)
+        self.ensure_indices_loaded().await?;
+        self.index_manager
+            .remove_database_indices(&database_name)
+            .await;
+        self.statistics_manager
+            .invalidate_database(&database_name)
+            .await;
+
         if let Err(error) = tokio::fs::remove_dir_all(database_path.clone()).await {
             match error.kind() {
                 IOErrorKind::NotFound => {

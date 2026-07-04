@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use futures::future::join_all;
 
+use crate::engine::actions::index::row_index_key;
 use crate::engine::ast::dml::plan::select::scan::ScanType;
 use crate::engine::ast::dml::plan::update::update_plan::UpdatePlanItem;
 use crate::engine::ast::dml::update::UpdateQuery;
@@ -29,8 +30,8 @@ impl DBEngine {
         let table = query.target_table.clone().unwrap().table;
         let update_items = query.update_items.clone();
 
-        // 최적화 작업
-        let optimizer = Optimizer::new();
+        // 최적화 작업 (대상 테이블의 인덱스/통계로 컨텍스트 구성)
+        let optimizer = Optimizer::with_context(self.build_optimizer_context(&table).await);
 
         let plan = optimizer.optimize_update(query).await?;
 
@@ -60,8 +61,10 @@ impl DBEngine {
 
                             rows.append(&mut result);
                         }
-                        ScanType::IndexScan(_index) => {
-                            unimplemented!()
+                        ScanType::IndexScan(index_scan_plan) => {
+                            let mut result = self.index_scan(table_name, &index_scan_plan).await?;
+
+                            rows.append(&mut result);
                         }
                     }
                 }
@@ -119,9 +122,15 @@ impl DBEngine {
             .collect::<Vec<_>>();
 
         // 수정 작업
+        self.ensure_indices_loaded().await?;
+        let index_metas = self.table_index_metas(&table).await;
+
         let mut replacements = HashMap::new();
+        // 인덱스 반영 목록: (index_name, old_key, new_key, row_path)
+        let mut index_operations: Vec<(String, Option<String>, Option<String>, String)> = vec![];
 
         for (location, mut row) in rows.into_iter() {
+            let old_row = row.clone();
             let reduce_context = ReduceContext {
                 row: None,
                 table_alias_map: table_alias_map.clone(),
@@ -150,18 +159,65 @@ impl DBEngine {
                 }
             }
 
+            // 인덱스 컬럼 값 변경 감지 (#217)
+            for meta in &index_metas {
+                let old_key = row_index_key(&old_row, &meta.column_name);
+                let new_key = row_index_key(&row, &meta.column_name);
+
+                if old_key != new_key {
+                    index_operations.push((
+                        meta.index_name.clone(),
+                        old_key,
+                        new_key,
+                        location.row_index.to_string(),
+                    ));
+                }
+            }
+
             replacements.insert(location.row_index, row);
         }
 
         let affected_rows = replacements.len();
 
         if !replacements.is_empty() {
+            // 인덱스 선반영: 고유 제약 위반은 여기서 검출되며, 실패 시 적용분을 되돌립니다
+            let mut applied = 0;
+
+            for (index_name, old_key, new_key, row_path) in &index_operations {
+                if let Err(error) = self
+                    .apply_index_operation(index_name, old_key, new_key, row_path)
+                    .await
+                {
+                    for (index_name, old_key, new_key, row_path) in
+                        index_operations[..applied].iter().rev()
+                    {
+                        let _ = self
+                            .apply_index_operation(index_name, new_key, old_key, row_path)
+                            .await;
+                    }
+
+                    return Err(error);
+                }
+
+                applied += 1;
+            }
+
             wal_manager
                 .lock()
                 .await
                 .append_record(EntryType::Set, Some(wal_payload), None)
                 .await?;
-            self.update_table_rows(&table, replacements).await?;
+
+            if let Err(error) = self.update_table_rows(&table, replacements).await {
+                // 저장 실패 시 인덱스 되돌리기
+                for (index_name, old_key, new_key, row_path) in index_operations.iter().rev() {
+                    let _ = self
+                        .apply_index_operation(index_name, new_key, old_key, row_path)
+                        .await;
+                }
+
+                return Err(error);
+            }
         }
 
         Ok(ExecuteResult::with_affected_rows(

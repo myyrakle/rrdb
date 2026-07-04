@@ -89,14 +89,18 @@ fn database_and_table_parsers_cover_optional_variants() {
         Token::RightParentheses,
         Token::SemiColon,
     ]);
-    assert!(create_table
-        .handle_create_table_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        create_table
+            .handle_create_table_query(ParserContext::default())
+            .is_ok()
+    );
 
     let mut alter_table = Parser::new(vec![Token::Identifier("foo".into()), Token::SemiColon]);
-    assert!(alter_table
-        .handle_alter_table_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        alter_table
+            .handle_alter_table_query(ParserContext::default())
+            .is_ok()
+    );
 
     let mut add_without_column_keyword = Parser::new(vec![
         Token::Identifier("foo".into()),
@@ -104,9 +108,11 @@ fn database_and_table_parsers_cover_optional_variants() {
         Token::Identifier("bar".into()),
         Token::Identifier("INT".into()),
     ]);
-    assert!(add_without_column_keyword
-        .handle_alter_table_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        add_without_column_keyword
+            .handle_alter_table_query(ParserContext::default())
+            .is_ok()
+    );
 
     let mut alter_type_keyword = Parser::new(vec![
         Token::Identifier("foo".into()),
@@ -115,9 +121,11 @@ fn database_and_table_parsers_cover_optional_variants() {
         Token::Type,
         Token::Identifier("BOOL".into()),
     ]);
-    assert!(alter_type_keyword
-        .handle_alter_table_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        alter_type_keyword
+            .handle_alter_table_query(ParserContext::default())
+            .is_ok()
+    );
 
     let mut drop_table = Parser::new(vec![
         Token::If,
@@ -125,9 +133,11 @@ fn database_and_table_parsers_cover_optional_variants() {
         Token::Identifier("foo".into()),
         Token::SemiColon,
     ]);
-    assert!(drop_table
-        .handle_drop_table_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        drop_table
+            .handle_drop_table_query(ParserContext::default())
+            .is_ok()
+    );
 }
 
 #[test]
@@ -158,8 +168,7 @@ fn dml_parsers_cover_alias_where_and_insert_select_paths() {
 
 #[test]
 fn select_parser_covers_subquery_alias_join_having_and_limit_offset_orders() {
-    let mut subquery =
-        Parser::with_string("SELECT * FROM (SELECT 1) s;".to_owned()).unwrap();
+    let mut subquery = Parser::with_string("SELECT * FROM (SELECT 1) s;".to_owned()).unwrap();
     assert!(subquery.parse(ParserContext::default()).is_ok());
 
     let mut join_query = Parser::with_string(
@@ -192,9 +201,11 @@ fn select_helpers_cover_right_parenthesis_exit_paths() {
         Token::Identifier("a".into()),
         Token::RightParentheses,
     ]);
-    assert!(group_by_parser
-        .handle_select_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        group_by_parser
+            .handle_select_query(ParserContext::default())
+            .is_ok()
+    );
     assert_eq!(group_by_parser.get_next_token(), Token::RightParentheses);
 
     let mut order_by_parser = Parser::new(vec![
@@ -207,9 +218,11 @@ fn select_helpers_cover_right_parenthesis_exit_paths() {
         Token::Identifier("a".into()),
         Token::RightParentheses,
     ]);
-    assert!(order_by_parser
-        .handle_select_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        order_by_parser
+            .handle_select_query(ParserContext::default())
+            .is_ok()
+    );
     assert_eq!(order_by_parser.get_next_token(), Token::RightParentheses);
 }
 
@@ -233,11 +246,18 @@ fn expression_parser_covers_literal_binary_between_subquery_and_function_paths()
 
     for sql in cases {
         let mut parser = Parser::with_string(sql.to_owned()).unwrap();
-        assert!(parser.parse_expression(ParserContext::default()).is_ok(), "{sql}");
+        assert!(
+            parser.parse_expression(ParserContext::default()).is_ok(),
+            "{sql}"
+        );
     }
 
     let mut right_paren = Parser::new(vec![Token::RightParentheses]);
-    assert!(right_paren.parse_expression(ParserContext::default()).is_err());
+    assert!(
+        right_paren
+            .parse_expression(ParserContext::default())
+            .is_err()
+    );
 }
 
 #[test]
@@ -256,19 +276,25 @@ fn select_and_join_helpers_are_callable_directly() {
     assert!(join.right_alias.is_some());
     assert!(join.on.is_some());
 
-    let mut where_parser =
-        Parser::with_string("WHERE 1 = 1".to_owned()).unwrap();
+    let mut where_parser = Parser::with_string("WHERE 1 = 1".to_owned()).unwrap();
     assert!(where_parser.parse_where(ParserContext::default()).is_ok());
 
-    let mut having_parser =
-        Parser::with_string("HAVING 1 = 1".to_owned()).unwrap();
+    let mut having_parser = Parser::with_string("HAVING 1 = 1".to_owned()).unwrap();
     assert!(having_parser.parse_having(ParserContext::default()).is_ok());
 
     let mut limit_parser = Parser::with_string("LIMIT 3".to_owned()).unwrap();
-    assert_eq!(limit_parser.parse_limit(ParserContext::default()).unwrap(), 3);
+    assert_eq!(
+        limit_parser.parse_limit(ParserContext::default()).unwrap(),
+        3
+    );
 
     let mut offset_parser = Parser::with_string("OFFSET 2".to_owned()).unwrap();
-    assert_eq!(offset_parser.parse_offset(ParserContext::default()).unwrap(), 2);
+    assert_eq!(
+        offset_parser
+            .parse_offset(ParserContext::default())
+            .unwrap(),
+        2
+    );
 }
 
 #[test]
@@ -291,9 +317,11 @@ fn insert_parser_covers_multiple_value_tuples_and_default() {
         Token::Default,
         Token::RightParentheses,
     ]);
-    assert!(default_values
-        .handle_insert_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        default_values
+            .handle_insert_query(ParserContext::default())
+            .is_ok()
+    );
 
     let mut expression_values = Parser::new(vec![
         Token::Insert,
@@ -309,9 +337,11 @@ fn insert_parser_covers_multiple_value_tuples_and_default() {
         Token::Integer(2),
         Token::RightParentheses,
     ]);
-    assert!(expression_values
-        .handle_insert_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        expression_values
+            .handle_insert_query(ParserContext::default())
+            .is_ok()
+    );
 
     let mut comma_values = Parser::new(vec![
         Token::Values,
@@ -321,9 +351,11 @@ fn insert_parser_covers_multiple_value_tuples_and_default() {
         Token::Integer(2),
         Token::RightParentheses,
     ]);
-    assert!(comma_values
-        .parse_insert_values(ParserContext::default())
-        .is_ok());
+    assert!(
+        comma_values
+            .parse_insert_values(ParserContext::default())
+            .is_ok()
+    );
 }
 
 #[test]
@@ -332,15 +364,19 @@ fn common_helpers_cover_parse_table_name_error_paths() {
     assert!(no_token.parse_table_name(ParserContext::default()).is_err());
 
     let mut not_identifier = Parser::new(vec![Token::SemiColon]);
-    assert!(not_identifier.parse_table_name(ParserContext::default()).is_err());
+    assert!(
+        not_identifier
+            .parse_table_name(ParserContext::default())
+            .is_err()
+    );
 
-    let mut run_out_after_period = Parser::new(vec![
-        Token::Identifier("foo".into()),
-        Token::Period,
-    ]);
-    assert!(run_out_after_period
-        .parse_table_name(ParserContext::default())
-        .is_err());
+    let mut run_out_after_period =
+        Parser::new(vec![Token::Identifier("foo".into()), Token::Period]);
+    assert!(
+        run_out_after_period
+            .parse_table_name(ParserContext::default())
+            .is_err()
+    );
 
     let mut join_outer_no_next = Parser::new(vec![Token::Left]);
     assert_eq!(join_outer_no_next.get_next_join_type(), None);
@@ -373,9 +409,7 @@ fn expression_parser_propagates_error_from_an_unterminated_function_call() {
         Token::LeftParentheses,
     ]);
 
-    assert!(parser
-        .parse_expression(ParserContext::default())
-        .is_err());
+    assert!(parser.parse_expression(ParserContext::default()).is_err());
 }
 
 #[test]
@@ -387,7 +421,9 @@ fn insert_values_parser_skips_non_expression_tokens_inside_a_tuple() {
         Token::RightParentheses,
     ]);
 
-    let values = parser.parse_insert_values(ParserContext::default()).unwrap();
+    let values = parser
+        .parse_insert_values(ParserContext::default())
+        .unwrap();
     assert!(values[0].list.is_empty());
 }
 
@@ -415,7 +451,9 @@ fn select_parser_covers_select_item_error_paths_and_more_variants() {
 
     let mut semi_after_select =
         Parser::new(vec![Token::Select, Token::Integer(1), Token::SemiColon]);
-    assert!(semi_after_select
-        .handle_select_query(ParserContext::default())
-        .is_ok());
+    assert!(
+        semi_after_select
+            .handle_select_query(ParserContext::default())
+            .is_ok()
+    );
 }

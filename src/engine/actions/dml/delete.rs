@@ -28,8 +28,8 @@ impl DBEngine {
 
         let table = query.from_table.as_ref().unwrap().table.clone();
 
-        // 최적화 작업
-        let optimizer = Optimizer::new();
+        // 최적화 작업 (대상 테이블의 인덱스/통계로 컨텍스트 구성)
+        let optimizer = Optimizer::with_context(self.build_optimizer_context(&table).await);
 
         let plan = optimizer.optimize_delete(query).await?;
 
@@ -59,8 +59,10 @@ impl DBEngine {
 
                             rows.append(&mut result);
                         }
-                        ScanType::IndexScan(_index) => {
-                            unimplemented!()
+                        ScanType::IndexScan(index_scan_plan) => {
+                            let mut result = self.index_scan(table_name, &index_scan_plan).await?;
+
+                            rows.append(&mut result);
                         }
                     }
                 }
@@ -120,6 +122,13 @@ impl DBEngine {
                 .append_record(EntryType::Delete, Some(wal_payload), None)
                 .await?;
             self.delete_table_rows(&table, row_indexes).await?;
+
+            // DELETE는 세그먼트를 압축해 row index가 밀리므로 인덱스를 재구축합니다 (#217)
+            self.ensure_indices_loaded().await?;
+            self.rebuild_table_indices(&table).await?;
+            self.statistics_manager
+                .record_delete(&table, affected_rows)
+                .await;
         }
 
         Ok(ExecuteResult::with_affected_rows(

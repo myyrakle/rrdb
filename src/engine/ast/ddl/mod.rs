@@ -4,4 +4,5 @@ pub mod create_database;
 pub mod create_index;
 pub mod create_table;
 pub mod drop_database;
+pub mod drop_index;
 pub mod drop_table;

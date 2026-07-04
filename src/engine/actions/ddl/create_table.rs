@@ -1,8 +1,10 @@
 use std::io::ErrorKind as IOErrorKind;
 
 use crate::engine::DBEngine;
+use crate::engine::actions::index::qualified_index_name;
 use crate::engine::ast::ddl::create_table::CreateTableQuery;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
+use crate::engine::index::IndexMeta;
 use crate::engine::schema::table::TableSchema;
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
@@ -56,7 +58,33 @@ impl DBEngine {
             return Err(ExecuteError::wrap(error.to_string()));
         }
 
-        // TODO: primary key 데이터 생성
+        // PRIMARY KEY 자동 인덱스 생성 (#217)
+        let primary_key_columns: Vec<String> = if table_info.primary_key.is_empty() {
+            table_info
+                .columns
+                .iter()
+                .filter(|column| column.primary_key)
+                .map(|column| column.name.clone())
+                .collect()
+        } else {
+            table_info.primary_key.clone()
+        };
+
+        // TODO(#217): 복합 PRIMARY KEY 인덱스는 미지원 (단일 컬럼만 자동 생성)
+        if primary_key_columns.len() == 1 {
+            self.ensure_indices_loaded().await?;
+
+            let index_name = qualified_index_name(&database_name, &format!("{}_pkey", table_name));
+            let meta = IndexMeta::new(
+                index_name,
+                table_info.table.clone(),
+                primary_key_columns[0].clone(),
+                true,
+            );
+
+            self.index_manager.create_index(meta).await?;
+        }
+
         // TODO: unique key 데이터 생성
         // TODO: foreign key 데이터 생성
 

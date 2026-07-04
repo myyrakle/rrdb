@@ -17,6 +17,11 @@ impl DBEngine {
 
         self.invalidate_table_config_cache(&table).await;
 
+        // 인덱스 메모리 상태 및 통계 정리 (인덱스 파일은 테이블 디렉토리와 함께 삭제됨)
+        self.ensure_indices_loaded().await?;
+        self.index_manager.remove_table_indices(&table).await;
+        self.statistics_manager.invalidate(&table).await;
+
         let TableName {
             database_name,
             table_name,

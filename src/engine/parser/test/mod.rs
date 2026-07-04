@@ -6,6 +6,7 @@ pub(crate) mod alter_table;
 pub(crate) mod create_table;
 pub(crate) mod drop_table;
 pub(crate) mod expressions;
+pub(crate) mod index;
 
 pub(crate) mod delete;
 pub(crate) mod insert;
@@ -20,5 +21,5 @@ pub(crate) mod common;
 
 pub(crate) mod ddl;
 
-pub(crate) mod parser;
 pub(crate) mod coverage;
+pub(crate) mod parser;

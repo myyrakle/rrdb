@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::engine::actions::index::row_index_key;
 use crate::engine::ast::dml::insert::{InsertData, InsertQuery};
 use crate::engine::ast::types::SQLExpression;
 use crate::engine::schema::row::{TableDataField, TableDataRow};
@@ -161,6 +162,33 @@ impl DBEngine {
                     rows.push(row);
                 }
 
+                // 인덱스 유지보수 준비 (#217)
+                self.ensure_indices_loaded().await?;
+                let index_metas = self.table_index_metas(into_table).await;
+
+                // 고유 인덱스 사전 검증 (기존 데이터 + 배치 내 중복)
+                for meta in index_metas.iter().filter(|meta| meta.is_unique) {
+                    let mut batch_keys = HashSet::new();
+
+                    for row in &rows {
+                        if let Some(key) = row_index_key(row, &meta.column_name) {
+                            let duplicated = !self
+                                .index_manager
+                                .get(&meta.index_name, &key)
+                                .await?
+                                .is_empty()
+                                || !batch_keys.insert(key);
+
+                            if duplicated {
+                                return Err(ExecuteError::wrap(format!(
+                                    "duplicate key value violates unique index on column '{}'",
+                                    meta.column_name
+                                )));
+                            }
+                        }
+                    }
+                }
+
                 let wal_payload =
                     bson::to_vec(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
                 wal_manager
@@ -170,7 +198,24 @@ impl DBEngine {
                     .await?;
 
                 let affected_rows = rows.len();
-                self.append_table_rows(into_table, &rows).await?;
+                let start_index = self.append_table_rows(into_table, &rows).await?;
+
+                // 인덱스 반영
+                for (offset, row) in rows.iter().enumerate() {
+                    let row_path = (start_index + offset).to_string();
+
+                    for meta in &index_metas {
+                        if let Some(key) = row_index_key(row, &meta.column_name) {
+                            self.index_manager
+                                .insert(&meta.index_name, key, row_path.clone())
+                                .await?;
+                        }
+                    }
+                }
+
+                self.statistics_manager
+                    .record_insert(into_table, affected_rows)
+                    .await;
 
                 return Ok(ExecuteResult::with_affected_rows(
                     vec![ExecuteColumn {

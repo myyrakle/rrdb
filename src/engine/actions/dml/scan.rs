@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
 use crate::engine::DBEngine;
+use crate::engine::ast::dml::plan::select::scan::IndexScanPlan;
 use crate::engine::ast::types::TableName;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::TableDataRow;
@@ -33,17 +34,23 @@ impl DBEngine {
             .collect())
     }
 
+    /// 행을 세그먼트 파일 끝에 추가하고 시작 row index를 반환합니다.
+    /// 반환된 시작 인덱스는 인덱스 유지보수(key -> row index)에 사용됩니다.
     pub(crate) async fn append_table_rows(
         &self,
         table_name: &TableName,
         rows: &[TableDataRow],
-    ) -> errors::Result<()> {
+    ) -> errors::Result<usize> {
         if rows.is_empty() {
-            return Ok(());
+            return Ok(0);
         }
 
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
+
+        // TODO(#217): 행 개수를 메타데이터로 유지해 O(n) 카운트를 제거
+        let start_index = self.read_segment_rows(&segment_path).await?.len();
+
         let encoder = StorageEncoder::new();
         let mut frame = Vec::new();
 
@@ -64,7 +71,9 @@ impl DBEngine {
 
         file.write_all(&frame)
             .await
-            .map_err(|error| ExecuteError::wrap(error.to_string()))
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+        Ok(start_index)
     }
 
     pub(crate) async fn update_table_rows(
@@ -174,7 +183,7 @@ impl DBEngine {
             .map_err(|error| ExecuteError::wrap(error.to_string()))
     }
 
-    fn row_segment_path(&self, table_name: &TableName) -> errors::Result<PathBuf> {
+    pub(crate) fn row_segment_path(&self, table_name: &TableName) -> errors::Result<PathBuf> {
         let database_name = table_name
             .database_name
             .as_ref()
@@ -189,7 +198,60 @@ impl DBEngine {
             .join(ROW_SEGMENT_FILENAME))
     }
 
-    pub async fn index_scan(&self, _table_name: TableName) {}
+    /// 인덱스 스캔: 인덱스에서 row index 목록을 조회한 뒤 해당 행만 반환합니다.
+    pub(crate) async fn index_scan(
+        &self,
+        table_name: TableName,
+        plan: &IndexScanPlan,
+    ) -> errors::Result<Vec<(RowLocation, TableDataRow)>> {
+        self.ensure_indices_loaded().await?;
+
+        let row_paths: Vec<String> = match &plan.eq_key {
+            Some(key) => self.index_manager.get(&plan.index_name, key).await?,
+            None => self
+                .index_manager
+                .range(
+                    &plan.index_name,
+                    plan.start_key.as_deref(),
+                    plan.end_key.as_deref(),
+                )
+                .await?
+                .into_iter()
+                .map(|entry| entry.row_path)
+                .collect(),
+        };
+
+        if row_paths.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // TODO(#195): 세그먼트 프레임 오프셋을 인덱스에 저장해 부분 읽기로 최적화
+        let segment_path = self.row_segment_path(&table_name)?;
+        let all_rows = self.read_segment_rows(&segment_path).await?;
+
+        let mut result = Vec::with_capacity(row_paths.len());
+
+        for row_path in row_paths {
+            let row_index = row_path.parse::<usize>().map_err(|_| {
+                ExecuteError::wrap(format!(
+                    "index '{}' has invalid row path '{}'",
+                    plan.index_name, row_path
+                ))
+            })?;
+
+            match all_rows.get(row_index) {
+                Some(row) => result.push((RowLocation { row_index }, row.clone())),
+                None => {
+                    return Err(ExecuteError::wrap(format!(
+                        "index '{}' is out of sync with table data; drop and recreate the index",
+                        plan.index_name
+                    )));
+                }
+            }
+        }
+
+        Ok(result)
+    }
 }
 
 #[cfg(test)]

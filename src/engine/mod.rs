@@ -24,6 +24,8 @@ use crate::config::launch_config::LaunchConfig;
 use crate::engine::ast::types::TableName;
 use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::encoder::schema_encoder::StorageEncoder;
+use crate::engine::index::manager::IndexManager;
+use crate::engine::optimizer::statistics::StatisticsManager;
 use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bincode::BincodeEncoder;
@@ -40,16 +42,25 @@ pub struct DBEngine {
     pub(crate) command_runner: Arc<dyn CommandRunner + Send + Sync>,
     pub(crate) table_config_cache: Arc<RwLock<HashMap<TableName, TableSchema>>>,
     pub(crate) row_storage_lock: Arc<Mutex<()>>,
+    pub(crate) index_manager: Arc<IndexManager>,
+    pub(crate) statistics_manager: Arc<StatisticsManager>,
+    /// 디스크의 인덱스 파일을 메모리로 적재했는지 여부 (최초 사용 시 1회 적재)
+    pub(crate) indices_loaded: Arc<tokio::sync::OnceCell<()>>,
 }
 
 impl DBEngine {
     pub fn new(config: LaunchConfig) -> Self {
+        let data_directory = PathBuf::from(config.data_directory.clone());
+
         Self {
             config: Arc::new(config),
             file_system: Arc::new(RealFileSystem {}),
             command_runner: Arc::new(RealCommandRunner {}),
             table_config_cache: Arc::new(RwLock::new(HashMap::new())),
             row_storage_lock: Arc::new(Mutex::new(())),
+            index_manager: Arc::new(IndexManager::new(data_directory)),
+            statistics_manager: Arc::new(StatisticsManager::new()),
+            indices_loaded: Arc::new(tokio::sync::OnceCell::new()),
         }
     }
 
@@ -80,6 +91,10 @@ impl DBEngine {
                 self.alter_table(query).await
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
+            SQLStatement::DDL(DDLStatement::CreateIndexQuery(query)) => {
+                self.create_index(query).await
+            }
+            SQLStatement::DDL(DDLStatement::DropIndexQuery(query)) => self.drop_index(query).await,
             SQLStatement::DML(DMLStatement::InsertQuery(query)) => {
                 self.insert(query, wal_manager.clone()).await
             }

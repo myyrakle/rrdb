@@ -332,6 +332,93 @@ impl IndexManager {
         metas.keys().cloned().collect()
     }
 
+    /// 특정 테이블에 속한 인덱스 메타 목록을 반환합니다.
+    pub async fn indices_for_table(
+        &self,
+        table_name: &crate::engine::ast::types::TableName,
+    ) -> Vec<IndexMeta> {
+        let metas = self.metas.read().await;
+        metas
+            .values()
+            .filter(|meta| meta.table_name == *table_name)
+            .cloned()
+            .collect()
+    }
+
+    /// 인덱스의 고유 키 개수를 반환합니다 (통계용).
+    pub async fn distinct_keys(&self, index_name: &str) -> errors::Result<usize> {
+        let indices = self.indices.read().await;
+        let tree = indices
+            .get(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        Ok(tree.distinct_keys())
+    }
+
+    /// 인덱스 전체 엔트리를 교체합니다.
+    /// CREATE INDEX 백필, DELETE 압축 후 재구축 등에 사용합니다.
+    /// 디스크 기록이 성공한 경우에만 메모리 상태를 교체합니다.
+    pub async fn replace_entries(
+        &self,
+        index_name: &str,
+        entries: Vec<IndexEntry>,
+    ) -> errors::Result<()> {
+        let meta = {
+            let metas = self.metas.read().await;
+            metas
+                .get(index_name)
+                .cloned()
+                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?
+        };
+
+        self.write_index_file(&meta, &entries).await?;
+
+        let tree = BTreeIndex::from_entries(meta.column_name.clone(), meta.is_unique, entries);
+
+        let mut indices = self.indices.write().await;
+        indices.insert(index_name.to_string(), tree);
+
+        Ok(())
+    }
+
+    /// 테이블에 속한 인덱스의 메모리 상태를 제거합니다.
+    /// 디스크 파일은 테이블 디렉토리와 함께 삭제되는 경우(DROP TABLE)에 사용합니다.
+    pub async fn remove_table_indices(&self, table_name: &crate::engine::ast::types::TableName) {
+        let names: Vec<String> = {
+            let metas = self.metas.read().await;
+            metas
+                .values()
+                .filter(|meta| meta.table_name == *table_name)
+                .map(|meta| meta.index_name.clone())
+                .collect()
+        };
+
+        let mut indices = self.indices.write().await;
+        let mut metas = self.metas.write().await;
+        for name in names {
+            indices.remove(&name);
+            metas.remove(&name);
+        }
+    }
+
+    /// 데이터베이스에 속한 인덱스의 메모리 상태를 제거합니다 (DROP DATABASE).
+    pub async fn remove_database_indices(&self, database_name: &str) {
+        let names: Vec<String> = {
+            let metas = self.metas.read().await;
+            metas
+                .values()
+                .filter(|meta| meta.table_name.database_name.as_deref() == Some(database_name))
+                .map(|meta| meta.index_name.clone())
+                .collect()
+        };
+
+        let mut indices = self.indices.write().await;
+        let mut metas = self.metas.write().await;
+        for name in names {
+            indices.remove(&name);
+            metas.remove(&name);
+        }
+    }
+
     /// Get index meta.
     pub async fn get_meta(&self, index_name: &str) -> Option<IndexMeta> {
         let metas = self.metas.read().await;

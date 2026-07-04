@@ -20,8 +20,24 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_create_table_query(context),
             Token::Database => self.handle_create_database_query(),
+            Token::Index => self.handle_create_index_query(context, false),
+            Token::Unique => {
+                if !self.has_next_token() {
+                    return Err(ParsingError::wrap("need more tokens".to_string()));
+                }
+
+                let current_token = self.get_next_token();
+
+                match current_token {
+                    Token::Index => self.handle_create_index_query(context, true),
+                    _ => Err(ParsingError::wrap(format!(
+                        "expected 'INDEX'. but your input word is '{:?}'",
+                        current_token
+                    ))),
+                }
+            }
             _ => Err(ParsingError::wrap(format!(
-                "not supported command. possible commands: (create table, create database). but your input is {:?}",
+                "not supported command. possible commands: (create table, create database, create index). but your input is {:?}",
                 current_token
             ))),
         }
@@ -60,8 +76,9 @@ impl Parser {
         match current_token {
             Token::Table => self.handle_drop_table_query(context),
             Token::Database => self.handle_drop_database_query(),
+            Token::Index => self.handle_drop_index_query(context),
             _ => Err(ParsingError::wrap(
-                "not supported command. possible commands: (drop table, drop database)",
+                "not supported command. possible commands: (drop table, drop database, drop index)",
             )),
         }
     }

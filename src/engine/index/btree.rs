@@ -44,6 +44,11 @@ impl BTreeIndex {
         self.tree.values().map(|v| v.len()).sum()
     }
 
+    /// 고유 키 개수 (통계의 distinct value 추정에 사용)
+    pub fn distinct_keys(&self) -> usize {
+        self.tree.len()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
