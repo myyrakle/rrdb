@@ -200,7 +200,10 @@ impl DBEngine {
                 let affected_rows = rows.len();
                 let start_index = self.append_table_rows(into_table, &rows).await?;
 
-                // 인덱스 반영
+                // 인덱스 반영 (#217)
+                // 안전성: append_table_rows가 row_storage_lock으로 직렬화되므로,
+                // start_index는 이 INSERT에 배타적인 범위를 가리킵니다.
+                // index_manager.insert는 자체 내부 동기화로 덮어쓰기를 방지합니다.
                 for (offset, row) in rows.iter().enumerate() {
                     let row_path = (start_index + offset).to_string();
 

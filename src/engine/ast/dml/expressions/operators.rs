@@ -61,6 +61,7 @@ impl BinaryOperator {
 #[cfg(test)]
 mod tests {
     use super::BinaryOperator;
+    use crate::engine::parser::predule::Parser;
 
     #[test]
     fn test_get_precedence() {
@@ -82,5 +83,83 @@ mod tests {
         assert_eq!(BinaryOperator::NotIn.get_precedence(), 5);
         assert_eq!(BinaryOperator::Is.get_precedence(), 5);
         assert_eq!(BinaryOperator::IsNot.get_precedence(), 5);
+    }
+
+    /// 회귀 테스트: AND/OR/비교 연산자가 섞인 표현식이 올바른 결합 순서로 파싱되는지 검증합니다.
+    /// BinaryOperator::get_precedence의 값 변경 시 이 테스트가 깨져야 합니다.
+    mod operator_precedence_parsing {
+        use crate::engine::ast::dml::expressions::operators::BinaryOperator;
+        use crate::engine::ast::types::SQLExpression;
+        use crate::engine::parser::predule::{Parser, ParserContext};
+
+        fn parse_where(sql: &str) -> SQLExpression {
+            let full_sql = format!("select * from t where {}", sql);
+            let mut parser = Parser::with_string(full_sql).unwrap();
+            let stmts = parser.parse(ParserContext::default()).unwrap();
+            let select = match stmts.into_iter().next().unwrap() {
+                crate::engine::ast::SQLStatement::DML(
+                    crate::engine::ast::DMLStatement::SelectQuery(q),
+                ) => q,
+                _ => panic!("expected select"),
+            };
+            select.where_clause.unwrap().expression
+        }
+
+        fn assert_binary(expr: &SQLExpression, op: BinaryOperator) -> bool {
+            matches!(expr, SQLExpression::Binary(b) if b.operator == op)
+        }
+
+        #[test]
+        fn and_binds_tighter_than_or() {
+            // a OR b AND c  →  a OR (b AND c)
+            let expr = parse_where("a = 1 or b = 2 and c = 3");
+            // 최상위는 OR, 오른쪽 피연산자는 AND여야 함
+            assert!(
+                assert_binary(&expr, BinaryOperator::Or),
+                "expected OR at top level"
+            );
+
+            if let SQLExpression::Binary(b) = &expr {
+                assert!(
+                    assert_binary(&b.lhs, BinaryOperator::Eq),
+                    "left side of OR should be comparison"
+                );
+                assert!(
+                    assert_binary(&b.rhs, BinaryOperator::And),
+                    "right side of OR should be AND (b = 2 AND c = 3)"
+                );
+            }
+        }
+
+        #[test]
+        fn comparisons_bind_tighter_than_and() {
+            // a > b AND c = d  →  (a > b) AND (c = d)
+            let expr = parse_where("a > b and c = d");
+            assert!(
+                assert_binary(&expr, BinaryOperator::And),
+                "expected AND at top level"
+            );
+
+            if let SQLExpression::Binary(b) = &expr {
+                assert!(
+                    assert_binary(&b.lhs, BinaryOperator::Gt),
+                    "left side of AND should be > comparison"
+                );
+                assert!(
+                    assert_binary(&b.rhs, BinaryOperator::Eq),
+                    "right side of AND should be = comparison"
+                );
+            }
+        }
+
+        #[test]
+        fn arithmetic_binds_tighter_than_comparison() {
+            // a + b > c  →  (a + b) > c
+            let expr = parse_where("a + b > c");
+            assert!(
+                assert_binary(&expr, BinaryOperator::Gt),
+                "expected > at top level for arithmetic+comparison"
+            );
+        }
     }
 }

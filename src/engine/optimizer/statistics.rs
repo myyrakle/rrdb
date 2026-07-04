@@ -41,17 +41,37 @@ impl StatisticsManager {
         self.statistics.write().await.insert(table, statistics);
     }
 
-    /// INSERT 반영: 캐시된 통계가 있으면 행 개수를 증가시킵니다.
+    /// INSERT 반영: 캐시된 통계가 있으면 행 개수와 블록 개수를 증분 갱신합니다.
     pub async fn record_insert(&self, table: &TableName, count: usize) {
         if let Some(statistics) = self.statistics.write().await.get_mut(table) {
+            let old_row_count = statistics.row_count;
             statistics.row_count += count;
+
+            // 블록 개수를 비례적으로 갱신 (행 당 평균 블록 수)
+            if old_row_count > 0 {
+                let avg_rows_per_block = old_row_count / statistics.block_count.max(1);
+                if avg_rows_per_block > 0 {
+                    statistics.block_count += count.div_ceil(avg_rows_per_block);
+                }
+            }
         }
     }
 
-    /// DELETE 반영: 캐시된 통계가 있으면 행 개수를 감소시킵니다.
+    /// DELETE 반영: 캐시된 통계가 있으면 행 개수와 블록 개수를 증분 갱신합니다.
     pub async fn record_delete(&self, table: &TableName, count: usize) {
         if let Some(statistics) = self.statistics.write().await.get_mut(table) {
+            let old_row_count = statistics.row_count;
             statistics.row_count = statistics.row_count.saturating_sub(count);
+
+            // 블록 개수를 비례적으로 감소
+            if old_row_count > 0 {
+                let avg_rows_per_block = old_row_count / statistics.block_count.max(1);
+                if avg_rows_per_block > 0 {
+                    let removed_blocks = count / avg_rows_per_block;
+                    statistics.block_count =
+                        statistics.block_count.saturating_sub(removed_blocks.max(1));
+                }
+            }
         }
     }
 

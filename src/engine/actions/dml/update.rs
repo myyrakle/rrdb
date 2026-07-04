@@ -202,11 +202,21 @@ impl DBEngine {
                 applied += 1;
             }
 
-            wal_manager
+            // WAL 기록: 실패 시 선반영한 인덱스 변경을 되돌립니다
+            if let Err(error) = wal_manager
                 .lock()
                 .await
                 .append_record(EntryType::Set, Some(wal_payload), None)
-                .await?;
+                .await
+            {
+                for (index_name, old_key, new_key, row_path) in index_operations.iter().rev() {
+                    let _ = self
+                        .apply_index_operation(index_name, new_key, old_key, row_path)
+                        .await;
+                }
+
+                return Err(error);
+            }
 
             if let Err(error) = self.update_table_rows(&table, replacements).await {
                 // 저장 실패 시 인덱스 되돌리기
