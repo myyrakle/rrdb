@@ -16,7 +16,7 @@ use super::{
 #[derive(Default, Debug, Clone)]
 pub struct WALManager<T>
 where
-    T: WALEncoder<Vec<WALEntry>>,
+    T: WALEncoder<WALEntry>,
 {
     /// The sequence number of the WAL file
     sequence: usize,
@@ -35,7 +35,7 @@ where
 // TODO: 대용량 페이지 파일 XLOG_CONTINUATION 처리 구현
 impl<T> WALManager<T>
 where
-    T: WALEncoder<Vec<WALEntry>>,
+    T: WALEncoder<WALEntry>,
 {
     fn new(
         sequence: usize,
@@ -78,13 +78,12 @@ where
     async fn write_entry(&mut self, entry: WALEntry) -> errors::Result<()> {
         self.rotate_if_needed(entry.size()).await?;
 
-        let encoded = self.encoder.encode(&vec![entry.clone()])?;
-        let frame_len = u32::try_from(encoded.len())
+        let mut frame = Vec::new();
+        frame.extend_from_slice(&0u32.to_le_bytes());
+        self.encoder.encode_into(&mut frame, &entry)?;
+        let frame_len = u32::try_from(frame.len() - size_of::<u32>())
             .map_err(|_| WALError::wrap("wal entry is too large".to_string()))?;
-
-        let mut frame = Vec::with_capacity(size_of::<u32>() + encoded.len());
-        frame.extend_from_slice(&frame_len.to_le_bytes());
-        frame.extend_from_slice(&encoded);
+        frame[..size_of::<u32>()].copy_from_slice(&frame_len.to_le_bytes());
 
         let path = self.current_path();
 
@@ -238,8 +237,8 @@ mod tests {
             .unwrap_or_else(|e| panic!("Failed to create wal file {:?}: {}", file_path, e));
 
         for entry in entries {
-            let encoded_data = encoder.encode(&vec![entry.clone()]).unwrap();
-            file.write_all(&(encoded_data.len() as u32).to_le_bytes())
+            let encoded_data = encoder.encode(entry).unwrap();
+            file.write_all(&u32::try_from(encoded_data.len()).unwrap().to_le_bytes())
                 .await
                 .unwrap_or_else(|e| panic!("Failed to write to wal file {:?}: {}", file_path, e));
             file.write_all(&encoded_data)
@@ -332,6 +331,33 @@ mod tests {
         assert_eq!(entries[0].data, Some(b"row-1".to_vec()));
         assert!(matches!(entries[1].entry_type, EntryType::Delete));
         assert_eq!(entries[1].transaction_id, Some(2));
+    }
+
+    #[tokio::test]
+    async fn test_append_record_writes_single_entry_frames() {
+        let wal_dir = setup_test_wal_dir("append_record_single_entry_frames").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+        let mut wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+
+        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let content = tokio::fs::read(wal_path).await.unwrap();
+        let frame_len =
+            u32::from_le_bytes(content[..size_of::<u32>()].try_into().unwrap()) as usize;
+        let entry: WALEntry =
+            bincode::deserialize(&content[size_of::<u32>()..size_of::<u32>() + frame_len]).unwrap();
+
+        assert!(matches!(entry.entry_type, EntryType::Insert));
+        assert_eq!(entry.transaction_id, Some(1));
+        assert_eq!(entry.data, Some(b"row-1".to_vec()));
     }
 
     #[tokio::test]
