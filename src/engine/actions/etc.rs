@@ -217,6 +217,7 @@ impl DBEngine {
                                 if file_type.is_dir() {
                                     let mut path = entry.path();
                                     path.push("table.config");
+                                    let path_display = path.display().to_string();
 
                                     match tokio::fs::read(path).await {
                                         Ok(result) => {
@@ -224,7 +225,10 @@ impl DBEngine {
                                             let table_config: TableSchema =
                                                 match encoder.decode(result.as_slice()) {
                                                     Ok(decoded) => decoded,
-                                                    Err(_) => return None,
+                                                    Err(e) => {
+                                                        log::warn!("failed to decode table config {}: {}", path_display, e);
+                                                        return None;
+                                                    }
                                                 };
 
                                             Some(table_config.table.table_name)

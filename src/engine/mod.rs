@@ -158,11 +158,12 @@ impl DBEngine {
 
         match tokio::fs::read(&config_path).await {
             Ok(data) => {
-                let table_config: Option<TableSchema> = encoder.decode(data.as_slice()).ok();
-
-                match table_config {
-                    Some(table_config) => Ok(table_config),
-                    None => Err(ExecuteError::wrap("invalid config data".to_string())),
+                match encoder.decode::<TableSchema>(data.as_slice()) {
+                    Ok(table_config) => Ok(table_config),
+                    Err(error) => Err(ExecuteError::wrap(format!(
+                        "invalid config data: {}",
+                        error
+                    ))),
                 }
             }
             Err(error) => match error.kind() {

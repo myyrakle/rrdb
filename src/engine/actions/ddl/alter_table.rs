@@ -121,11 +121,8 @@ impl DBEngine {
 
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
-                                let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice()).ok();
-
-                                match table_config {
-                                    Some(mut table_config) => {
+                                match encoder.decode::<TableSchema>(data.as_slice()) {
+                                    Ok(mut table_config) => {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
@@ -152,10 +149,11 @@ impl DBEngine {
                                             return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
-                                    None => {
-                                        return Err(ExecuteError::wrap(
-                                            "invalid config data".to_string(),
-                                        ));
+                                    Err(error) => {
+                                        return Err(ExecuteError::wrap(format!(
+                                            "invalid config data: {}",
+                                            error
+                                        )));
                                     }
                                 }
                             }
@@ -175,11 +173,8 @@ impl DBEngine {
 
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
-                                let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice()).ok();
-
-                                match table_config {
-                                    Some(mut table_config) => {
+                                match encoder.decode::<TableSchema>(data.as_slice()) {
+                                    Ok(mut table_config) => {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
@@ -206,10 +201,11 @@ impl DBEngine {
                                             return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
-                                    None => {
-                                        return Err(ExecuteError::wrap(
-                                            "invalid config data".to_string(),
-                                        ));
+                                    Err(error) => {
+                                        return Err(ExecuteError::wrap(format!(
+                                            "invalid config data: {}",
+                                            error
+                                        )));
                                     }
                                 }
                             }
@@ -229,11 +225,8 @@ impl DBEngine {
 
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
-                                let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice()).ok();
-
-                                match table_config {
-                                    Some(mut table_config) => {
+                                match encoder.decode::<TableSchema>(data.as_slice()) {
+                                    Ok(mut table_config) => {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
@@ -260,10 +253,11 @@ impl DBEngine {
                                             return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
-                                    None => {
-                                        return Err(ExecuteError::wrap(
-                                            "invalid config data".to_string(),
-                                        ));
+                                    Err(error) => {
+                                        return Err(ExecuteError::wrap(format!(
+                                            "invalid config data: {}",
+                                            error
+                                        )));
                                     }
                                 }
                             }
@@ -282,11 +276,8 @@ impl DBEngine {
 
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
-                                let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice()).ok();
-
-                                match table_config {
-                                    Some(mut table_config) => {
+                                match encoder.decode::<TableSchema>(data.as_slice()) {
+                                    Ok(mut table_config) => {
                                         let target = table_config
                                             .columns
                                             .iter_mut()
@@ -313,10 +304,11 @@ impl DBEngine {
                                             return Err(ExecuteError::wrap(error.to_string()));
                                         }
                                     }
-                                    None => {
-                                        return Err(ExecuteError::wrap(
-                                            "invalid config data".to_string(),
-                                        ));
+                                    Err(error) => {
+                                        return Err(ExecuteError::wrap(format!(
+                                            "invalid config data: {}",
+                                            error
+                                        )));
                                     }
                                 }
                             }
