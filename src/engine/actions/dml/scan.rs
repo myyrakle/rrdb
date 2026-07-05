@@ -48,11 +48,15 @@ impl DBEngine {
         let mut frame = Vec::new();
 
         for row in rows {
-            let encoded = encoder.encode(row);
-            let frame_len = u32::try_from(encoded.len())
+            let len_offset = frame.len();
+            frame.extend_from_slice(&0u32.to_le_bytes());
+            encoder
+                .encode_into(&mut frame, row)
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+            let frame_len = u32::try_from(frame.len() - len_offset - size_of::<u32>())
                 .map_err(|_| ExecuteError::wrap("row frame is too large".to_string()))?;
-            frame.extend_from_slice(&frame_len.to_le_bytes());
-            frame.extend_from_slice(&encoded);
+            frame[len_offset..len_offset + size_of::<u32>()]
+                .copy_from_slice(&frame_len.to_le_bytes());
         }
 
         let mut file = tokio::fs::OpenOptions::new()
@@ -164,11 +168,15 @@ impl DBEngine {
         let mut content = Vec::new();
 
         for row in rows {
-            let encoded = encoder.encode(row);
-            let frame_len = u32::try_from(encoded.len())
+            let len_offset = content.len();
+            content.extend_from_slice(&0u32.to_le_bytes());
+            encoder
+                .encode_into(&mut content, row)
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+            let frame_len = u32::try_from(content.len() - len_offset - size_of::<u32>())
                 .map_err(|_| ExecuteError::wrap("row frame is too large".to_string()))?;
-            content.extend_from_slice(&frame_len.to_le_bytes());
-            content.extend_from_slice(&encoded);
+            content[len_offset..len_offset + size_of::<u32>()]
+                .copy_from_slice(&frame_len.to_le_bytes());
         }
 
         tokio::fs::write(segment_path, content)

@@ -20,7 +20,7 @@ impl<'a> WALBuilder<'a> {
     pub async fn build<T, D>(&self, decoder: T, encoder: D) -> errors::Result<WALManager<D>>
     where
         T: WALDecoder<Vec<WALEntry>>,
-        D: WALEncoder<Vec<WALEntry>>,
+        D: WALEncoder<WALEntry>,
     {
         let (sequence, entries) = self.load_data(decoder).await?;
 
