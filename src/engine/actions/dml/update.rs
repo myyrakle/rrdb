@@ -24,7 +24,7 @@ impl DBEngine {
         wal_manager: SharedWALManager,
     ) -> errors::Result<ExecuteResult> {
         let wal_payload =
-            bson::to_vec(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
+            bincode::serialize(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
         let table = query.target_table.clone().unwrap().table;
         let update_items = query.update_items.clone();

@@ -35,7 +35,7 @@ impl DBEngine {
             Ok(read_result) => {
                 let table_info: TableSchema = encoder
                     .decode(read_result.as_slice())
-                    .ok_or_else(|| ExecuteError::wrap("config decode error".to_string()))?;
+                    .map_err(|e| ExecuteError::wrap(format!("config decode error: {}", e)))?;
 
                 Ok(ExecuteResult::new(
                     vec![
@@ -223,8 +223,8 @@ impl DBEngine {
                                             let encoder = StorageEncoder::new();
                                             let table_config: TableSchema =
                                                 match encoder.decode(result.as_slice()) {
-                                                    Some(decoded) => decoded,
-                                                    None => return None,
+                                                    Ok(decoded) => decoded,
+                                                    Err(_) => return None,
                                                 };
 
                                             Some(table_config.table.table_name)

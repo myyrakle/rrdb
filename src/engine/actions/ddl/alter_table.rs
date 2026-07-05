@@ -122,7 +122,7 @@ impl DBEngine {
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
                                 let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice());
+                                    encoder.decode(data.as_slice()).ok();
 
                                 match table_config {
                                     Some(mut table_config) => {
@@ -176,7 +176,7 @@ impl DBEngine {
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
                                 let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice());
+                                    encoder.decode(data.as_slice()).ok();
 
                                 match table_config {
                                     Some(mut table_config) => {
@@ -230,7 +230,7 @@ impl DBEngine {
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
                                 let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice());
+                                    encoder.decode(data.as_slice()).ok();
 
                                 match table_config {
                                     Some(mut table_config) => {
@@ -283,7 +283,7 @@ impl DBEngine {
                         match tokio::fs::read(&config_path).await {
                             Ok(data) => {
                                 let table_config: Option<TableSchema> =
-                                    encoder.decode(data.as_slice());
+                                    encoder.decode(data.as_slice()).ok();
 
                                 match table_config {
                                     Some(mut table_config) => {

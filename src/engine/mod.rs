@@ -158,7 +158,7 @@ impl DBEngine {
 
         match tokio::fs::read(&config_path).await {
             Ok(data) => {
-                let table_config: Option<TableSchema> = encoder.decode(data.as_slice());
+                let table_config: Option<TableSchema> = encoder.decode(data.as_slice()).ok();
 
                 match table_config {
                     Some(table_config) => Ok(table_config),

@@ -60,7 +60,7 @@ impl DBEngine {
                     match tokio::fs::read(&config_path).await {
                         Ok(data) => {
                             let database_config: Option<DatabaseSchema> =
-                                encoder.decode(data.as_slice());
+                                encoder.decode(data.as_slice()).ok();
 
                             match database_config {
                                 Some(mut database_config) => {
