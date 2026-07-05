@@ -145,7 +145,9 @@ impl DBEngine {
 
             let row = encoder
                 .decode::<TableDataRow>(&content[offset..offset + frame_len])
-                .ok_or_else(|| ExecuteError::wrap("invalid row segment frame".to_string()))?;
+                .map_err(|error| {
+                    ExecuteError::wrap(format!("invalid row segment frame: {}", error))
+                })?;
             rows.push(row);
             offset += frame_len;
         }
@@ -189,6 +191,8 @@ impl DBEngine {
             .join(ROW_SEGMENT_FILENAME))
     }
 
+    // TODO(#195): read only the frames covering the indexed rows instead of the
+    // whole segment file once partial reads are supported.
     pub async fn index_scan(&self, _table_name: TableName) {}
 }
 

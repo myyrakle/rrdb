@@ -59,11 +59,8 @@ impl DBEngine {
 
                     match tokio::fs::read(&config_path).await {
                         Ok(data) => {
-                            let database_config: Option<DatabaseSchema> =
-                                encoder.decode(data.as_slice());
-
-                            match database_config {
-                                Some(mut database_config) => {
+                            match encoder.decode::<DatabaseSchema>(data.as_slice()) {
+                                Ok(mut database_config) => {
                                     database_config.database_name = to_database_name;
                                     if let Err(_error) = tokio::fs::write(
                                         config_path,
@@ -76,8 +73,11 @@ impl DBEngine {
                                         ));
                                     }
                                 }
-                                None => {
-                                    return Err(ExecuteError::wrap("invalid config data"));
+                                Err(error) => {
+                                    return Err(ExecuteError::wrap(format!(
+                                        "invalid config data: {}",
+                                        error
+                                    )));
                                 }
                             }
                         }
