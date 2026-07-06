@@ -211,9 +211,11 @@ impl Decoder for ConnectionCodec {
                 if num_params < 0 {
                     return Err(ProtocolError::ParserError);
                 }
+                let mut parameters = Vec::with_capacity(num_params as usize);
                 for _ in 0..num_params {
                     let param_len = Self::read_i32(&mut body)?;
                     if param_len == -1 {
+                        parameters.push(None);
                         continue;
                     }
                     if param_len < -1 {
@@ -224,6 +226,8 @@ impl Decoder for ConnectionCodec {
                     if body.len() < param_len {
                         return Err(ProtocolError::ParserError);
                     }
+                    let param = String::from_utf8(body[..param_len].to_vec())?;
+                    parameters.push(Some(param));
                     body.advance(param_len);
                 }
 
@@ -246,6 +250,7 @@ impl Decoder for ConnectionCodec {
                 ClientMessage::Bind(Bind {
                     portal,
                     prepared_statement_name,
+                    parameters,
                     result_format,
                 })
             }
@@ -337,6 +342,54 @@ mod tests {
         message.put_u8(0);
         message.put_i32(max_rows);
         message
+    }
+
+    fn bind_message(statement: &str, params: &[Option<&str>]) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_u8(0);
+        body.put_slice(statement.as_bytes());
+        body.put_u8(0);
+        body.put_i16(0);
+        body.put_i16(params.len() as i16);
+
+        for param in params {
+            match param {
+                Some(value) => {
+                    body.put_i32(value.len() as i32);
+                    body.put_slice(value.as_bytes());
+                }
+                None => body.put_i32(-1),
+            }
+        }
+
+        body.put_i16(0);
+
+        let mut message = BytesMut::new();
+        message.put_u8(b'B');
+        message.put_i32((4 + body.len()) as i32);
+        message.extend_from_slice(&body);
+        message
+    }
+
+    #[test]
+    fn decodes_bind_text_parameters() {
+        let mut codec = ConnectionCodec {
+            startup_received: true,
+        };
+        let mut message = bind_message("sqlx_s_1", &[Some("alpha"), None, Some("42")]);
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        match decoded {
+            ClientMessage::Bind(bind) => {
+                assert_eq!(bind.prepared_statement_name, "sqlx_s_1");
+                assert_eq!(
+                    bind.parameters,
+                    vec![Some("alpha".to_string()), None, Some("42".to_string())]
+                );
+            }
+            other => panic!("expected bind, got {other:?}"),
+        }
     }
 
     #[test]
