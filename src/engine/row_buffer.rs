@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use crate::engine::encoder::schema_encoder::StorageEncoder;
@@ -9,6 +9,7 @@ use crate::errors::execute_error::ExecuteError;
 #[derive(Default)]
 pub(crate) struct RowBufferPool {
     segments: HashMap<PathBuf, RowSegmentBuffer>,
+    unsynced_segments: HashSet<PathBuf>,
 }
 
 #[derive(Default)]
@@ -109,8 +110,9 @@ impl RowBufferPool {
         Ok(writes)
     }
 
-    pub(crate) fn complete_write(&mut self, write: RowBufferWrite) {
-        let segment = self.segments.entry(write.segment_path).or_default();
+    pub(crate) fn complete_write(&mut self, write: RowBufferWrite, durable: bool) {
+        let segment_path = write.segment_path;
+        let segment = self.segments.entry(segment_path.clone()).or_default();
         match write.kind {
             RowBufferWriteKind::Append { rows } => {
                 if let Some(persisted_rows) = &mut segment.persisted_rows {
@@ -120,6 +122,12 @@ impl RowBufferPool {
             RowBufferWriteKind::Rewrite { rows } => {
                 segment.persisted_rows = Some(rows);
             }
+        }
+
+        if durable {
+            self.unsynced_segments.remove(&segment_path);
+        } else {
+            self.unsynced_segments.insert(segment_path);
         }
     }
 
@@ -151,6 +159,19 @@ impl RowBufferPool {
                 && segment.pending_append_rows.is_empty()
                 && segment.pending_append_bytes.is_empty()
         })
+    }
+
+    pub(crate) fn drain_unsynced_segments(&mut self) -> Vec<PathBuf> {
+        self.unsynced_segments.drain().collect()
+    }
+
+    pub(crate) fn mark_unsynced_segment(&mut self, segment_path: PathBuf) {
+        self.unsynced_segments.insert(segment_path);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn is_unsynced_empty(&self) -> bool {
+        self.unsynced_segments.is_empty()
     }
 
     fn dirty_bytes(&self) -> usize {

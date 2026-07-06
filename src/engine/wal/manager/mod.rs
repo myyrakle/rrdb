@@ -7,6 +7,7 @@ use std::time::SystemTime;
 use crate::errors;
 use crate::errors::wal_errors::WALError;
 use memmap2::{MmapMut, MmapOptions};
+use tokio::task;
 
 use super::{
     endec::WALEncoder,
@@ -87,6 +88,10 @@ where
         .await
     }
 
+    pub(crate) fn pending_entries(&self) -> &[WALEntry] {
+        &self.buffers
+    }
+
     async fn write_entry(&mut self, entry: WALEntry) -> errors::Result<()> {
         let mut frame = Vec::new();
         frame.extend_from_slice(&0u32.to_le_bytes());
@@ -96,7 +101,7 @@ where
         frame[..size_of::<u32>()].copy_from_slice(&frame_len.to_le_bytes());
 
         self.rotate_if_needed(frame.len()).await?;
-        self.append_frame_to_mmap(&frame)?;
+        self.append_frame_to_mmap(&frame).await?;
 
         self.buffers.push(entry);
 
@@ -127,8 +132,8 @@ where
             .join(format!("{:08X}.{}", self.sequence, self.extension))
     }
 
-    fn append_frame_to_mmap(&mut self, frame: &[u8]) -> errors::Result<()> {
-        self.open_current_segment_if_needed()?;
+    async fn append_frame_to_mmap(&mut self, frame: &[u8]) -> errors::Result<()> {
+        self.open_current_segment_if_needed().await?;
 
         let segment = self
             .current_segment
@@ -147,52 +152,66 @@ where
         Ok(())
     }
 
-    fn open_current_segment_if_needed(&mut self) -> errors::Result<()> {
+    async fn open_current_segment_if_needed(&mut self) -> errors::Result<()> {
         if self.current_segment.is_some() {
             return Ok(());
         }
 
         let path = self.current_path();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| WALError::wrap(e.to_string()))?;
-        }
+        let page_size = self.page_size;
+        let offset = self.current_offset;
+        let segment = task::spawn_blocking(move || -> errors::Result<WALSegmentWriter> {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| WALError::wrap(e.to_string()))?;
+            }
 
-        let file = OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true)
-            .open(&path)
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-        file.set_len(self.page_size as u64)
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-        let mmap = unsafe {
-            MmapOptions::new()
-                .len(self.page_size)
-                .map_mut(&file)
-                .map_err(|e| WALError::wrap(e.to_string()))?
-        };
+            let file = OpenOptions::new()
+                .create(true)
+                .read(true)
+                .write(true)
+                .truncate(false)
+                .open(&path)
+                .map_err(|e| WALError::wrap(e.to_string()))?;
+            file.set_len(page_size as u64)
+                .map_err(|e| WALError::wrap(e.to_string()))?;
+            let mmap = unsafe {
+                MmapOptions::new()
+                    .len(page_size)
+                    .map_mut(&file)
+                    .map_err(|e| WALError::wrap(e.to_string()))?
+            };
 
-        self.current_segment = Some(WALSegmentWriter {
-            file,
-            mmap,
-            offset: self.current_offset,
-        });
+            Ok(WALSegmentWriter { file, mmap, offset })
+        })
+        .await
+        .map_err(|e| WALError::wrap(e.to_string()))??;
+
+        self.current_segment = Some(segment);
         Ok(())
     }
 
     pub(crate) async fn sync_current_file(&mut self) -> errors::Result<()> {
-        let Some(segment) = self.current_segment.as_mut() else {
+        let Some(segment) = self.current_segment.take() else {
             return Ok(());
         };
 
-        segment
-            .mmap
-            .flush()
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-        segment
-            .file
-            .sync_data()
-            .map_err(|e| WALError::wrap(e.to_string()))?;
+        let (segment, sync_error) = task::spawn_blocking(move || {
+            let sync_error = segment
+                .mmap
+                .flush()
+                .err()
+                .or_else(|| segment.file.sync_data().err())
+                .map(|error| error.to_string());
+
+            (segment, sync_error)
+        })
+        .await
+        .map_err(|e| WALError::wrap(e.to_string()))?;
+
+        self.current_segment = Some(segment);
+        if let Some(error) = sync_error {
+            return Err(WALError::wrap(error));
+        }
 
         Ok(())
     }
