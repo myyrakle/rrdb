@@ -7,7 +7,7 @@ use tokio_util::codec::Framed;
 
 use crate::engine::ast::dml::insert::InsertQuery;
 use crate::engine::ast::dml::parts::insert_values::InsertValue;
-use crate::engine::ast::types::{SQLExpression, TableName};
+use crate::engine::ast::types::{DataType, SQLExpression, TableName};
 use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::lexer::predule::Tokenizer;
 use crate::engine::parser::context::ParserContext;
@@ -97,12 +97,27 @@ impl Connection {
     fn query_has_parameters(text: &str) -> bool {
         let bytes = text.as_bytes();
         let mut index = 0;
+        let mut in_string = false;
 
-        while index + 1 < bytes.len() {
-            if bytes[index] == b'$' && bytes[index + 1].is_ascii_digit() {
-                return true;
+        while index < bytes.len() {
+            match bytes[index] {
+                b'\'' => {
+                    index += 1;
+
+                    if in_string && index < bytes.len() && bytes[index] == b'\'' {
+                        index += 1;
+                    } else {
+                        in_string = !in_string;
+                    }
+                }
+                b'$' if !in_string
+                    && index + 1 < bytes.len()
+                    && bytes[index + 1].is_ascii_digit() =>
+                {
+                    return true;
+                }
+                _ => index += 1,
             }
-            index += 1;
         }
 
         false
@@ -120,18 +135,18 @@ impl Connection {
         parameters: &[Option<String>],
     ) -> Result<String, ErrorResponse> {
         let bytes = query.as_bytes();
-        let mut bound = String::with_capacity(query.len());
+        let mut bound = Vec::with_capacity(query.len());
         let mut index = 0;
         let mut in_string = false;
 
         while index < bytes.len() {
             match bytes[index] {
                 b'\'' => {
-                    bound.push('\'');
+                    bound.push(b'\'');
                     index += 1;
 
                     if in_string && index < bytes.len() && bytes[index] == b'\'' {
-                        bound.push('\'');
+                        bound.push(b'\'');
                         index += 1;
                     } else {
                         in_string = !in_string;
@@ -161,19 +176,22 @@ impl Connection {
                         ));
                     }
 
-                    bound.push_str(&Self::quote_parameter(&parameters[parameter_index - 1]));
+                    bound.extend_from_slice(
+                        Self::quote_parameter(&parameters[parameter_index - 1]).as_bytes(),
+                    );
                 }
                 byte => {
-                    bound.push(byte as char);
+                    bound.push(byte);
                     index += 1;
                 }
             }
         }
 
-        Ok(bound)
+        String::from_utf8(bound)
+            .map_err(|error| ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string()))
     }
 
-    fn parse_parameterized_insert(
+    async fn parse_parameterized_insert(
         &self,
         query: &str,
         parameters: &[Option<String>],
@@ -211,18 +229,9 @@ impl Connection {
             return None;
         }
 
-        let mut expressions = Vec::with_capacity(placeholders.len());
-        for placeholder in placeholders {
-            let parameter_index = placeholder.strip_prefix('$')?.parse::<usize>().ok()?;
-            if parameter_index == 0 || parameter_index > parameters.len() {
-                return None;
-            }
-
-            let expression = match &parameters[parameter_index - 1] {
-                Some(value) => SQLExpression::String(value.clone()),
-                None => SQLExpression::Null,
-            };
-            expressions.push(Some(expression));
+        let trailing = values[value_end + 1..].trim_start();
+        if !trailing.is_empty() && trailing != ";" {
+            return None;
         }
 
         let table_name = match table.split_once('.') {
@@ -235,6 +244,29 @@ impl Connection {
                 table.to_string(),
             ),
         };
+        let table_config = self
+            .engine
+            .shared_state
+            .engine
+            .get_table_config_cached(table_name.clone())
+            .await
+            .ok()?;
+        let columns_map = table_config.get_columns_map();
+
+        let mut expressions = Vec::with_capacity(placeholders.len());
+        for (column_name, placeholder) in columns.iter().zip(placeholders) {
+            let parameter_index = placeholder.strip_prefix('$')?.parse::<usize>().ok()?;
+            if parameter_index == 0 || parameter_index > parameters.len() {
+                return None;
+            }
+
+            let column = columns_map.get(column_name)?;
+            let expression = Self::parameter_expression_for_column(
+                &parameters[parameter_index - 1],
+                &column.data_type,
+            )?;
+            expressions.push(Some(expression));
+        }
 
         Some(
             InsertQuery::builder()
@@ -244,6 +276,26 @@ impl Connection {
                 .build()
                 .into(),
         )
+    }
+
+    fn parameter_expression_for_column(
+        parameter: &Option<String>,
+        data_type: &DataType,
+    ) -> Option<SQLExpression> {
+        let Some(value) = parameter else {
+            return Some(SQLExpression::Null);
+        };
+
+        match data_type {
+            DataType::Int => value.parse::<i64>().ok().map(SQLExpression::Integer),
+            DataType::Float => value.parse::<f64>().ok().map(SQLExpression::Float),
+            DataType::Boolean => match value.to_ascii_lowercase().as_str() {
+                "true" | "t" | "1" => Some(SQLExpression::Boolean(true)),
+                "false" | "f" | "0" => Some(SQLExpression::Boolean(false)),
+                _ => None,
+            },
+            DataType::Varchar(_) => Some(SQLExpression::String(value.clone())),
+        }
     }
 
     fn returns_rows(statement: &SQLStatement) -> bool {
@@ -440,7 +492,9 @@ impl Connection {
                             Some(statement) => Some(statement),
                             None => match prepared.raw_query {
                                 Some(query) => {
-                                    match self.parse_parameterized_insert(&query, &bind.parameters)
+                                    match self
+                                        .parse_parameterized_insert(&query, &bind.parameters)
+                                        .await
                                     {
                                         Some(statement) => Some(statement),
                                         None => {
@@ -642,7 +696,11 @@ mod tests {
 
     use crate::config::launch_config::LaunchConfig;
     use crate::engine::DBEngine;
-    use crate::engine::ast::DMLStatement;
+    use crate::engine::ast::dml::insert::InsertData;
+    use crate::engine::ast::types::SQLExpression;
+    use crate::engine::ast::{DMLStatement, SQLStatement};
+    use crate::engine::parser::context::ParserContext;
+    use crate::engine::parser::predule::Parser;
     use crate::engine::server::client::ClientInfo;
     use crate::engine::server::shared_state::SharedState;
     use crate::engine::wal::endec::implements::bincode::{BincodeDecoder, BincodeEncoder};
@@ -673,9 +731,30 @@ mod tests {
         assert_eq!(bound, "select '$1', 'real'");
     }
 
-    #[tokio::test]
-    async fn parse_parameterized_insert_builds_insert_statement_without_sql_reparse() {
-        let base_path = PathBuf::from("target/test_pgwire_parameterized_insert");
+    #[test]
+    fn bind_query_parameters_preserves_utf8_query_text() {
+        let query = "insert into 한글_table (이름) values ($1)";
+        let bound = Connection::bind_query_parameters(query, &[Some("값".to_string())]).unwrap();
+
+        assert_eq!(bound, "insert into 한글_table (이름) values ('값')");
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_string_literals() {
+        assert!(!Connection::query_has_parameters("select '$1'"));
+        assert!(Connection::query_has_parameters("select '$1', $1"));
+    }
+
+    fn parse_statement(sql: &str) -> SQLStatement {
+        let mut parser = Parser::with_string(sql.to_owned()).unwrap();
+        parser
+            .parse(ParserContext::default().set_default_database("rrdb".to_string()))
+            .unwrap()
+            .remove(0)
+    }
+
+    async fn build_test_connection(test_name: &str) -> Connection {
+        let base_path = PathBuf::from("target").join(test_name);
         if base_path.exists() {
             tokio::fs::remove_dir_all(&base_path).await.unwrap();
         }
@@ -691,7 +770,7 @@ mod tests {
             .build(BincodeDecoder::new(), BincodeEncoder::new())
             .await
             .unwrap();
-        let connection = Connection::new(SharedState {
+        Connection::new(SharedState {
             engine: Arc::new(DBEngine::new(config)),
             wal_manager: Arc::new(Mutex::new(wal)),
             client_info: ClientInfo {
@@ -699,13 +778,44 @@ mod tests {
                 connection_id: "test".to_string(),
                 database: "rrdb".to_string(),
             },
-        });
+        })
+    }
+
+    async fn execute_sql(connection: &Connection, sql: &str) {
+        connection
+            .engine
+            .shared_state
+            .engine
+            .process_query(
+                parse_statement(sql),
+                connection.engine.shared_state.wal_manager.clone(),
+                connection
+                    .engine
+                    .shared_state
+                    .client_info
+                    .connection_id
+                    .clone(),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn parse_parameterized_insert_builds_insert_statement_without_sql_reparse() {
+        let connection = build_test_connection("test_pgwire_parameterized_insert").await;
+        execute_sql(&connection, "create database rrdb").await;
+        execute_sql(
+            &connection,
+            "create table key_value (key varchar(255), value varchar(255))",
+        )
+        .await;
 
         let statement = connection
             .parse_parameterized_insert(
                 "INSERT INTO key_value (key, value) VALUES ($1, $2)",
                 &[Some("k1".to_string()), Some("v1".to_string())],
             )
+            .await
             .unwrap();
 
         let insert = match statement {
@@ -715,5 +825,62 @@ mod tests {
 
         assert_eq!(insert.into_table.unwrap().table_name, "key_value");
         assert_eq!(insert.columns, vec!["key", "value"]);
+    }
+
+    #[tokio::test]
+    async fn parse_parameterized_insert_rejects_multirow_fast_path() {
+        let connection = build_test_connection("test_pgwire_parameterized_insert_multirow").await;
+
+        let statement = connection
+            .parse_parameterized_insert(
+                "INSERT INTO key_value (key, value) VALUES ($1, $2), ($3, $4)",
+                &[
+                    Some("k1".to_string()),
+                    Some("v1".to_string()),
+                    Some("k2".to_string()),
+                    Some("v2".to_string()),
+                ],
+            )
+            .await;
+
+        assert!(statement.is_none());
+    }
+
+    #[tokio::test]
+    async fn parse_parameterized_insert_uses_target_column_types() {
+        let connection = build_test_connection("test_pgwire_parameterized_insert_types").await;
+        execute_sql(&connection, "create database rrdb").await;
+        execute_sql(
+            &connection,
+            "create table typed_values (id int, enabled boolean, ratio float, label varchar(255))",
+        )
+        .await;
+
+        let statement = connection
+            .parse_parameterized_insert(
+                "INSERT INTO typed_values (id, enabled, ratio, label) VALUES ($1, $2, $3, $4)",
+                &[
+                    Some("42".to_string()),
+                    Some("true".to_string()),
+                    Some("3.5".to_string()),
+                    Some("007".to_string()),
+                ],
+            )
+            .await
+            .unwrap();
+
+        let insert = match statement {
+            crate::engine::ast::SQLStatement::DML(DMLStatement::InsertQuery(insert)) => insert,
+            other => panic!("expected insert statement, got {other:?}"),
+        };
+        let InsertData::Values(values) = insert.data else {
+            panic!("expected insert values");
+        };
+        let values = &values[0].list;
+
+        assert_eq!(values[0], Some(SQLExpression::Integer(42)));
+        assert_eq!(values[1], Some(SQLExpression::Boolean(true)));
+        assert_eq!(values[2], Some(SQLExpression::Float(3.5)));
+        assert_eq!(values[3], Some(SQLExpression::String("007".to_string())));
     }
 }

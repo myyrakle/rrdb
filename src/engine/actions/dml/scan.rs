@@ -206,24 +206,40 @@ impl DBEngine {
 
     pub(crate) async fn flush_row_buffers(&self) -> errors::Result<()> {
         let _guard = self.row_storage_lock.lock().await;
-        self.flush_row_buffers_locked().await
+        self.flush_row_buffers_locked(false).await
     }
 
-    async fn flush_row_buffers_locked(&self) -> errors::Result<()> {
+    pub(crate) async fn flush_row_buffers_durable(&self) -> errors::Result<()> {
+        let _guard = self.row_storage_lock.lock().await;
+        self.flush_row_buffers_locked(true).await
+    }
+
+    async fn flush_row_buffers_locked(&self, durable: bool) -> errors::Result<()> {
         let pending = self.row_buffer_pool.lock().await.drain_writes()?;
 
         for write in pending {
-            if let Err(error) = self.apply_row_buffer_write(&write).await {
+            if let Err(error) = self.apply_row_buffer_write(&write, durable).await {
                 self.row_buffer_pool.lock().await.restore_write(write);
                 return Err(error);
             }
-            self.row_buffer_pool.lock().await.complete_write(write);
+            self.row_buffer_pool
+                .lock()
+                .await
+                .complete_write(write, durable);
+        }
+
+        if durable {
+            self.sync_unsynced_row_segments().await?;
         }
 
         Ok(())
     }
 
-    async fn apply_row_buffer_write(&self, write: &RowBufferWrite) -> errors::Result<()> {
+    async fn apply_row_buffer_write(
+        &self,
+        write: &RowBufferWrite,
+        durable: bool,
+    ) -> errors::Result<()> {
         let existing_len = if write.replace_existing {
             0
         } else {
@@ -237,6 +253,7 @@ impl DBEngine {
         let mut file = match tokio::fs::OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(false)
             .open(&write.segment_path)
             .await
         {
@@ -251,6 +268,44 @@ impl DBEngine {
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))?;
         file.write_all(&write.content)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+        if durable {
+            file.sync_data()
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    async fn sync_unsynced_row_segments(&self) -> errors::Result<()> {
+        let mut unsynced_segments = self.row_buffer_pool.lock().await.drain_unsynced_segments();
+
+        while let Some(segment_path) = unsynced_segments.pop() {
+            if let Err(error) = self.sync_row_segment(&segment_path).await {
+                let mut row_buffer_pool = self.row_buffer_pool.lock().await;
+                row_buffer_pool.mark_unsynced_segment(segment_path);
+                for remaining_segment_path in unsynced_segments {
+                    row_buffer_pool.mark_unsynced_segment(remaining_segment_path);
+                }
+                return Err(error);
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn sync_row_segment(&self, segment_path: &Path) -> errors::Result<()> {
+        let file = tokio::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(segment_path)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+        file.sync_data()
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))
     }
@@ -549,5 +604,10 @@ mod tests {
         let segment_path = rows_path.join("00000001.rows");
         assert!(segment_path.exists());
         assert!(engine.row_buffer_pool.lock().await.is_dirty_empty());
+        assert!(!engine.row_buffer_pool.lock().await.is_unsynced_empty());
+
+        engine.flush_row_buffers_durable().await.unwrap();
+
+        assert!(engine.row_buffer_pool.lock().await.is_unsynced_empty());
     }
 }

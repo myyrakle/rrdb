@@ -19,8 +19,7 @@ use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
-const DEFAULT_WAL_FLUSH_INTERVAL: Duration = Duration::from_secs(10);
-const DEFAULT_ROW_FLUSH_INTERVAL: Duration = Duration::from_secs(10);
+const DEFAULT_DURABILITY_FLUSH_INTERVAL: Duration = Duration::from_secs(10);
 
 pub struct Server {
     pub config: Arc<LaunchConfig>,
@@ -30,7 +29,8 @@ fn is_expected_disconnect(error: &ConnectionError) -> bool {
     matches!(error, ConnectionError::ConnectionClosed)
 }
 
-fn spawn_wal_flush_loop(
+fn spawn_durability_flush_loop(
+    engine: Arc<DBEngine>,
     wal_manager: SharedWALManager,
     interval_duration: Duration,
 ) -> JoinHandle<()> {
@@ -40,22 +40,13 @@ fn spawn_wal_flush_loop(
         loop {
             interval.tick().await;
 
+            if let Err(error) = engine.flush_row_buffers_durable().await {
+                log::error!("failed to flush row buffers durably: {}", error);
+                continue;
+            }
+
             if let Err(error) = wal_manager.lock().await.flush().await {
                 log::error!("failed to flush WAL: {}", error);
-            }
-        }
-    })
-}
-
-fn spawn_row_flush_loop(engine: Arc<DBEngine>, interval_duration: Duration) -> JoinHandle<()> {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(interval_duration);
-
-        loop {
-            interval.tick().await;
-
-            if let Err(error) = engine.flush_row_buffers().await {
-                log::error!("failed to flush row buffers: {}", error);
             }
         }
     })
@@ -85,8 +76,18 @@ impl Server {
                 .await
                 .map_err(|error| ExecuteError::wrap(error.to_string()))?,
         ));
-        let _wal_flush_task = spawn_wal_flush_loop(wal_manager.clone(), DEFAULT_WAL_FLUSH_INTERVAL);
-        let _row_flush_task = spawn_row_flush_loop(engine.clone(), DEFAULT_ROW_FLUSH_INTERVAL);
+        {
+            let mut wal_manager_guard = wal_manager.lock().await;
+            engine
+                .recover_from_wal(&mut wal_manager_guard)
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        }
+        let _durability_flush_task = spawn_durability_flush_loop(
+            engine.clone(),
+            wal_manager.clone(),
+            DEFAULT_DURABILITY_FLUSH_INTERVAL,
+        );
 
         // connection task
         // client와의 커넥션 처리 루프
@@ -147,7 +148,7 @@ impl Server {
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use std::sync::Arc;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -164,24 +165,11 @@ mod tests {
     use crate::pgwire::connection::ConnectionError;
 
     use super::is_expected_disconnect;
-    use super::spawn_row_flush_loop;
-    use super::spawn_wal_flush_loop;
+    use super::spawn_durability_flush_loop;
 
     #[test]
     fn connection_closed_is_expected_disconnect() {
         assert!(is_expected_disconnect(&ConnectionError::ConnectionClosed));
-    }
-
-    fn get_test_config(wal_dir_path: &Path) -> LaunchConfig {
-        LaunchConfig {
-            port: 22208,
-            host: "127.0.0.1".to_string(),
-            data_directory: "./test_db_data".to_string(),
-            wal_enabled: true,
-            wal_directory: wal_dir_path.to_str().unwrap().to_string(),
-            wal_segment_size: 1024,
-            wal_extension: "waltest".to_string(),
-        }
     }
 
     async fn setup_test_wal_dir(test_name: &str) -> PathBuf {
@@ -197,9 +185,21 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn wal_flush_loop_periodically_checkpoints_current_wal() {
-        let wal_dir = setup_test_wal_dir("wal_flush_loop_checkpoints").await;
-        let config = get_test_config(&wal_dir);
+    async fn durability_flush_loop_syncs_rows_before_checkpointing_wal() {
+        let wal_dir = setup_test_wal_dir("durability_flush_loop").await;
+        let base_path = wal_dir.join("base");
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        let table_name = TableName::new(Some("rrdb".to_string()), "users".to_string());
+        let rows_path = PathBuf::from(&config.data_directory)
+            .join("rrdb")
+            .join("tables")
+            .join("users")
+            .join("rows");
+        tokio::fs::create_dir_all(&rows_path).await.unwrap();
+        tokio::fs::create_dir_all(&config.wal_directory)
+            .await
+            .unwrap();
+
         let decoder = BincodeDecoder::new();
         let encoder = BincodeEncoder::new();
         let wal_manager = Arc::new(Mutex::new(
@@ -208,6 +208,14 @@ mod tests {
                 .await
                 .unwrap(),
         ));
+        let engine = Arc::new(DBEngine::new(config.clone()));
+        let row = TableDataRow {
+            fields: vec![TableDataField {
+                table_name: table_name.clone(),
+                column_name: "id".to_string(),
+                data: TableDataFieldType::Integer(1),
+            }],
+        };
 
         wal_manager
             .lock()
@@ -215,9 +223,15 @@ mod tests {
             .append_record(EntryType::Insert, Some(b"row-1".to_vec()), None)
             .await
             .unwrap();
+        engine.append_table_rows(&table_name, &[row]).await.unwrap();
+        engine.flush_row_buffers().await.unwrap();
+        assert!(!engine.row_buffer_pool.lock().await.is_unsynced_empty());
 
-        let flush_task = spawn_wal_flush_loop(wal_manager, Duration::from_millis(10));
-        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let flush_task =
+            spawn_durability_flush_loop(engine.clone(), wal_manager, Duration::from_millis(10));
+        let wal_path =
+            PathBuf::from(&config.wal_directory).join(format!("00000001.{}", config.wal_extension));
+        let segment_path = rows_path.join("00000001.rows");
 
         tokio::time::timeout(Duration::from_secs(1), async {
             loop {
@@ -228,50 +242,8 @@ mod tests {
                     .iter()
                     .any(|entry| matches!(entry.entry_type, EntryType::Checkpoint))
                 {
-                    break;
-                }
-
-                tokio::time::sleep(Duration::from_millis(5)).await;
-            }
-        })
-        .await
-        .unwrap();
-
-        flush_task.abort();
-    }
-
-    #[tokio::test]
-    async fn row_flush_loop_periodically_writes_buffered_rows() {
-        let wal_dir = setup_test_wal_dir("row_flush_loop_writes_rows").await;
-        let base_path = wal_dir.join("base");
-        let config = LaunchConfig::default_for_base_path(&base_path);
-        let table_name = TableName::new(Some("rrdb".to_string()), "users".to_string());
-        let rows_path = PathBuf::from(&config.data_directory)
-            .join("rrdb")
-            .join("tables")
-            .join("users")
-            .join("rows");
-        tokio::fs::create_dir_all(&rows_path).await.unwrap();
-
-        let engine = Arc::new(DBEngine::new(config));
-        let row = TableDataRow {
-            fields: vec![TableDataField {
-                table_name: table_name.clone(),
-                column_name: "id".to_string(),
-                data: TableDataFieldType::Integer(1),
-            }],
-        };
-
-        engine.append_table_rows(&table_name, &[row]).await.unwrap();
-
-        let segment_path = rows_path.join("00000001.rows");
-        assert!(!segment_path.exists());
-
-        let flush_task = spawn_row_flush_loop(engine, Duration::from_millis(10));
-
-        tokio::time::timeout(Duration::from_secs(1), async {
-            loop {
-                if segment_path.exists() {
+                    assert!(segment_path.exists());
+                    assert!(engine.row_buffer_pool.lock().await.is_unsynced_empty());
                     break;
                 }
 
