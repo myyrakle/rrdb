@@ -5,6 +5,9 @@ use std::collections::HashMap;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::Framed;
 
+use crate::engine::ast::dml::insert::InsertQuery;
+use crate::engine::ast::dml::parts::insert_values::InsertValue;
+use crate::engine::ast::types::{SQLExpression, TableName};
 use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::lexer::predule::Tokenizer;
 use crate::engine::parser::context::ParserContext;
@@ -89,6 +92,158 @@ impl Connection {
                 "expected zero or one statements",
             )),
         }
+    }
+
+    fn query_has_parameters(text: &str) -> bool {
+        let bytes = text.as_bytes();
+        let mut index = 0;
+
+        while index + 1 < bytes.len() {
+            if bytes[index] == b'$' && bytes[index + 1].is_ascii_digit() {
+                return true;
+            }
+            index += 1;
+        }
+
+        false
+    }
+
+    fn quote_parameter(parameter: &Option<String>) -> String {
+        match parameter {
+            Some(value) => format!("'{}'", value.replace('\'', "''")),
+            None => "NULL".to_string(),
+        }
+    }
+
+    fn bind_query_parameters(
+        query: &str,
+        parameters: &[Option<String>],
+    ) -> Result<String, ErrorResponse> {
+        let bytes = query.as_bytes();
+        let mut bound = String::with_capacity(query.len());
+        let mut index = 0;
+        let mut in_string = false;
+
+        while index < bytes.len() {
+            match bytes[index] {
+                b'\'' => {
+                    bound.push('\'');
+                    index += 1;
+
+                    if in_string && index < bytes.len() && bytes[index] == b'\'' {
+                        bound.push('\'');
+                        index += 1;
+                    } else {
+                        in_string = !in_string;
+                    }
+                }
+                b'$' if !in_string
+                    && index + 1 < bytes.len()
+                    && bytes[index + 1].is_ascii_digit() =>
+                {
+                    index += 1;
+                    let number_start = index;
+
+                    while index < bytes.len() && bytes[index].is_ascii_digit() {
+                        index += 1;
+                    }
+
+                    let parameter_index: usize = query[number_start..index]
+                        .parse::<usize>()
+                        .map_err(|error| {
+                            ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string())
+                        })?;
+
+                    if parameter_index == 0 || parameter_index > parameters.len() {
+                        return Err(ErrorResponse::error(
+                            SqlState::SYNTAX_ERROR,
+                            format!("missing bind parameter ${parameter_index}"),
+                        ));
+                    }
+
+                    bound.push_str(&Self::quote_parameter(&parameters[parameter_index - 1]));
+                }
+                byte => {
+                    bound.push(byte as char);
+                    index += 1;
+                }
+            }
+        }
+
+        Ok(bound)
+    }
+
+    fn parse_parameterized_insert(
+        &self,
+        query: &str,
+        parameters: &[Option<String>],
+    ) -> Option<SQLStatement> {
+        let lower = query.to_ascii_lowercase();
+        let after_insert = lower.strip_prefix("insert into ")?;
+        let table_start = query.len() - after_insert.len();
+        let columns_start = query[table_start..].find('(')? + table_start;
+        let table = query[table_start..columns_start].trim();
+        let columns_end = query[columns_start + 1..].find(')')? + columns_start + 1;
+        let columns = query[columns_start + 1..columns_end]
+            .split(',')
+            .map(str::trim)
+            .filter(|column| !column.is_empty())
+            .map(ToOwned::to_owned)
+            .collect::<Vec<_>>();
+
+        if columns.is_empty() {
+            return None;
+        }
+
+        let rest = query[columns_end + 1..].trim_start();
+        let rest_lower = rest.to_ascii_lowercase();
+        let values_rest = rest_lower.strip_prefix("values")?;
+        let values_start = rest.len() - values_rest.len();
+        let values = rest[values_start..].trim_start();
+        let value_start = values.find('(')?;
+        let value_end = values[value_start + 1..].find(')')? + value_start + 1;
+        let placeholders = values[value_start + 1..value_end]
+            .split(',')
+            .map(str::trim)
+            .collect::<Vec<_>>();
+
+        if placeholders.len() != columns.len() {
+            return None;
+        }
+
+        let mut expressions = Vec::with_capacity(placeholders.len());
+        for placeholder in placeholders {
+            let parameter_index = placeholder.strip_prefix('$')?.parse::<usize>().ok()?;
+            if parameter_index == 0 || parameter_index > parameters.len() {
+                return None;
+            }
+
+            let expression = match &parameters[parameter_index - 1] {
+                Some(value) => SQLExpression::String(value.clone()),
+                None => SQLExpression::Null,
+            };
+            expressions.push(Some(expression));
+        }
+
+        let table_name = match table.split_once('.') {
+            Some((database_name, table_name)) => TableName::new(
+                Some(database_name.trim().to_string()),
+                table_name.trim().to_string(),
+            ),
+            None => TableName::new(
+                Some(self.engine.shared_state.client_info.database.clone()),
+                table.to_string(),
+            ),
+        };
+
+        Some(
+            InsertQuery::builder()
+                .set_into_table(table_name)
+                .set_columns(columns)
+                .set_values(vec![InsertValue { list: expressions }])
+                .build()
+                .into(),
+        )
     }
 
     fn returns_rows(statement: &SQLStatement) -> bool {
@@ -240,7 +395,13 @@ impl Connection {
                     .ok_or(ConnectionError::ConnectionClosed)??
                 {
                     ClientMessage::Parse(parse) => {
-                        let parsed_statement = self.parse_statement(&parse.query)?;
+                        let has_parameters = !parse.parameter_types.is_empty()
+                            || Self::query_has_parameters(&parse.query);
+                        let parsed_statement = if has_parameters {
+                            None
+                        } else {
+                            self.parse_statement(&parse.query)?
+                        };
 
                         self.statements.insert(
                             parse.prepared_statement_name,
@@ -250,6 +411,11 @@ impl Connection {
                                     None => vec![],
                                 },
                                 statement: parsed_statement,
+                                raw_query: if has_parameters {
+                                    Some(parse.query)
+                                } else {
+                                    None
+                                },
                             },
                         );
                         framed.send(ParseComplete).await?;
@@ -270,7 +436,27 @@ impl Connection {
                             .prepared_statement(&bind.prepared_statement_name)?
                             .clone();
 
-                        let portal = match prepared.statement {
+                        let prepared_statement = match prepared.statement {
+                            Some(statement) => Some(statement),
+                            None => match prepared.raw_query {
+                                Some(query) => {
+                                    match self.parse_parameterized_insert(&query, &bind.parameters)
+                                    {
+                                        Some(statement) => Some(statement),
+                                        None => {
+                                            let bound_query = Self::bind_query_parameters(
+                                                &query,
+                                                &bind.parameters,
+                                            )?;
+                                            self.parse_statement(&bound_query)?
+                                        }
+                                    }
+                                }
+                                None => None,
+                            },
+                        };
+
+                        let portal = match prepared_statement {
                             Some(statement) => {
                                 let portal = self.engine.create_portal(&statement).await?;
                                 let fields = if Self::returns_rows(&statement) {
@@ -443,5 +629,91 @@ impl Connection {
 
             self.state = new_state;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::{IpAddr, Ipv4Addr};
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    use tokio::sync::Mutex;
+
+    use crate::config::launch_config::LaunchConfig;
+    use crate::engine::DBEngine;
+    use crate::engine::ast::DMLStatement;
+    use crate::engine::server::client::ClientInfo;
+    use crate::engine::server::shared_state::SharedState;
+    use crate::engine::wal::endec::implements::bincode::{BincodeDecoder, BincodeEncoder};
+    use crate::engine::wal::manager::builder::WALBuilder;
+
+    use super::Connection;
+
+    #[test]
+    fn bind_query_parameters_quotes_and_escapes_text_values() {
+        let query = "insert into key_value (key, value) values ($1, $2)";
+        let bound = Connection::bind_query_parameters(
+            query,
+            &[Some("a'b".to_string()), Some("value".to_string())],
+        )
+        .unwrap();
+
+        assert_eq!(
+            bound,
+            "insert into key_value (key, value) values ('a''b', 'value')"
+        );
+    }
+
+    #[test]
+    fn bind_query_parameters_keeps_placeholders_inside_string_literals() {
+        let query = "select '$1', $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("real".to_string())]).unwrap();
+
+        assert_eq!(bound, "select '$1', 'real'");
+    }
+
+    #[tokio::test]
+    async fn parse_parameterized_insert_builds_insert_statement_without_sql_reparse() {
+        let base_path = PathBuf::from("target/test_pgwire_parameterized_insert");
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        tokio::fs::create_dir_all(&config.data_directory)
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(&config.wal_directory)
+            .await
+            .unwrap();
+        let wal = WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .unwrap();
+        let connection = Connection::new(SharedState {
+            engine: Arc::new(DBEngine::new(config)),
+            wal_manager: Arc::new(Mutex::new(wal)),
+            client_info: ClientInfo {
+                ip: IpAddr::V4(Ipv4Addr::LOCALHOST),
+                connection_id: "test".to_string(),
+                database: "rrdb".to_string(),
+            },
+        });
+
+        let statement = connection
+            .parse_parameterized_insert(
+                "INSERT INTO key_value (key, value) VALUES ($1, $2)",
+                &[Some("k1".to_string()), Some("v1".to_string())],
+            )
+            .unwrap();
+
+        let insert = match statement {
+            crate::engine::ast::SQLStatement::DML(DMLStatement::InsertQuery(insert)) => insert,
+            other => panic!("expected insert statement, got {other:?}"),
+        };
+
+        assert_eq!(insert.into_table.unwrap().table_name, "key_value");
+        assert_eq!(insert.columns, vec!["key", "value"]);
     }
 }
