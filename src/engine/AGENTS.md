@@ -86,12 +86,12 @@ SQL Text (String)
 - `shared_state`: `SharedState` (클라이언트 정보 + 채널 sender)
 
 ### `wal/` — Write-Ahead Logging
-- `WALManager` + `BitcodeEncoder`
+- `WALManager` + `BincodeEncoder`
 - WAL 세그먼트: 크기 제한 (`wal_segment_size`), 확장자 (`wal_extension`)
 - 복구 시 WAL replay
 
 ### `encoder/` — 인코딩 유틸리티
-- `schema_encoder`: StorageEncoder — 스키마 데이터 bitcode 직렬화
+- `schema_encoder`: StorageEncoder — 스키마 데이터 bincode 직렬화
 
 ### `initialize/` — 초기화
 - `DBEngine::initialize_with_base_path()` — 데이터 저장소 초기 설정
@@ -102,7 +102,7 @@ SQL Text (String)
 pub async fn process_query(
     &self,
     statement: SQLStatement,
-    _wal_manager: Arc<WALManager<BitcodeEncoder>>,
+    _wal_manager: Arc<WALManager<BincodeEncoder>>,
     _connection_id: String,
 ) -> errors::Result<ExecuteResult> {
     let result = match statement {
@@ -140,7 +140,7 @@ pub async fn process_query(
 
 ```rust
 // 1. WALManager는 Arc로 공유
-wal_manager: Arc<WALManager<BitcodeEncoder>>
+wal_manager: Arc<WALManager<BincodeEncoder>>
 
 // 2. mutation 작업(INSERT/UPDATE/DELETE/CREATE/DROP) 시 WAL 기록
 //    engine actions 내부에서 wal_manager.append() 호출
@@ -148,15 +148,26 @@ wal_manager: Arc<WALManager<BitcodeEncoder>>
 // 3. WAL 세그먼트 속성
 //    - segment_size: config.wal_segment_size (기본 16MB)
 //    - extension: config.wal_extension (기본 "log")
-//    - encoder: BitcodeEncoder (bitcode crate)
+//    - encoder: BincodeEncoder (bincode crate)
 
 // 4. WAL 복구는 Server startup 시 수행
 ```
+
+## WAL 내구성/복구 정책
+
+- mutation은 데이터 파일을 수정하기 전에 반드시 WAL에 먼저 기록한다.
+- 일반 write path에서는 WAL frame을 mmap segment에 append하고, 매 요청마다 `flush`/`fsync`/`sync_data`를 호출하지 않는다.
+- WAL mmap segment는 background flush loop, checkpoint, segment rotation에서만 flush + `sync_data`로 디스크 내구성 경계를 만든다.
+- table segment/data 파일은 mutation마다 fsync하지 않는다. INSERT append는 메모리 row buffer에 먼저 쌓고 background row flush loop, buffer size pressure, 또는 읽기/수정/삭제 직전 flush에서 디스크에 append한다.
+- row buffer에만 있고 아직 data segment에 내려가지 않은 내용은 중단 시 유실될 수 있다. 중단 복구 기준은 WAL이다.
+- INSERT/UPDATE/DELETE/DDL처럼 디스크 상태를 바꾸는 기능을 추가하거나 저장 형식을 변경할 때는 같은 PR에서 WAL entry와 replay 경로, 복구 테스트를 함께 추가해야 한다.
+- replay가 지원되지 않는 새 mutation은 WAL 기반 복구 계약을 깨므로 병합하지 않는다.
 
 ## 주의사항
 
 - **AST 패턴 매칭은 exhaustive**: `SQLStatement`에 새 변형 추가 시 반드시 `process_query`의 match에 추가
 - **에러 변환**: actions에서 발생한 에러는 `ExecuteError::wrap()`으로 감싸서 반환
-- **스키마 인코딩**: `StorageEncoder` (`bitcode`)로 테이블 config 저장/로드
+- **스키마 인코딩**: `StorageEncoder` (`bincode`)로 테이블 config 저장/로드
+- **WAL 우선 기록**: 데이터 파일 변경 전에 WAL을 먼저 기록하고, replay 테스트를 같이 유지
 - **파일시스템 접근**: 직접 `tokio::fs` 호출 대신 `self.file_system` 트레이트 메서드 사용하여 테스트 가능하게 유지
 - **채널 통신**: Server는 `SharedState`의 `oneshot` 채널로 per-connection 요청을 dispatch

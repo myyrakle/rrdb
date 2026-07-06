@@ -574,6 +574,9 @@ wal_extension = "log"
                     std::collections::HashMap::new(),
                 )),
                 row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
+                row_write_buffer: Arc::new(tokio::sync::Mutex::new(
+                    std::collections::HashMap::new(),
+                )),
             };
 
             let result = executor.init_config(None).await;
@@ -635,6 +638,7 @@ wal_extension = "log"
                 tokio::sync::RwLock::new(std::collections::HashMap::new()),
             ),
             row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
+            row_write_buffer: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
         };
 
         let result = executor.init_config(Some(base_path)).await;
@@ -682,6 +686,7 @@ wal_extension = "log"
                 tokio::sync::RwLock::new(std::collections::HashMap::new()),
             ),
             row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
+            row_write_buffer: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
         };
 
         let result = executor.install_daemon().await;

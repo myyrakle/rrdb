@@ -16,7 +16,7 @@ RRDB는 **Rust**로 작성된 **PostgreSQL 호환 관계형 데이터베이스**
 | 비동기 런타임 | **Tokio** (features = `["full"]`) — async I/O, 타이머, 채널, 파일시스템 전반 |
 | CLI 프레임워크 | **clap** 3.x (derive 매크로) |
 | 설정 파일 | **serde** + **toml** — `LaunchConfig`를 TOML에서 역직렬화 |
-| WAL 인코딩 | **bitcode** 0.6 — 바이너리 직렬화로 WAL 세그먼트 저장 |
+| WAL 인코딩 | **bincode** — 바이너리 직렬화로 WAL 세그먼트 저장 |
 | Wire Protocol | **tokio-util** codec — PostgreSQL pgwire Decoder/Encoder |
 | 오류 처리 | **thiserror** (라이브러리 에러) + **anyhow** (바이너리 레벨) |
 | 로깅 | **env_logger** + **log** — `RUST_LOG` 환경변수로 레벨 제어 |
@@ -47,7 +47,7 @@ RRDB는 **Rust**로 작성된 **PostgreSQL 호환 관계형 데이터베이스**
 │         → actions (DDL/DML/Other)                  │
 │                                                   │
 │  ├─ server/  (TCP listener, channel dispatch)     │
-│  ├─ wal/     (WAL manager + bitcode encoder)      │
+│  ├─ wal/     (WAL manager + bincode encoder)      │
 │  └─ schema/  (table/config storage)               │
 └──────────────────┬──────────────────────────────┘
                    │
@@ -214,7 +214,7 @@ cargo run -- init
 ### WAL 세그먼트 관리
 - 기본 세그먼트 크기: 16MB (`1024 * 1024 * 16`)
 - WAL 확장자: `log` (기본값)
-- 인코더: `BitcodeEncoder` (`bitcode` 크레이트)
+- 인코더: `BincodeEncoder` (`bincode` 크레이트)
 - WAL 설정 필드: `wal_enabled`, `wal_directory`, `wal_segment_size`, `wal_extension`
 
 ### OS별 경로

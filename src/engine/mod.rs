@@ -40,6 +40,7 @@ pub struct DBEngine {
     pub(crate) command_runner: Arc<dyn CommandRunner + Send + Sync>,
     pub(crate) table_config_cache: Arc<RwLock<HashMap<TableName, TableSchema>>>,
     pub(crate) row_storage_lock: Arc<Mutex<()>>,
+    pub(crate) row_write_buffer: Arc<Mutex<HashMap<PathBuf, Vec<u8>>>>,
 }
 
 impl DBEngine {
@@ -50,6 +51,7 @@ impl DBEngine {
             command_runner: Arc::new(RealCommandRunner {}),
             table_config_cache: Arc::new(RwLock::new(HashMap::new())),
             row_storage_lock: Arc::new(Mutex::new(())),
+            row_write_buffer: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -157,15 +159,13 @@ impl DBEngine {
         let config_path = table_path.clone().join("table.config");
 
         match tokio::fs::read(&config_path).await {
-            Ok(data) => {
-                match encoder.decode::<TableSchema>(data.as_slice()) {
-                    Ok(table_config) => Ok(table_config),
-                    Err(error) => Err(ExecuteError::wrap(format!(
-                        "invalid config data: {}",
-                        error
-                    ))),
-                }
-            }
+            Ok(data) => match encoder.decode::<TableSchema>(data.as_slice()) {
+                Ok(table_config) => Ok(table_config),
+                Err(error) => Err(ExecuteError::wrap(format!(
+                    "invalid config data: {}",
+                    error
+                ))),
+            },
             Err(error) => match error.kind() {
                 std::io::ErrorKind::NotFound => {
                     Err(ExecuteError::wrap("table not found".to_string()))
