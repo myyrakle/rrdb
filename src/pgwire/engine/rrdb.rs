@@ -155,6 +155,7 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr};
     use std::path::PathBuf;
     use std::sync::Arc;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     use tokio::sync::Mutex;
 
@@ -169,7 +170,18 @@ mod tests {
     use crate::pgwire::engine::{Engine, RRDBEngine};
 
     async fn build_test_engine(test_name: &str) -> RRDBEngine {
-        let base_path = PathBuf::from("target").join(test_name);
+        let test_binary = std::env::current_exe()
+            .ok()
+            .and_then(|path| path.file_stem().map(|stem| stem.to_os_string()))
+            .and_then(|stem| stem.into_string().ok())
+            .unwrap_or_else(|| "unknown".to_string());
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let base_path = PathBuf::from("target")
+            .join(test_name)
+            .join(format!("{test_binary}_{now}"));
         if base_path.exists() {
             tokio::fs::remove_dir_all(&base_path).await.unwrap();
         }
