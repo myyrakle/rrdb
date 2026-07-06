@@ -69,6 +69,7 @@ impl DBEngine {
             return Ok(());
         }
 
+        let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
         let frame = encode_row_frames(rows)?;
 
@@ -80,7 +81,7 @@ impl DBEngine {
         };
 
         if buffered_bytes >= buffer_limit_bytes {
-            self.flush_row_buffers().await?;
+            self.flush_row_buffers_locked(false).await?;
         }
 
         Ok(())
@@ -204,6 +205,7 @@ impl DBEngine {
         Ok(rows)
     }
 
+    #[cfg(test)]
     pub(crate) async fn flush_row_buffers(&self) -> errors::Result<()> {
         let _guard = self.row_storage_lock.lock().await;
         self.flush_row_buffers_locked(false).await
@@ -333,6 +335,7 @@ impl DBEngine {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+    use std::sync::Arc;
 
     use crate::config::launch_config::LaunchConfig;
     use crate::engine::DBEngine;
@@ -609,5 +612,43 @@ mod tests {
         engine.flush_row_buffers_durable().await.unwrap();
 
         assert!(engine.row_buffer_pool.lock().await.is_unsynced_empty());
+    }
+
+    #[tokio::test]
+    async fn append_table_rows_waits_for_row_storage_lock() {
+        let base_path = PathBuf::from(format!(
+            "target/test_row_segments/append_waits_for_storage_lock_{}",
+            std::process::id()
+        ));
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        let table_name = TableName::new(Some("rrdb".to_string()), "users".to_string());
+        let rows_path = PathBuf::from(&config.data_directory)
+            .join("rrdb")
+            .join("tables")
+            .join("users")
+            .join("rows");
+        tokio::fs::create_dir_all(&rows_path).await.unwrap();
+
+        let engine = Arc::new(DBEngine::new(config));
+        let row = TableDataRow {
+            fields: vec![TableDataField {
+                table_name: table_name.clone(),
+                column_name: "id".to_string(),
+                data: TableDataFieldType::Integer(1),
+            }],
+        };
+        let _guard = engine.row_storage_lock.lock().await;
+        let append_task = {
+            let engine = engine.clone();
+            tokio::spawn(async move { engine.append_table_rows(&table_name, &[row]).await })
+        };
+
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+        assert!(!append_task.is_finished());
     }
 }
