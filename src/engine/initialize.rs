@@ -574,8 +574,8 @@ wal_extension = "log"
                     std::collections::HashMap::new(),
                 )),
                 row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
-                row_write_buffer: Arc::new(tokio::sync::Mutex::new(
-                    std::collections::HashMap::new(),
+                row_buffer_pool: Arc::new(tokio::sync::Mutex::new(
+                    crate::engine::row_buffer::RowBufferPool::default(),
                 )),
             };
 
@@ -638,7 +638,9 @@ wal_extension = "log"
                 tokio::sync::RwLock::new(std::collections::HashMap::new()),
             ),
             row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
-            row_write_buffer: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
+            row_buffer_pool: Arc::new(tokio::sync::Mutex::new(
+                crate::engine::row_buffer::RowBufferPool::default(),
+            )),
         };
 
         let result = executor.init_config(Some(base_path)).await;
@@ -686,7 +688,9 @@ wal_extension = "log"
                 tokio::sync::RwLock::new(std::collections::HashMap::new()),
             ),
             row_storage_lock: Arc::new(tokio::sync::Mutex::new(())),
-            row_write_buffer: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
+            row_buffer_pool: Arc::new(tokio::sync::Mutex::new(
+                crate::engine::row_buffer::RowBufferPool::default(),
+            )),
         };
 
         let result = executor.install_daemon().await;
