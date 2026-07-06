@@ -179,7 +179,15 @@ impl DBEngine {
                 .copy_from_slice(&frame_len.to_le_bytes());
         }
 
-        tokio::fs::write(segment_path, content)
+        // Perf: write() only — no fsync/sync_all.
+        // Segment writes are not durability boundaries. WAL replay is the
+        // sole recovery mechanism on crash. Skipping fsync dramatically
+        // reduces write latency under load.
+        let mut file = tokio::fs::File::create(segment_path)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+        file.write_all(&content)
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))
     }

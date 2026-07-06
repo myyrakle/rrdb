@@ -13,6 +13,36 @@ use super::{
     types::{EntryType, WALEntry},
 };
 
+// WAL (Write-Ahead Log) Design Guidelines
+// =======================================
+//
+// All disk write recovery is handled through WAL. When adding a new feature
+// that writes persistent state to disk, you MUST follow these rules:
+//
+// 1. Add a new EntryType variant. The entry payload (WALEntry::data) MUST
+//    contain enough information to fully reconstruct the write operation.
+//    Typically this is a bincode-serialized query or action struct.
+//
+// 2. Write the WAL entry BEFORE applying the change to the on-disk data file.
+//    This ensures the WAL is always ahead of the data.
+//
+// 3. On server restart, the WALBuilder automatically loads entries from the
+//    last WAL file. If the file doesn't end with a Checkpoint, those entries
+//    represent an unclean shutdown state and must be replayed.
+//
+// 4. Implement replay logic in WALBuilder::build() (or a dedicated replay
+//    stage after build()) that inspects the loaded buffers and re-applies
+//    un-checkpointed operations to the data storage layer.
+//
+// 5. Segment (data file) writes do NOT fsync — they only perform write()
+//    syscalls. Crash recovery relies entirely on WAL replay. This means the
+//    WAL flush policy (background flush loop + explicit checkpoints) is the
+//    sole durability boundary.
+//
+// 6. Checkpoints mark a safe point where all prior operations have been
+//    durably written to data files. After a checkpoint, all preceding WAL
+//    files can be garbage-collected.
+
 #[derive(Default, Debug, Clone)]
 pub struct WALManager<T>
 where
@@ -94,10 +124,11 @@ where
             .await
             .map_err(|e| WALError::wrap(e.to_string()))?;
 
+        // Perf: only write_all() — no flush / sync_data.
+        // The background flush loop (or explicit flush/checkpoint) will sync the
+        // data to disk. On crash, un-synced WAL entries are replayed from the
+        // last checkpointed state.
         file.write_all(&frame)
-            .await
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-        file.flush()
             .await
             .map_err(|e| WALError::wrap(e.to_string()))?;
 
@@ -123,7 +154,9 @@ where
             .join(format!("{:08X}.{}", self.sequence, self.extension))
     }
 
-    async fn sync_current_file(&self) -> errors::Result<()> {
+    /// Force-sync the current WAL file to disk (`sync_data` / fdatasync).
+    /// Called by the background flush loop and on explicit flush/checkpoint.
+    pub async fn sync_current_file(&self) -> errors::Result<()> {
         let path = self.current_path();
 
         match tokio::fs::OpenOptions::new()

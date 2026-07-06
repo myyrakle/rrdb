@@ -16,6 +16,7 @@ use crate::pgwire::predule::Connection;
 
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
+use tokio::time::{self, Duration};
 
 pub struct Server {
     pub config: Arc<LaunchConfig>,
@@ -49,6 +50,21 @@ impl Server {
                 .await
                 .map_err(|error| ExecuteError::wrap(error.to_string()))?,
         ));
+
+        // Background WAL flush loop: periodically syncs the current WAL file
+        // to disk. Individual WAL writes only call write_all() (no flush),
+        // so this loop is the primary durability boundary. The interval
+        // trades off between crash-loss window and write throughput.
+        let bg_wal_manager = wal_manager.clone();
+        tokio::spawn(async move {
+            let mut interval = time::interval(Duration::from_millis(200));
+            loop {
+                interval.tick().await;
+                if let Err(error) = bg_wal_manager.lock().await.sync_current_file().await {
+                    log::warn!("background WAL flush failed: {}", error);
+                }
+            }
+        });
 
         // connection task
         // client와의 커넥션 처리 루프
