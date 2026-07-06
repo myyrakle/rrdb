@@ -55,13 +55,34 @@ impl Server {
         // to disk. Individual WAL writes only call write_all() (no flush),
         // so this loop is the primary durability boundary. The interval
         // trades off between crash-loss window and write throughput.
+        //
+        // The lock is only held long enough to snapshot the current file path;
+        // the sync_data (fsync) call happens outside the lock to avoid
+        // blocking all WAL operations during disk I/O.
         let bg_wal_manager = wal_manager.clone();
         tokio::spawn(async move {
             let mut interval = time::interval(Duration::from_millis(200));
             loop {
                 interval.tick().await;
-                if let Err(error) = bg_wal_manager.lock().await.sync_current_file().await {
-                    log::warn!("background WAL flush failed: {}", error);
+                let path = {
+                    let mgr = bg_wal_manager.lock().await;
+                    mgr.current_file_path()
+                };
+                // Sync outside the lock so WAL writes aren't blocked during fsync.
+                match tokio::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(&path)
+                    .await
+                {
+                    Ok(file) => {
+                        if let Err(error) = file.sync_data().await {
+                            log::warn!("background WAL flush failed: {}", error);
+                        }
+                    }
+                    Err(error) => {
+                        log::warn!("background WAL flush failed: {}", error);
+                    }
                 }
             }
         });

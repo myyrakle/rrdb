@@ -154,6 +154,13 @@ where
             .join(format!("{:08X}.{}", self.sequence, self.extension))
     }
 
+    /// Returns the path of the current WAL file without holding a lock.
+    /// Used by the background flush loop to snapshot the path before
+    /// performing the sync outside the lock.
+    pub fn current_file_path(&self) -> PathBuf {
+        self.current_path()
+    }
+
     /// Force-sync the current WAL file to disk (`sync_data` / fdatasync).
     /// Called by the background flush loop and on explicit flush/checkpoint.
     pub async fn sync_current_file(&self) -> errors::Result<()> {

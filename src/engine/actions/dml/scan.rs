@@ -23,6 +23,9 @@ impl DBEngine {
         &self,
         table_name: TableName,
     ) -> errors::Result<Vec<(RowLocation, TableDataRow)>> {
+        // Hold the row_storage_lock so we don't observe a truncated segment
+        // file while a concurrent update/delete is rewriting it.
+        let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(&table_name)?;
         let rows = self.read_segment_rows(&segment_path).await?;
 
