@@ -161,9 +161,8 @@ impl DBEngine {
                     rows.push(row);
                 }
 
-                let wal_payload =
-                    bincode::serialize(&query)
-                        .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+                let wal_payload = bincode::serialize(&(into_table, &rows))
+                    .map_err(|error| ExecuteError::wrap(error.to_string()))?;
                 wal_manager
                     .lock()
                     .await

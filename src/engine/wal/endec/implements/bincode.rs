@@ -50,6 +50,10 @@ impl WALDecoder<Vec<WALEntry>> for BincodeDecoder {
 
         while offset < data.len() {
             if data.len() - offset < size_of::<u32>() {
+                if data[offset..].iter().all(|byte| *byte == 0) {
+                    break;
+                }
+
                 return Err(WALError::wrap("truncated wal frame header".to_string()));
             }
 
@@ -59,6 +63,10 @@ impl WALDecoder<Vec<WALEntry>> for BincodeDecoder {
                     .map_err(|e| WALError::wrap(format!("{:?}", e)))?,
             ) as usize;
             offset += size_of::<u32>();
+
+            if frame_len == 0 {
+                break;
+            }
 
             if data.len() - offset < frame_len {
                 return Err(WALError::wrap("truncated wal frame body".to_string()));
