@@ -4,6 +4,7 @@ pub mod index;
 pub mod lexer;
 pub mod optimizer;
 pub mod parser;
+pub mod row_buffer;
 pub mod schema;
 pub mod server;
 pub mod wal;
@@ -24,6 +25,7 @@ use crate::config::launch_config::LaunchConfig;
 use crate::engine::ast::types::TableName;
 use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::encoder::schema_encoder::StorageEncoder;
+use crate::engine::row_buffer::RowBufferPool;
 use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bincode::BincodeEncoder;
@@ -40,7 +42,7 @@ pub struct DBEngine {
     pub(crate) command_runner: Arc<dyn CommandRunner + Send + Sync>,
     pub(crate) table_config_cache: Arc<RwLock<HashMap<TableName, TableSchema>>>,
     pub(crate) row_storage_lock: Arc<Mutex<()>>,
-    pub(crate) row_write_buffer: Arc<Mutex<HashMap<PathBuf, Vec<u8>>>>,
+    pub(crate) row_buffer_pool: Arc<Mutex<RowBufferPool>>,
 }
 
 impl DBEngine {
@@ -51,7 +53,7 @@ impl DBEngine {
             command_runner: Arc::new(RealCommandRunner {}),
             table_config_cache: Arc::new(RwLock::new(HashMap::new())),
             row_storage_lock: Arc::new(Mutex::new(())),
-            row_write_buffer: Arc::new(Mutex::new(HashMap::new())),
+            row_buffer_pool: Arc::new(Mutex::new(RowBufferPool::default())),
         }
     }
 
