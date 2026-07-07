@@ -18,9 +18,13 @@ impl BincodeEncoder {
     }
 }
 
-impl WALEncoder<Vec<WALEntry>> for BincodeEncoder {
-    fn encode(&self, entry: &Vec<WALEntry>) -> errors::Result<Vec<u8>> {
+impl WALEncoder<WALEntry> for BincodeEncoder {
+    fn encode(&self, entry: &WALEntry) -> errors::Result<Vec<u8>> {
         bincode::serialize(entry).map_err(|e| WALError::wrap(e.to_string()))
+    }
+
+    fn encode_into(&self, writer: impl std::io::Write, entry: &WALEntry) -> errors::Result<()> {
+        bincode::serialize_into(writer, entry).map_err(|e| WALError::wrap(e.to_string()))
     }
 }
 
@@ -46,6 +50,10 @@ impl WALDecoder<Vec<WALEntry>> for BincodeDecoder {
 
         while offset < data.len() {
             if data.len() - offset < size_of::<u32>() {
+                if data[offset..].iter().all(|byte| *byte == 0) {
+                    break;
+                }
+
                 return Err(WALError::wrap("truncated wal frame header".to_string()));
             }
 
@@ -56,14 +64,17 @@ impl WALDecoder<Vec<WALEntry>> for BincodeDecoder {
             ) as usize;
             offset += size_of::<u32>();
 
+            if frame_len == 0 {
+                break;
+            }
+
             if data.len() - offset < frame_len {
                 return Err(WALError::wrap("truncated wal frame body".to_string()));
             }
 
-            let mut frame_entries: Vec<WALEntry> =
-                bincode::deserialize(&data[offset..offset + frame_len])
-                    .map_err(|e| WALError::wrap(e.to_string()))?;
-            entries.append(&mut frame_entries);
+            let entry: WALEntry = bincode::deserialize(&data[offset..offset + frame_len])
+                .map_err(|e| WALError::wrap(e.to_string()))?;
+            entries.push(entry);
             offset += frame_len;
         }
 

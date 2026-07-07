@@ -2,17 +2,19 @@ use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind as IOErrorKind;
 use std::path::{Path, PathBuf};
 
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
 use crate::engine::DBEngine;
 use crate::engine::ast::dml::plan::select::scan::IndexScanPlan;
 use crate::engine::ast::types::TableName;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
+use crate::engine::row_buffer::{RowBufferWrite, encode_row_frames};
 use crate::engine::schema::row::TableDataRow;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
 const ROW_SEGMENT_FILENAME: &str = "00000001.rows";
+const DEFAULT_ROW_WRITE_BUFFER_LIMIT_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct RowLocation {
@@ -24,8 +26,19 @@ impl DBEngine {
         &self,
         table_name: TableName,
     ) -> errors::Result<Vec<(RowLocation, TableDataRow)>> {
+        let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(&table_name)?;
-        let rows = self.read_segment_rows(&segment_path).await?;
+        let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
+        let rows = match cached_rows {
+            Some(rows) => rows,
+            None => {
+                let disk_rows = self.read_segment_rows(&segment_path).await?;
+                self.row_buffer_pool
+                    .lock()
+                    .await
+                    .read_rows(segment_path, disk_rows)
+            }
+        };
 
         Ok(rows
             .into_iter()
@@ -41,6 +54,20 @@ impl DBEngine {
         table_name: &TableName,
         rows: &[TableDataRow],
     ) -> errors::Result<usize> {
+        self.append_table_rows_with_buffer_limit(
+            table_name,
+            rows,
+            DEFAULT_ROW_WRITE_BUFFER_LIMIT_BYTES,
+        )
+        .await
+    }
+
+    async fn append_table_rows_with_buffer_limit(
+        &self,
+        table_name: &TableName,
+        rows: &[TableDataRow],
+        buffer_limit_bytes: usize,
+    ) -> errors::Result<usize> {
         if rows.is_empty() {
             return Ok(0);
         }
@@ -48,30 +75,29 @@ impl DBEngine {
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
 
-        // TODO(#217): 행 개수를 메타데이터로 유지해 O(n) 카운트를 제거
-        let start_index = self.read_segment_rows(&segment_path).await?.len();
+        // 버퍼 풀의 현재 행 개수를 시작 인덱스로 사용
+        let start_index = self
+            .row_buffer_pool
+            .lock()
+            .await
+            .cached_row_count(&segment_path)
+            .unwrap_or_else(|| {
+                // 첫 접근 시 persisted_rows가 없으므로 디스크에서 읽어 계산
+                0
+            });
 
-        let encoder = StorageEncoder::new();
-        let mut frame = Vec::new();
+        let frame = encode_row_frames(rows)?;
 
-        for row in rows {
-            let encoded = encoder.encode(row);
-            let frame_len = u32::try_from(encoded.len())
-                .map_err(|_| ExecuteError::wrap("row frame is too large".to_string()))?;
-            frame.extend_from_slice(&frame_len.to_le_bytes());
-            frame.extend_from_slice(&encoded);
+        let buffered_bytes = {
+            self.row_buffer_pool
+                .lock()
+                .await
+                .append_rows(segment_path, rows, frame)
+        };
+
+        if buffered_bytes >= buffer_limit_bytes {
+            self.flush_row_buffers_locked(false).await?;
         }
-
-        let mut file = tokio::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&segment_path)
-            .await
-            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
-
-        file.write_all(&frame)
-            .await
-            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
         Ok(start_index)
     }
@@ -87,7 +113,17 @@ impl DBEngine {
 
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
-        let mut rows = self.read_segment_rows(&segment_path).await?;
+        let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
+        let mut rows = match cached_rows {
+            Some(rows) => rows,
+            None => {
+                let disk_rows = self.read_segment_rows(&segment_path).await?;
+                self.row_buffer_pool
+                    .lock()
+                    .await
+                    .read_rows(segment_path.clone(), disk_rows)
+            }
+        };
 
         for (row_index, row) in replacements {
             let target = rows.get_mut(row_index).ok_or_else(|| {
@@ -96,7 +132,12 @@ impl DBEngine {
             *target = row;
         }
 
-        self.write_segment_rows(&segment_path, &rows).await
+        self.row_buffer_pool
+            .lock()
+            .await
+            .replace_rows(segment_path, rows);
+
+        Ok(())
     }
 
     pub(crate) async fn delete_table_rows(
@@ -110,7 +151,17 @@ impl DBEngine {
 
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
-        let rows = self.read_segment_rows(&segment_path).await?;
+        let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
+        let rows = match cached_rows {
+            Some(rows) => rows,
+            None => {
+                let disk_rows = self.read_segment_rows(&segment_path).await?;
+                self.row_buffer_pool
+                    .lock()
+                    .await
+                    .read_rows(segment_path.clone(), disk_rows)
+            }
+        };
         let rows = rows
             .into_iter()
             .enumerate()
@@ -118,7 +169,12 @@ impl DBEngine {
             .map(|(_, row)| row)
             .collect::<Vec<_>>();
 
-        self.write_segment_rows(&segment_path, &rows).await
+        self.row_buffer_pool
+            .lock()
+            .await
+            .replace_rows(segment_path, rows);
+
+        Ok(())
     }
 
     async fn read_segment_rows(&self, segment_path: &Path) -> errors::Result<Vec<TableDataRow>> {
@@ -154,7 +210,9 @@ impl DBEngine {
 
             let row = encoder
                 .decode::<TableDataRow>(&content[offset..offset + frame_len])
-                .ok_or_else(|| ExecuteError::wrap("invalid row segment frame".to_string()))?;
+                .map_err(|error| {
+                    ExecuteError::wrap(format!("invalid row segment frame: {}", error))
+                })?;
             rows.push(row);
             offset += frame_len;
         }
@@ -162,23 +220,109 @@ impl DBEngine {
         Ok(rows)
     }
 
-    async fn write_segment_rows(
-        &self,
-        segment_path: &Path,
-        rows: &[TableDataRow],
-    ) -> errors::Result<()> {
-        let encoder = StorageEncoder::new();
-        let mut content = Vec::new();
+    #[cfg(test)]
+    pub(crate) async fn flush_row_buffers(&self) -> errors::Result<()> {
+        let _guard = self.row_storage_lock.lock().await;
+        self.flush_row_buffers_locked(false).await
+    }
 
-        for row in rows {
-            let encoded = encoder.encode(row);
-            let frame_len = u32::try_from(encoded.len())
-                .map_err(|_| ExecuteError::wrap("row frame is too large".to_string()))?;
-            content.extend_from_slice(&frame_len.to_le_bytes());
-            content.extend_from_slice(&encoded);
+    pub(crate) async fn flush_row_buffers_durable(&self) -> errors::Result<()> {
+        let _guard = self.row_storage_lock.lock().await;
+        self.flush_row_buffers_locked(true).await
+    }
+
+    async fn flush_row_buffers_locked(&self, durable: bool) -> errors::Result<()> {
+        let pending = self.row_buffer_pool.lock().await.drain_writes()?;
+
+        for write in pending {
+            if let Err(error) = self.apply_row_buffer_write(&write, durable).await {
+                self.row_buffer_pool.lock().await.restore_write(write);
+                return Err(error);
+            }
+            self.row_buffer_pool
+                .lock()
+                .await
+                .complete_write(write, durable);
         }
 
-        tokio::fs::write(segment_path, content)
+        if durable {
+            self.sync_unsynced_row_segments().await?;
+        }
+
+        Ok(())
+    }
+
+    async fn apply_row_buffer_write(
+        &self,
+        write: &RowBufferWrite,
+        durable: bool,
+    ) -> errors::Result<()> {
+        let existing_len = if write.replace_existing {
+            0
+        } else {
+            match tokio::fs::metadata(&write.segment_path).await {
+                Ok(metadata) => metadata.len(),
+                Err(error) if error.kind() == IOErrorKind::NotFound => 0,
+                Err(error) => return Err(ExecuteError::wrap(error.to_string())),
+            }
+        };
+
+        let mut file = match tokio::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(false)
+            .open(&write.segment_path)
+            .await
+        {
+            Ok(file) => file,
+            Err(error) => return Err(ExecuteError::wrap(error.to_string())),
+        };
+
+        file.set_len(existing_len)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        file.seek(std::io::SeekFrom::End(0))
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        file.write_all(&write.content)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+        if durable {
+            file.sync_data()
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    async fn sync_unsynced_row_segments(&self) -> errors::Result<()> {
+        let mut unsynced_segments = self.row_buffer_pool.lock().await.drain_unsynced_segments();
+
+        while let Some(segment_path) = unsynced_segments.pop() {
+            if let Err(error) = self.sync_row_segment(&segment_path).await {
+                let mut row_buffer_pool = self.row_buffer_pool.lock().await;
+                row_buffer_pool.mark_unsynced_segment(segment_path);
+                for remaining_segment_path in unsynced_segments {
+                    row_buffer_pool.mark_unsynced_segment(remaining_segment_path);
+                }
+                return Err(error);
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn sync_row_segment(&self, segment_path: &Path) -> errors::Result<()> {
+        let file = tokio::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(segment_path)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+        file.sync_data()
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))
     }
@@ -226,8 +370,19 @@ impl DBEngine {
         }
 
         // TODO(#195): 세그먼트 프레임 오프셋을 인덱스에 저장해 부분 읽기로 최적화
+        let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(&table_name)?;
-        let all_rows = self.read_segment_rows(&segment_path).await?;
+        let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
+        let all_rows = match cached_rows {
+            Some(rows) => rows,
+            None => {
+                let disk_rows = self.read_segment_rows(&segment_path).await?;
+                self.row_buffer_pool
+                    .lock()
+                    .await
+                    .read_rows(segment_path, disk_rows)
+            }
+        };
 
         let mut result = Vec::with_capacity(row_paths.len());
 
@@ -256,6 +411,7 @@ impl DBEngine {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{HashMap, HashSet};
     use std::path::PathBuf;
 
     use crate::config::launch_config::LaunchConfig;
@@ -264,7 +420,7 @@ mod tests {
     use crate::engine::schema::row::{TableDataField, TableDataFieldType, TableDataRow};
 
     #[tokio::test]
-    async fn append_table_rows_stores_rows_in_single_segment_file() {
+    async fn full_scan_reads_buffered_rows_without_flushing_segment_file() {
         let base_path = PathBuf::from(format!(
             "target/test_row_segments/single_segment_file_{}",
             std::process::id()
@@ -297,17 +453,115 @@ mod tests {
             .unwrap();
 
         let scanned = engine.full_scan(table_name).await.unwrap();
-        let mut dir_entries = tokio::fs::read_dir(&rows_path).await.unwrap();
-        let mut file_count = 0;
-        while let Some(entry) = dir_entries.next_entry().await.unwrap() {
-            if entry.file_type().await.unwrap().is_file() {
-                file_count += 1;
-            }
-        }
+        let segment_path = rows_path.join("00000001.rows");
 
         assert_eq!(scanned.len(), 2);
         assert_eq!(scanned[0].1.fields[0].data, TableDataFieldType::Integer(1));
         assert_eq!(scanned[1].1.fields[0].data, TableDataFieldType::Integer(2));
-        assert_eq!(file_count, 1);
+        assert!(!segment_path.exists());
+    }
+
+    #[tokio::test]
+    async fn update_table_rows_updates_buffered_rows_without_flushing_segment_file() {
+        let base_path = PathBuf::from(format!(
+            "target/test_row_segments/update_buffered_rows_{}",
+            std::process::id()
+        ));
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        let table_name = TableName::new(Some("rrdb".to_string()), "users".to_string());
+        let rows_path = PathBuf::from(&config.data_directory)
+            .join("rrdb")
+            .join("tables")
+            .join("users")
+            .join("rows");
+        tokio::fs::create_dir_all(&rows_path).await.unwrap();
+
+        let engine = DBEngine::new(config);
+        let row = |id| TableDataRow {
+            fields: vec![TableDataField {
+                table_name: table_name.clone(),
+                column_name: "id".to_string(),
+                data: TableDataFieldType::Integer(id),
+            }],
+        };
+        let row2 = |id| TableDataRow {
+            fields: vec![TableDataField {
+                table_name: table_name.clone(),
+                column_name: "id".to_string(),
+                data: TableDataFieldType::Integer(id),
+            }],
+        };
+
+        engine
+            .append_table_rows(&table_name, &[row(1), row(2)])
+            .await
+            .unwrap();
+
+        let table_name_clone = table_name.clone();
+        engine
+            .update_table_rows(
+                &table_name_clone,
+                HashMap::from([(0, TableDataRow {
+                    fields: vec![TableDataField {
+                        table_name: table_name.clone(),
+                        column_name: "id".to_string(),
+                        data: TableDataFieldType::Integer(10),
+                    }],
+                })]),
+            )
+            .await
+            .unwrap();
+
+        let scanned = engine.full_scan(table_name).await.unwrap();
+        assert_eq!(scanned.len(), 2);
+        assert_eq!(scanned[0].1.fields[0].data, TableDataFieldType::Integer(10));
+        assert_eq!(scanned[1].1.fields[0].data, TableDataFieldType::Integer(2));
+    }
+
+    #[tokio::test]
+    async fn delete_table_rows_removes_buffered_rows_without_flushing_segment_file() {
+        let base_path = PathBuf::from(format!(
+            "target/test_row_segments/delete_buffered_rows_{}",
+            std::process::id()
+        ));
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        let table_name = TableName::new(Some("rrdb".to_string()), "users".to_string());
+        let rows_path = PathBuf::from(&config.data_directory)
+            .join("rrdb")
+            .join("tables")
+            .join("users")
+            .join("rows");
+        tokio::fs::create_dir_all(&rows_path).await.unwrap();
+
+        let engine = DBEngine::new(config);
+        let row = |id| TableDataRow {
+            fields: vec![TableDataField {
+                table_name: table_name.clone(),
+                column_name: "id".to_string(),
+                data: TableDataFieldType::Integer(id),
+            }],
+        };
+
+        engine
+            .append_table_rows(&table_name, &[row(1), row(2), row(3)])
+            .await
+            .unwrap();
+
+        engine
+            .delete_table_rows(&table_name, HashSet::from([0, 2]))
+            .await
+            .unwrap();
+
+        let scanned = engine.full_scan(table_name).await.unwrap();
+        assert_eq!(scanned.len(), 1);
+        assert_eq!(scanned[0].1.fields[0].data, TableDataFieldType::Integer(2));
     }
 }

@@ -20,13 +20,14 @@ impl<'a> WALBuilder<'a> {
     pub async fn build<T, D>(&self, decoder: T, encoder: D) -> errors::Result<WALManager<D>>
     where
         T: WALDecoder<Vec<WALEntry>>,
-        D: WALEncoder<Vec<WALEntry>>,
+        D: WALEncoder<WALEntry>,
     {
-        let (sequence, entries) = self.load_data(decoder).await?;
+        let (sequence, entries, current_offset) = self.load_data(decoder).await?;
 
         Ok(WALManager::new(
             sequence,
             entries,
+            current_offset,
             self.config.wal_segment_size as usize,
             PathBuf::from(self.config.wal_directory.clone()),
             self.config.wal_extension.to_string(),
@@ -34,7 +35,7 @@ impl<'a> WALBuilder<'a> {
         ))
     }
 
-    async fn load_data<T>(&self, decoder: T) -> errors::Result<(usize, Vec<WALEntry>)>
+    async fn load_data<T>(&self, decoder: T) -> errors::Result<(usize, Vec<WALEntry>, usize)>
     where
         T: WALDecoder<Vec<WALEntry>>,
     {
@@ -68,11 +69,11 @@ impl<'a> WALBuilder<'a> {
             }
         }
 
-        let (current_sequence, entries) = match last_log_path {
+        let (current_sequence, entries, current_offset) = match last_log_path {
             // Case 1: WAL 파일이 하나도 없는 초기 상태
             None => {
                 // 첫 번째 WAL 파일이므로 시퀀스는 1로 시작하고, 복구할 엔트리는 없음
-                Ok::<(usize, Vec<WALEntry>), errors::Errors>((1, Vec::new()))
+                Ok::<(usize, Vec<WALEntry>, usize), errors::Errors>((1, Vec::new(), 0))
             }
             // Case 2: 최신 WAL 파일이 존재하는 상태
             Some(log_path) => {
@@ -83,9 +84,10 @@ impl<'a> WALBuilder<'a> {
 
                 // 파일 내용이 비어있는 경우 복구할 엔트리는 없음
                 if content.is_empty() {
-                    return Ok((max_sequence + 1, Vec::new()));
+                    return Ok((max_sequence + 1, Vec::new(), 0));
                 }
 
+                let used_bytes = used_wal_bytes(&content)?;
                 let saved_entries: Vec<WALEntry> = decoder.decode(&content).map_err(|e| {
                     WALError::wrap(format!(
                         "failed to decode log file {:?}: {}",
@@ -96,18 +98,52 @@ impl<'a> WALBuilder<'a> {
 
                 let last_entry = match saved_entries.last() {
                     Some(entry) => entry,
-                    None => return Ok((max_sequence + 1, Vec::new())),
+                    None => return Ok((max_sequence + 1, Vec::new(), 0)),
                 };
 
                 if matches!(last_entry.entry_type, EntryType::Checkpoint) {
-                    Ok((max_sequence + 1, Vec::new()))
+                    Ok((max_sequence + 1, Vec::new(), 0))
                 } else {
                     // 마지막 엔트리가 체크포인트가 아니면 비정상 종료로 간주
-                    Ok((max_sequence, saved_entries))
+                    Ok((max_sequence, saved_entries, used_bytes))
                 }
             }
         }?;
 
-        Ok((current_sequence, entries))
+        Ok((current_sequence, entries, current_offset))
     }
+}
+
+fn used_wal_bytes(content: &[u8]) -> errors::Result<usize> {
+    let mut offset = 0;
+
+    while offset < content.len() {
+        if content.len() - offset < size_of::<u32>() {
+            if content[offset..].iter().all(|byte| *byte == 0) {
+                return Ok(offset);
+            }
+
+            return Err(WALError::wrap("truncated wal frame header".to_string()));
+        }
+
+        let frame_len = u32::from_le_bytes(
+            content[offset..offset + size_of::<u32>()]
+                .try_into()
+                .map_err(|e| WALError::wrap(format!("{:?}", e)))?,
+        ) as usize;
+
+        if frame_len == 0 {
+            return Ok(offset);
+        }
+
+        offset += size_of::<u32>();
+
+        if content.len() - offset < frame_len {
+            return Err(WALError::wrap("truncated wal frame body".to_string()));
+        }
+
+        offset += frame_len;
+    }
+
+    Ok(offset)
 }

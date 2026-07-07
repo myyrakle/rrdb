@@ -217,6 +217,7 @@ mod tests {
     use crate::engine::DBEngine;
     use crate::engine::index::manager::IndexManager;
     use crate::engine::optimizer::statistics::StatisticsManager;
+    use crate::engine::row_buffer::RowBufferPool;
 
     fn build_test_engine(
         config: Arc<LaunchConfig>,
@@ -234,6 +235,7 @@ mod tests {
             index_manager: Arc::new(IndexManager::new(data_directory)),
             statistics_manager: Arc::new(StatisticsManager::new()),
             indices_loaded: Arc::new(OnceCell::new()),
+            row_buffer_pool: Arc::new(Mutex::new(RowBufferPool::default())),
         }
     }
 

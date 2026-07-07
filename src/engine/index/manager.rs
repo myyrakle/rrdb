@@ -517,10 +517,10 @@ impl IndexManager {
                             })?;
 
                             let file_data: IndexFile =
-                                self.encoder.decode(data.as_slice()).ok_or_else(|| {
+                                self.encoder.decode(data.as_slice()).map_err(|e| {
                                     ExecuteError::wrap(format!(
-                                        "failed to decode index file {:?}",
-                                        path
+                                        "failed to decode index file {:?}: {}",
+                                        path, e
                                     ))
                                 })?;
 

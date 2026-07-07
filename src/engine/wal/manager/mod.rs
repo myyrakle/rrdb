@@ -1,22 +1,23 @@
 pub mod builder;
 
-use std::io::ErrorKind;
+use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
 use crate::errors;
 use crate::errors::wal_errors::WALError;
-use tokio::io::AsyncWriteExt;
+use memmap2::{MmapMut, MmapOptions};
+use tokio::task;
 
 use super::{
     endec::WALEncoder,
     types::{EntryType, WALEntry},
 };
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug)]
 pub struct WALManager<T>
 where
-    T: WALEncoder<Vec<WALEntry>>,
+    T: WALEncoder<WALEntry>,
 {
     /// The sequence number of the WAL file
     sequence: usize,
@@ -29,17 +30,27 @@ where
     /// The extension of the WAL file
     extension: String,
     encoder: T,
+    current_segment: Option<WALSegmentWriter>,
+    current_offset: usize,
+}
+
+#[derive(Debug)]
+struct WALSegmentWriter {
+    file: std::fs::File,
+    mmap: MmapMut,
+    offset: usize,
 }
 
 // TODO: gz 압축 구현
 // TODO: 대용량 페이지 파일 XLOG_CONTINUATION 처리 구현
 impl<T> WALManager<T>
 where
-    T: WALEncoder<Vec<WALEntry>>,
+    T: WALEncoder<WALEntry>,
 {
     fn new(
         sequence: usize,
         entries: Vec<WALEntry>,
+        current_offset: usize,
         page_size: usize,
         directory: PathBuf,
         extension: String,
@@ -52,6 +63,8 @@ where
             directory,
             extension,
             encoder,
+            current_segment: None,
+            current_offset,
         }
     }
 
@@ -75,32 +88,20 @@ where
         .await
     }
 
+    pub(crate) fn pending_entries(&self) -> &[WALEntry] {
+        &self.buffers
+    }
+
     async fn write_entry(&mut self, entry: WALEntry) -> errors::Result<()> {
-        self.rotate_if_needed(entry.size()).await?;
-
-        let encoded = self.encoder.encode(&vec![entry.clone()])?;
-        let frame_len = u32::try_from(encoded.len())
+        let mut frame = Vec::new();
+        frame.extend_from_slice(&0u32.to_le_bytes());
+        self.encoder.encode_into(&mut frame, &entry)?;
+        let frame_len = u32::try_from(frame.len() - size_of::<u32>())
             .map_err(|_| WALError::wrap("wal entry is too large".to_string()))?;
+        frame[..size_of::<u32>()].copy_from_slice(&frame_len.to_le_bytes());
 
-        let mut frame = Vec::with_capacity(size_of::<u32>() + encoded.len());
-        frame.extend_from_slice(&frame_len.to_le_bytes());
-        frame.extend_from_slice(&encoded);
-
-        let path = self.current_path();
-
-        let mut file = tokio::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-            .await
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-
-        file.write_all(&frame)
-            .await
-            .map_err(|e| WALError::wrap(e.to_string()))?;
-        file.flush()
-            .await
-            .map_err(|e| WALError::wrap(e.to_string()))?;
+        self.rotate_if_needed(frame.len()).await?;
+        self.append_frame_to_mmap(&frame).await?;
 
         self.buffers.push(entry);
 
@@ -108,12 +109,19 @@ where
     }
 
     async fn rotate_if_needed(&mut self, incoming_size: usize) -> errors::Result<()> {
-        let current_size = self.buffers.iter().map(|entry| entry.size()).sum::<usize>();
+        if incoming_size > self.page_size {
+            return Err(WALError::wrap(format!(
+                "wal frame is larger than segment size: {} > {}",
+                incoming_size, self.page_size
+            )));
+        }
 
-        if !self.buffers.is_empty() && current_size + incoming_size > self.page_size {
+        if self.current_offset > 0 && self.current_offset + incoming_size > self.page_size {
             self.sync_current_file().await?;
+            self.current_segment = None;
             self.sequence += 1;
             self.buffers.clear();
+            self.current_offset = 0;
         }
 
         Ok(())
@@ -124,21 +132,85 @@ where
             .join(format!("{:08X}.{}", self.sequence, self.extension))
     }
 
-    async fn sync_current_file(&self) -> errors::Result<()> {
-        let path = self.current_path();
+    async fn append_frame_to_mmap(&mut self, frame: &[u8]) -> errors::Result<()> {
+        self.open_current_segment_if_needed().await?;
 
-        match tokio::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path)
-            .await
-        {
-            Ok(file) => file
-                .sync_data()
-                .await
-                .map_err(|e| WALError::wrap(e.to_string()))?,
-            Err(error) if error.kind() == ErrorKind::NotFound => {}
-            Err(error) => return Err(WALError::wrap(error.to_string())),
+        let segment = self
+            .current_segment
+            .as_mut()
+            .ok_or_else(|| WALError::wrap("wal segment is not open".to_string()))?;
+        let end_offset = segment.offset + frame.len();
+
+        if end_offset > self.page_size {
+            return Err(WALError::wrap("wal segment overflow".to_string()));
+        }
+
+        segment.mmap[segment.offset..end_offset].copy_from_slice(frame);
+        segment.offset = end_offset;
+        self.current_offset = end_offset;
+
+        Ok(())
+    }
+
+    async fn open_current_segment_if_needed(&mut self) -> errors::Result<()> {
+        if self.current_segment.is_some() {
+            return Ok(());
+        }
+
+        let path = self.current_path();
+        let page_size = self.page_size;
+        let offset = self.current_offset;
+        let segment = task::spawn_blocking(move || -> errors::Result<WALSegmentWriter> {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| WALError::wrap(e.to_string()))?;
+            }
+
+            let file = OpenOptions::new()
+                .create(true)
+                .read(true)
+                .write(true)
+                .truncate(false)
+                .open(&path)
+                .map_err(|e| WALError::wrap(e.to_string()))?;
+            file.set_len(page_size as u64)
+                .map_err(|e| WALError::wrap(e.to_string()))?;
+            let mmap = unsafe {
+                MmapOptions::new()
+                    .len(page_size)
+                    .map_mut(&file)
+                    .map_err(|e| WALError::wrap(e.to_string()))?
+            };
+
+            Ok(WALSegmentWriter { file, mmap, offset })
+        })
+        .await
+        .map_err(|e| WALError::wrap(e.to_string()))??;
+
+        self.current_segment = Some(segment);
+        Ok(())
+    }
+
+    pub(crate) async fn sync_current_file(&mut self) -> errors::Result<()> {
+        let Some(segment) = self.current_segment.take() else {
+            return Ok(());
+        };
+
+        let (segment, sync_error) = task::spawn_blocking(move || {
+            let sync_error = segment
+                .mmap
+                .flush()
+                .err()
+                .or_else(|| segment.file.sync_data().err())
+                .map(|error| error.to_string());
+
+            (segment, sync_error)
+        })
+        .await
+        .map_err(|e| WALError::wrap(e.to_string()))?;
+
+        self.current_segment = Some(segment);
+        if let Some(error) = sync_error {
+            return Err(WALError::wrap(error));
         }
 
         Ok(())
@@ -148,13 +220,19 @@ where
         self.append_record(EntryType::Checkpoint, None, None)
             .await?;
         self.sync_current_file().await?;
+        self.current_segment = None;
         self.sequence += 1;
         self.buffers.clear();
+        self.current_offset = 0;
 
         Ok(())
     }
 
     pub async fn flush(&mut self) -> errors::Result<()> {
+        if self.buffers.is_empty() && self.current_segment.is_none() {
+            return Ok(());
+        }
+
         self.checkpoint().await?;
         Ok(())
     }
@@ -238,8 +316,8 @@ mod tests {
             .unwrap_or_else(|e| panic!("Failed to create wal file {:?}: {}", file_path, e));
 
         for entry in entries {
-            let encoded_data = encoder.encode(&vec![entry.clone()]).unwrap();
-            file.write_all(&(encoded_data.len() as u32).to_le_bytes())
+            let encoded_data = encoder.encode(entry).unwrap();
+            file.write_all(&u32::try_from(encoded_data.len()).unwrap().to_le_bytes())
                 .await
                 .unwrap_or_else(|e| panic!("Failed to write to wal file {:?}: {}", file_path, e));
             file.write_all(&encoded_data)
@@ -321,6 +399,7 @@ mod tests {
             .append_record(EntryType::Delete, Some(b"row-2".to_vec()), Some(2))
             .await
             .unwrap();
+        wal_manager.sync_current_file().await.unwrap();
 
         let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
         let content = tokio::fs::read(wal_path).await.unwrap();
@@ -332,6 +411,100 @@ mod tests {
         assert_eq!(entries[0].data, Some(b"row-1".to_vec()));
         assert!(matches!(entries[1].entry_type, EntryType::Delete));
         assert_eq!(entries[1].transaction_id, Some(2));
+    }
+
+    #[tokio::test]
+    async fn test_append_record_writes_single_entry_frames() {
+        let wal_dir = setup_test_wal_dir("append_record_single_entry_frames").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+        let mut wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+        wal_manager.sync_current_file().await.unwrap();
+
+        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let content = tokio::fs::read(wal_path).await.unwrap();
+        let frame_len =
+            u32::from_le_bytes(content[..size_of::<u32>()].try_into().unwrap()) as usize;
+        let entry: WALEntry =
+            bincode::deserialize(&content[size_of::<u32>()..size_of::<u32>() + frame_len]).unwrap();
+
+        assert!(matches!(entry.entry_type, EntryType::Insert));
+        assert_eq!(entry.transaction_id, Some(1));
+        assert_eq!(entry.data, Some(b"row-1".to_vec()));
+    }
+
+    #[tokio::test]
+    async fn test_append_record_appends_to_mmap_segment_without_pending_write_buffer() {
+        let wal_dir = setup_test_wal_dir("append_record_mmap_segment").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+        let mut wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+
+        assert!(wal_manager.current_segment.is_some());
+        assert!(wal_manager.current_offset > 0);
+
+        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let metadata = tokio::fs::metadata(wal_path).await.unwrap();
+        assert_eq!(metadata.len(), config.wal_segment_size as u64);
+    }
+
+    #[tokio::test]
+    async fn test_build_restores_append_offset_from_mmap_segment() {
+        let wal_dir = setup_test_wal_dir("build_restores_mmap_offset").await;
+        let config = get_test_config(&wal_dir);
+
+        let decoder = BincodeDecoder::new();
+        let encoder = BincodeEncoder::new();
+        let mut wal_manager = WALBuilder::new(&config)
+            .build(decoder.clone(), encoder)
+            .await
+            .unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+        wal_manager.sync_current_file().await.unwrap();
+        let first_offset = wal_manager.current_offset;
+        drop(wal_manager);
+
+        let mut rebuilt = WALBuilder::new(&config)
+            .build(decoder.clone(), BincodeEncoder::new())
+            .await
+            .unwrap();
+
+        assert_eq!(rebuilt.sequence, 1);
+        assert_eq!(rebuilt.current_offset, first_offset);
+
+        rebuilt
+            .append_record(EntryType::Delete, Some(b"row-2".to_vec()), Some(2))
+            .await
+            .unwrap();
+        rebuilt.sync_current_file().await.unwrap();
+
+        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let content = tokio::fs::read(wal_path).await.unwrap();
+        let entries = decoder.decode(&content).unwrap();
+
+        assert_eq!(entries.len(), 2);
+        assert!(matches!(entries[0].entry_type, EntryType::Insert));
+        assert!(matches!(entries[1].entry_type, EntryType::Delete));
     }
 
     #[tokio::test]

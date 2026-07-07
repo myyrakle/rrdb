@@ -483,6 +483,8 @@ mod tests {
         assert_eq!(result.rows.len(), 3);
 
         // 엔진 재기동 후 디스크에서 인덱스를 다시 적재해 동작해야 함
+        // 참고: row buffer 풀 도입으로 재기동 전 flush 필수
+        engine.flush_row_buffers_durable().await.unwrap();
         let restarted = DBEngine::new(engine.config.as_ref().clone());
         let result = execute_sql(&restarted, wal, "select score from users where id = 100;")
             .await

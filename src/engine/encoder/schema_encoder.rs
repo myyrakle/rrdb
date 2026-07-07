@@ -9,13 +9,21 @@ impl StorageEncoder {
     }
 
     pub fn encode(&self, data: impl Serialize) -> Vec<u8> {
-        bson::to_vec(&data).unwrap()
+        bincode::serialize(&data).unwrap()
     }
 
-    pub fn decode<'a, T>(&self, data: &'a [u8]) -> Option<T>
+    pub fn encode_into(
+        &self,
+        writer: impl std::io::Write,
+        data: impl Serialize,
+    ) -> bincode::Result<()> {
+        bincode::serialize_into(writer, &data)
+    }
+
+    pub fn decode<'a, T>(&self, data: &'a [u8]) -> bincode::Result<T>
     where
         T: Deserialize<'a>,
     {
-        bson::from_slice(data).ok()
+        bincode::deserialize(data)
     }
 }

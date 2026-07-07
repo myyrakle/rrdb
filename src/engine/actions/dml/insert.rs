@@ -189,8 +189,8 @@ impl DBEngine {
                     }
                 }
 
-                let wal_payload =
-                    bson::to_vec(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
+                let wal_payload = bincode::serialize(&(into_table, &rows))
+                    .map_err(|error| ExecuteError::wrap(error.to_string()))?;
                 wal_manager
                     .lock()
                     .await

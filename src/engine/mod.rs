@@ -4,6 +4,7 @@ pub mod index;
 pub mod lexer;
 pub mod optimizer;
 pub mod parser;
+pub mod row_buffer;
 pub mod schema;
 pub mod server;
 pub mod wal;
@@ -26,6 +27,7 @@ use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatemen
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::index::manager::IndexManager;
 use crate::engine::optimizer::statistics::StatisticsManager;
+use crate::engine::row_buffer::RowBufferPool;
 use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bincode::BincodeEncoder;
@@ -46,6 +48,7 @@ pub struct DBEngine {
     pub(crate) statistics_manager: Arc<StatisticsManager>,
     /// 디스크의 인덱스 파일을 메모리로 적재했는지 여부 (최초 사용 시 1회 적재)
     pub(crate) indices_loaded: Arc<tokio::sync::OnceCell<()>>,
+    pub(crate) row_buffer_pool: Arc<Mutex<RowBufferPool>>,
 }
 
 impl DBEngine {
@@ -61,6 +64,7 @@ impl DBEngine {
             index_manager: Arc::new(IndexManager::new(data_directory)),
             statistics_manager: Arc::new(StatisticsManager::new()),
             indices_loaded: Arc::new(tokio::sync::OnceCell::new()),
+            row_buffer_pool: Arc::new(Mutex::new(RowBufferPool::default())),
         }
     }
 
@@ -172,14 +176,13 @@ impl DBEngine {
         let config_path = table_path.clone().join("table.config");
 
         match tokio::fs::read(&config_path).await {
-            Ok(data) => {
-                let table_config: Option<TableSchema> = encoder.decode(data.as_slice());
-
-                match table_config {
-                    Some(table_config) => Ok(table_config),
-                    None => Err(ExecuteError::wrap("invalid config data".to_string())),
-                }
-            }
+            Ok(data) => match encoder.decode::<TableSchema>(data.as_slice()) {
+                Ok(table_config) => Ok(table_config),
+                Err(error) => Err(ExecuteError::wrap(format!(
+                    "invalid config data: {}",
+                    error
+                ))),
+            },
             Err(error) => match error.kind() {
                 std::io::ErrorKind::NotFound => {
                     Err(ExecuteError::wrap("table not found".to_string()))
