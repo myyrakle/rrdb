@@ -50,10 +50,10 @@ impl RowBufferPool {
     pub(crate) fn read_rows(
         &mut self,
         segment_path: PathBuf,
-        disk_rows: Vec<TableDataRow>,
+        load_disk_rows: impl FnOnce() -> Vec<TableDataRow>,
     ) -> Vec<TableDataRow> {
         let segment = self.segments.entry(segment_path).or_default();
-        let persisted_rows = segment.persisted_rows.get_or_insert(disk_rows);
+        let persisted_rows = segment.persisted_rows.get_or_insert_with(load_disk_rows);
         let mut rows = persisted_rows.clone();
         rows.extend_from_slice(&segment.pending_append_rows);
         rows
@@ -69,7 +69,7 @@ impl RowBufferPool {
 
     pub(crate) fn cached_row_count(&self, segment_path: &PathBuf) -> Option<usize> {
         let segment = self.segments.get(segment_path)?;
-        let persisted_len = segment.persisted_rows.as_ref().map_or(0, |rows| rows.len());
+        let persisted_len = segment.persisted_rows.as_ref()?.len();
         Some(persisted_len + segment.pending_append_rows.len())
     }
 

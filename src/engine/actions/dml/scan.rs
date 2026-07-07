@@ -36,7 +36,7 @@ impl DBEngine {
                 self.row_buffer_pool
                     .lock()
                     .await
-                    .read_rows(segment_path, disk_rows)
+                    .read_rows(segment_path, || disk_rows)
             }
         };
 
@@ -75,16 +75,24 @@ impl DBEngine {
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
 
-        // 버퍼 풀의 현재 행 개수를 시작 인덱스로 사용
-        let start_index = self
-            .row_buffer_pool
-            .lock()
-            .await
-            .cached_row_count(&segment_path)
-            .unwrap_or_else(|| {
-                // 첫 접근 시 persisted_rows가 없으므로 디스크에서 읽어 계산
-                0
-            });
+        // 버퍼 풀의 현재 행 개수를 시작 인덱스로 사용.
+        // persisted_rows가 적재되지 않았으면 먼저 디스크에서 읽어온다.
+        let start_index = {
+            let pool_guard = self.row_buffer_pool.lock().await;
+            match pool_guard.cached_row_count(&segment_path) {
+                Some(count) => count,
+                None => {
+                    drop(pool_guard);
+                    let disk_rows = self.read_segment_rows(&segment_path).await?;
+                    let count = disk_rows.len();
+                    self.row_buffer_pool
+                        .lock()
+                        .await
+                        .read_rows(segment_path.clone(), || disk_rows);
+                    count
+                }
+            }
+        };
 
         let frame = encode_row_frames(rows)?;
 
@@ -121,7 +129,7 @@ impl DBEngine {
                 self.row_buffer_pool
                     .lock()
                     .await
-                    .read_rows(segment_path.clone(), disk_rows)
+                    .read_rows(segment_path.clone(), || disk_rows)
             }
         };
 
@@ -159,7 +167,7 @@ impl DBEngine {
                 self.row_buffer_pool
                     .lock()
                     .await
-                    .read_rows(segment_path.clone(), disk_rows)
+                    .read_rows(segment_path.clone(), || disk_rows)
             }
         };
         let rows = rows
@@ -380,7 +388,7 @@ impl DBEngine {
                 self.row_buffer_pool
                     .lock()
                     .await
-                    .read_rows(segment_path, disk_rows)
+                    .read_rows(segment_path, || disk_rows)
             }
         };
 
