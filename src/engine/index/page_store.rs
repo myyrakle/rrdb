@@ -129,8 +129,8 @@ impl PageStore {
             .map_err(|e| ExecuteError::wrap(format!("failed to seek to superblock: {}", e)))?;
         file.write_all(&encoded)
             .map_err(|e| ExecuteError::wrap(format!("failed to write superblock: {}", e)))?;
-        file.flush()
-            .map_err(|e| ExecuteError::wrap(format!("failed to flush superblock: {}", e)))?;
+        file.sync_data()
+            .map_err(|e| ExecuteError::wrap(format!("failed to sync superblock: {}", e)))?;
 
         Ok(())
     }
@@ -162,8 +162,8 @@ impl PageStore {
             .map_err(|e| ExecuteError::wrap(format!("failed to seek to page: {}", e)))?;
         file.write_all(&encoded)
             .map_err(|e| ExecuteError::wrap(format!("failed to write page {}: {}", page_id, e)))?;
-        file.flush()
-            .map_err(|e| ExecuteError::wrap(format!("failed to flush page {}: {}", page_id, e)))?;
+        file.sync_data()
+            .map_err(|e| ExecuteError::wrap(format!("failed to sync page {}: {}", page_id, e)))?;
 
         Ok(())
     }

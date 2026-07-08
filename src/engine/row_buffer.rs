@@ -6,8 +6,8 @@ use crate::engine::schema::row::TableDataRow;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
-const ROW_FRAME_LIVE: u8 = 0;
-const ROW_FRAME_TOMBSTONE: u8 = 1;
+pub(crate) const ROW_FRAME_LIVE: u8 = 0;
+pub(crate) const ROW_FRAME_TOMBSTONE: u8 = 1;
 
 #[derive(Default)]
 pub(crate) struct RowBufferPool {

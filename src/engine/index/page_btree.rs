@@ -190,6 +190,22 @@ impl PageBackedBTreeIndex {
         }
     }
 
+    /// The key shared by every entry in an overflow chain (all entries in a
+    /// chain belong to the same duplicate-key group by construction, so
+    /// only the first page needs to be read).
+    async fn overflow_key(&self, overflow_id: PageId) -> errors::Result<String> {
+        match self.store.read_page(overflow_id).await? {
+            Page::Leaf(overflow) => overflow
+                .entries
+                .first()
+                .map(|e| e.key.clone())
+                .ok_or_else(|| ExecuteError::wrap("corrupt index: empty overflow page")),
+            Page::Internal(_) => Err(ExecuteError::wrap(
+                "corrupt index: overflow pointer references an internal page",
+            )),
+        }
+    }
+
     /// After inserting into `leaf.entries`, write it back -- splitting or
     /// pushing into overflow first if it no longer fits in one page.
     async fn rebalance_leaf_after_insert(
@@ -206,19 +222,62 @@ impl PageBackedBTreeIndex {
             let sibling_entries = leaf.entries.split_off(split_at);
             let separator = sibling_entries[0].key.clone();
 
+            // An overflow chain always holds the tail of a single
+            // duplicate-key group (see the module doc comment), so it must
+            // stay attached to whichever side of the split still holds that
+            // key's resident entries -- not unconditionally follow the new
+            // sibling. Otherwise `get`/`scan_all` silently lose the chain
+            // once it ends up hanging off a leaf for the wrong key.
+            let overflow_stays_with_leaf = match leaf.overflow {
+                Some(overflow_id) => {
+                    let overflow_key = self.overflow_key(overflow_id).await?;
+                    leaf.entries.last().is_some_and(|e| e.key == overflow_key)
+                }
+                None => false,
+            };
+
             let sibling_id = self.store.allocate_page().await?;
+            let (leaf_overflow, sibling_overflow) = if overflow_stays_with_leaf {
+                (leaf.overflow, None)
+            } else {
+                (None, leaf.overflow)
+            };
+
             let sibling = LeafPage {
                 entries: sibling_entries,
                 next_leaf: leaf.next_leaf,
-                overflow: leaf.overflow,
+                overflow: sibling_overflow,
             };
-            leaf.overflow = None;
+            leaf.overflow = leaf_overflow;
             leaf.next_leaf = Some(sibling_id);
 
-            self.store.write_page(page_id, &Page::Leaf(leaf)).await?;
-            self.store
-                .write_page(sibling_id, &Page::Leaf(sibling))
-                .await?;
+            // Whichever side keeps a non-`None` `overflow` pointer is
+            // guaranteed (by the invariant above) to hold a single
+            // homogeneous key, since a leaf only ever has an overflow chain
+            // while its resident entries are all one key. Keeping that
+            // pointer (rather than always dropping it, as before) plus the
+            // new `next_leaf` pointer can occasionally push that side a
+            // few bytes over budget; if so, it's always safe to shed more
+            // of its (single-key) tail into the chain it already owns.
+            if leaf.overflow.is_some()
+                && super::page::encode_page(&Page::Leaf(leaf.clone()), self.store.page_size())
+                    .is_err()
+            {
+                self.push_tail_into_overflow(page_id, leaf).await?;
+            } else {
+                self.store.write_page(page_id, &Page::Leaf(leaf)).await?;
+            }
+
+            if sibling.overflow.is_some()
+                && super::page::encode_page(&Page::Leaf(sibling.clone()), self.store.page_size())
+                    .is_err()
+            {
+                self.push_tail_into_overflow(sibling_id, sibling).await?;
+            } else {
+                self.store
+                    .write_page(sibling_id, &Page::Leaf(sibling))
+                    .await?;
+            }
 
             return Ok(Some((separator, sibling_id)));
         }
@@ -818,6 +877,64 @@ mod tests {
             // Removing one duplicate leaves the rest intact.
             assert!(idx.remove("S:dup", "/dup/0").await.unwrap());
             assert_eq!(idx.get("S:dup").await.unwrap().len(), 199);
+        }
+    }
+
+    #[tokio::test]
+    async fn overflow_chain_stays_with_its_key_when_a_larger_key_splits_the_leaf() {
+        let path = temp_path("overflow_split.idx");
+
+        {
+            let idx = PageBackedBTreeIndex::create(&path, "status".to_string(), false)
+                .await
+                .unwrap();
+
+            // Enough duplicates of a single key to force an overflow chain
+            // while this remains the only (root) leaf.
+            for i in 0..200 {
+                idx.insert("K:dup".to_string(), format!("/dup/{}", i))
+                    .await
+                    .unwrap();
+            }
+            assert_eq!(idx.get("K:dup").await.unwrap().len(), 200);
+
+            // A single larger key lands in the same (only) leaf and forces
+            // it to split. Before the fix, the overflow chain
+            // unconditionally followed the new sibling -- which here holds
+            // the unrelated "Z:after" key -- silently orphaning "K:dup"'s
+            // overflow entries.
+            idx.insert("Z:after".to_string(), "/after/0".to_string())
+                .await
+                .unwrap();
+
+            assert_eq!(idx.get("K:dup").await.unwrap().len(), 200);
+            assert_eq!(
+                idx.get("Z:after").await.unwrap(),
+                vec!["/after/0".to_string()]
+            );
+
+            let all = idx.scan_all().await.unwrap();
+            assert_eq!(all.len(), 201);
+            for w in all.windows(2) {
+                assert!(w[0].key <= w[1].key);
+            }
+        }
+
+        // The fix must survive a reload from disk too.
+        {
+            let idx = PageBackedBTreeIndex::open(&path, "status".to_string(), false)
+                .await
+                .unwrap();
+            assert_eq!(idx.get("K:dup").await.unwrap().len(), 200);
+
+            let all = idx.scan_all().await.unwrap();
+            assert_eq!(all.len(), 201);
+            for w in all.windows(2) {
+                assert!(w[0].key <= w[1].key);
+            }
+
+            let range = idx.range(Some("K:dup"), None).await.unwrap();
+            assert_eq!(range.len(), 201);
         }
     }
 

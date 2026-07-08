@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tokio::sync::{Mutex, RwLock};
 
@@ -28,7 +29,7 @@ use super::{IndexEntry, IndexMeta};
 ///    `load_all` (no panic, no crash -- see its doc comment).
 pub struct IndexManager {
     /// Map: index_name -> page-backed B+tree
-    indices: RwLock<HashMap<String, PageBackedBTreeIndex>>,
+    indices: RwLock<HashMap<String, Arc<Mutex<PageBackedBTreeIndex>>>>,
     /// Map: index_name -> IndexMeta
     metas: RwLock<HashMap<String, IndexMeta>>,
     /// Base directory for all indices (usually data_directory)
@@ -109,18 +110,24 @@ impl IndexManager {
             })?;
         }
 
-        // Persist the meta sidecar, then create the (empty) page-backed
-        // data file.
-        self.write_meta_file(&meta).await?;
+        // Create the (empty) page-backed data file first, then persist the
+        // meta sidecar. This order ensures `load_all` (which discovers
+        // indices by scanning for `.meta` files) never sees a meta file
+        // pointing at a missing `.idx` file after a partial failure.
         let tree =
             PageBackedBTreeIndex::create(&file_path, meta.column_name.clone(), meta.is_unique)
                 .await?;
+
+        if let Err(error) = self.write_meta_file(&meta).await {
+            let _ = tokio::fs::remove_file(&file_path).await;
+            return Err(error);
+        }
 
         // Update in-memory state
         {
             let mut indices = self.indices.write().await;
             let mut metas = self.metas.write().await;
-            indices.insert(index_name.clone(), tree);
+            indices.insert(index_name.clone(), Arc::new(Mutex::new(tree)));
             metas.insert(index_name, meta);
         }
 
@@ -175,21 +182,29 @@ impl IndexManager {
     /// handful of pages the insert touches (root, target leaf, and any
     /// split siblings) -- not the whole index file (issue #230).
     ///
-    /// The write lock on the index map is held for the whole call, which
-    /// serializes mutations to a given index the same way the previous
-    /// (in-memory-then-disk) design did; see `page_btree.rs` for why a
-    /// single page-backed tree isn't safe under fully concurrent mutation.
+    /// Fetch an index handle without holding the global index-map lock across
+    /// page I/O. The returned handle has its own per-index mutex, so unrelated
+    /// indexes can proceed independently while operations on the same
+    /// page-backed tree remain serialized.
+    async fn index_handle(
+        &self,
+        index_name: &str,
+    ) -> errors::Result<Arc<Mutex<PageBackedBTreeIndex>>> {
+        let indices = self.indices.read().await;
+        indices
+            .get(index_name)
+            .cloned()
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))
+    }
+
     pub async fn insert(
         &self,
         index_name: &str,
         key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        let indices = self.indices.write().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.insert(key, row_path).await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.insert(key, row_path).await
     }
 
     /// Remove a key->row_path from an index, touching only the owning leaf
@@ -200,11 +215,8 @@ impl IndexManager {
         key: &str,
         row_path: &str,
     ) -> errors::Result<bool> {
-        let indices = self.indices.write().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.remove(key, row_path).await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.remove(key, row_path).await
     }
 
     /// Update a key for a given row path in an index (remove old mapping,
@@ -216,29 +228,20 @@ impl IndexManager {
         new_key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        let indices = self.indices.write().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.update(old_key, new_key, row_path).await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.update(old_key, new_key, row_path).await
     }
 
     /// Look up row paths for an exact key match.
     pub async fn get(&self, index_name: &str, key: &str) -> errors::Result<Vec<String>> {
-        let indices = self.indices.read().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.get(key).await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.get(key).await
     }
 
     /// Point lookup for unique index.
     pub async fn get_one(&self, index_name: &str, key: &str) -> errors::Result<Option<String>> {
-        let indices = self.indices.read().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.get_one(key).await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.get_one(key).await
     }
 
     /// Range scan on an index.
@@ -248,20 +251,14 @@ impl IndexManager {
         start: Option<&str>,
         end: Option<&str>,
     ) -> errors::Result<Vec<IndexEntry>> {
-        let indices = self.indices.read().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.range(start, end).await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.range(start, end).await
     }
 
     /// Full scan on an index.
     pub async fn scan_all(&self, index_name: &str) -> errors::Result<Vec<IndexEntry>> {
-        let indices = self.indices.read().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.scan_all().await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.scan_all().await
     }
 
     /// List all index names.
@@ -285,11 +282,8 @@ impl IndexManager {
 
     /// 인덱스의 고유 키 개수를 반환합니다 (통계용).
     pub async fn distinct_keys(&self, index_name: &str) -> errors::Result<usize> {
-        let indices = self.indices.read().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.distinct_keys().await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.distinct_keys().await
     }
 
     /// 인덱스 전체 엔트리를 교체합니다.
@@ -327,7 +321,7 @@ impl IndexManager {
         }
 
         let mut indices = self.indices.write().await;
-        indices.insert(index_name.to_string(), tree);
+        indices.insert(index_name.to_string(), Arc::new(Mutex::new(tree)));
 
         Ok(())
     }
@@ -379,11 +373,8 @@ impl IndexManager {
 
     /// Get the number of entries in an index.
     pub async fn len(&self, index_name: &str) -> errors::Result<usize> {
-        let indices = self.indices.read().await;
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        tree.len().await
+        let tree = self.index_handle(index_name).await?;
+        tree.lock().await.len().await
     }
 
     /// Load all indices from disk into memory. Called on server startup to
@@ -414,33 +405,51 @@ impl IndexManager {
 
                     match path.extension().and_then(|e| e.to_str()) {
                         Some("meta") => {
-                            let data = tokio::fs::read(&path).await.map_err(|e| {
-                                ExecuteError::wrap(format!(
-                                    "failed to read index meta file {:?}: {}",
-                                    path, e
-                                ))
-                            })?;
+                            let data = match tokio::fs::read(&path).await {
+                                Ok(data) => data,
+                                Err(e) => {
+                                    log::warn!(
+                                        "skipping index meta file {:?}: failed to read: {}",
+                                        path, e
+                                    );
+                                    continue;
+                                }
+                            };
 
-                            let meta: IndexMeta = bincode::deserialize(&data).map_err(|e| {
-                                ExecuteError::wrap(format!(
-                                    "failed to decode index meta file {:?}: {}",
-                                    path, e
-                                ))
-                            })?;
+                            let meta: IndexMeta = match bincode::deserialize(&data) {
+                                Ok(meta) => meta,
+                                Err(e) => {
+                                    log::warn!(
+                                        "skipping index meta file {:?}: failed to decode: {}",
+                                        path, e
+                                    );
+                                    continue;
+                                }
+                            };
 
                             let idx_path = path.with_extension("idx");
-                            let tree = PageBackedBTreeIndex::open(
+                            let tree = match PageBackedBTreeIndex::open(
                                 &idx_path,
                                 meta.column_name.clone(),
                                 meta.is_unique,
                             )
-                            .await?;
+                            .await
+                            {
+                                Ok(tree) => tree,
+                                Err(e) => {
+                                    log::warn!(
+                                        "skipping index {:?}: failed to open {:?}: {}",
+                                        meta.index_name, idx_path, e
+                                    );
+                                    continue;
+                                }
+                            };
 
                             let index_name = meta.index_name.clone();
 
                             let mut indices = self.indices.write().await;
                             let mut metas = self.metas.write().await;
-                            indices.insert(index_name.clone(), tree);
+                            indices.insert(index_name.clone(), Arc::new(Mutex::new(tree)));
                             metas.insert(index_name, meta);
                         }
                         _ => continue,

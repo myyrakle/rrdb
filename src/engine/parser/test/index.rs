@@ -129,6 +129,14 @@ pub fn create_index_errors() {
             .parse(ParserContext::default())
             .is_err()
     );
+
+    // 빈 컬럼 리스트
+    assert!(
+        Parser::with_string("create index foo_idx on foo ();".to_owned())
+            .unwrap()
+            .parse(ParserContext::default())
+            .is_err()
+    );
 }
 
 #[test]

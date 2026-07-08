@@ -98,6 +98,13 @@ impl Parser {
             }
         }
 
+        if query_builder.columns.is_empty() {
+            return Err(ParsingError::wrap(
+                "expected at least one column name in 'CREATE INDEX ... ON table (...)'"
+                    .to_string(),
+            ));
+        }
+
         if !self.has_next_token() {
             return Ok(query_builder.build());
         }

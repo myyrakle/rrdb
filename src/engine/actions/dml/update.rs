@@ -210,15 +210,15 @@ impl DBEngine {
             }
 
             // 인덱스 반영: 고유 제약 위반은 여기서 검출되며, 실패 시 적용분을 되돌립니다
-            let mut applied = 0;
-
-            for (index_name, old_key, new_key, row_path) in &index_operations {
+            for (i, (index_name, old_key, new_key, row_path)) in
+                index_operations.iter().enumerate()
+            {
                 if let Err(error) = self
                     .apply_index_operation(index_name, old_key, new_key, row_path)
                     .await
                 {
                     for (index_name, old_key, new_key, row_path) in
-                        index_operations[..applied].iter().rev()
+                        index_operations[..i].iter().rev()
                     {
                         let _ = self
                             .apply_index_operation(index_name, new_key, old_key, row_path)
@@ -227,8 +227,6 @@ impl DBEngine {
 
                     return Err(error);
                 }
-
-                applied += 1;
             }
 
             if let Err(error) = self.update_table_rows(&table, replacements).await {

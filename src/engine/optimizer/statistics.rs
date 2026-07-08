@@ -66,8 +66,7 @@ impl StatisticsManager {
             // 블록 개수를 비례적으로 감소 (소량 삭제는 block_count에 영향 없음)
             if old_row_count > 0 {
                 let avg_rows_per_block = old_row_count / statistics.block_count.max(1);
-                if avg_rows_per_block > 0 {
-                    let removed_blocks = count / avg_rows_per_block;
+                if let Some(removed_blocks) = count.checked_div(avg_rows_per_block) {
                     statistics.block_count = statistics.block_count.saturating_sub(removed_blocks);
                 }
             }

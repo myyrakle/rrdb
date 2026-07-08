@@ -72,7 +72,10 @@ impl DBEngine {
 
         // TODO(#217): 복합 PRIMARY KEY 인덱스는 미지원 (단일 컬럼만 자동 생성)
         if primary_key_columns.len() == 1 {
-            self.ensure_indices_loaded().await?;
+            if let Err(error) = self.ensure_indices_loaded().await {
+                let _ = tokio::fs::remove_dir_all(&table_path).await;
+                return Err(error);
+            }
 
             let index_name = qualified_index_name(&database_name, &format!("{}_pkey", table_name));
             let meta = IndexMeta::new(
@@ -82,7 +85,10 @@ impl DBEngine {
                 true,
             );
 
-            self.index_manager.create_index(meta).await?;
+            if let Err(error) = self.index_manager.create_index(meta).await {
+                let _ = tokio::fs::remove_dir_all(&table_path).await;
+                return Err(error);
+            }
         }
 
         // TODO: unique key 데이터 생성

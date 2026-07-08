@@ -90,12 +90,10 @@ impl Server {
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
-        let pending_entries = wal_manager.pending_entries().to_vec();
-        if !pending_entries.is_empty() {
-            log::info!("replaying {} pending WAL entries", pending_entries.len());
-            engine.replay_wal(&pending_entries).await?;
-            engine.flush_row_buffers_durable().await?;
-            wal_manager.flush().await?;
+        let pending_entry_count = wal_manager.pending_entries().len();
+        if pending_entry_count > 0 {
+            log::info!("replaying {} pending WAL entries", pending_entry_count);
+            engine.recover_from_wal(&mut wal_manager).await?;
         }
 
         let wal_manager = Arc::new(Mutex::new(wal_manager));

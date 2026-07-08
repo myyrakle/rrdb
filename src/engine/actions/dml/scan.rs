@@ -10,7 +10,7 @@ use crate::engine::DBEngine;
 use crate::engine::ast::dml::plan::select::scan::IndexScanPlan;
 use crate::engine::ast::types::TableName;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
-use crate::engine::row_buffer::{RowBufferWrite, encode_live_row_frames};
+use crate::engine::row_buffer::{ROW_FRAME_LIVE, RowBufferWrite, encode_live_row_frames};
 use crate::engine::schema::row::TableDataRow;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
@@ -18,8 +18,7 @@ use crate::errors::execute_error::ExecuteError;
 const ROW_SEGMENT_FILENAME: &str = "00000001.rows";
 const ROW_META_FILENAME: &str = "meta.bin";
 const DEFAULT_ROW_WRITE_BUFFER_LIMIT_BYTES: usize = 16 * 1024 * 1024;
-const ROW_FRAME_LIVE: u8 = 0;
-const ROW_FRAME_TOMBSTONE: u8 = 1;
+
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct RowLocation {
