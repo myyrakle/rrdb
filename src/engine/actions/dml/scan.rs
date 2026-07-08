@@ -2,23 +2,33 @@ use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind as IOErrorKind;
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
+
 
 use crate::engine::DBEngine;
 use crate::engine::ast::dml::plan::select::scan::IndexScanPlan;
 use crate::engine::ast::types::TableName;
 use crate::engine::encoder::schema_encoder::StorageEncoder;
-use crate::engine::row_buffer::{RowBufferWrite, encode_row_frames};
+use crate::engine::row_buffer::{RowBufferWrite, encode_live_row_frames};
 use crate::engine::schema::row::TableDataRow;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
 const ROW_SEGMENT_FILENAME: &str = "00000001.rows";
+const ROW_META_FILENAME: &str = "meta.bin";
 const DEFAULT_ROW_WRITE_BUFFER_LIMIT_BYTES: usize = 16 * 1024 * 1024;
+const ROW_FRAME_LIVE: u8 = 0;
+const ROW_FRAME_TOMBSTONE: u8 = 1;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct RowLocation {
     pub(crate) row_index: usize,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+struct RowSegmentMeta {
+    next_row_index: usize,
 }
 
 impl DBEngine {
@@ -43,12 +53,13 @@ impl DBEngine {
         Ok(rows
             .into_iter()
             .enumerate()
-            .map(|(row_index, row)| (RowLocation { row_index }, row))
+            .filter_map(|(row_index, row)| row.map(|row| (RowLocation { row_index }, row)))
             .collect())
     }
 
     /// 행을 세그먼트 파일 끝에 추가하고 시작 row index를 반환합니다.
     /// 반환된 시작 인덱스는 인덱스 유지보수(key -> row index)에 사용됩니다.
+    /// 시작 인덱스는 meta.bin + 버퍼 상태를 사용해 계산하므로 세그먼트 전체 스캔이 필요 없습니다.
     pub(crate) async fn append_table_rows(
         &self,
         table_name: &TableName,
@@ -74,27 +85,23 @@ impl DBEngine {
 
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
+        let meta_path = self.row_segment_meta_path(table_name)?;
 
-        // 버퍼 풀의 현재 행 개수를 시작 인덱스로 사용.
-        // persisted_rows가 적재되지 않았으면 먼저 디스크에서 읽어온다.
-        let start_index = {
-            let pool_guard = self.row_buffer_pool.lock().await;
-            match pool_guard.cached_row_count(&segment_path) {
-                Some(count) => count,
-                None => {
-                    drop(pool_guard);
-                    let disk_rows = self.read_segment_rows(&segment_path).await?;
-                    let count = disk_rows.len();
-                    self.row_buffer_pool
-                        .lock()
-                        .await
-                        .read_rows(segment_path.clone(), || disk_rows);
-                    count
-                }
+        let cached_start_index = { self.row_buffer_pool.lock().await.cached_row_count(&segment_path) };
+        let start_index = match cached_start_index {
+            Some(count) => count,
+            None => {
+                let meta = self.read_segment_meta(&meta_path).await?;
+                let start_index = meta.next_row_index;
+                self.row_buffer_pool
+                    .lock()
+                    .await
+                    .seed_row_count(segment_path.clone(), start_index);
+                start_index
             }
         };
 
-        let frame = encode_row_frames(rows)?;
+        let frame = encode_live_row_frames(rows)?;
 
         let buffered_bytes = {
             self.row_buffer_pool
@@ -137,7 +144,15 @@ impl DBEngine {
             let target = rows.get_mut(row_index).ok_or_else(|| {
                 ExecuteError::wrap(format!("row index '{}' not found", row_index))
             })?;
-            *target = row;
+
+            if target.is_none() {
+                return Err(ExecuteError::wrap(format!(
+                    "row index '{}' is deleted",
+                    row_index
+                )));
+            }
+
+            *target = Some(row);
         }
 
         self.row_buffer_pool
@@ -148,6 +163,8 @@ impl DBEngine {
         Ok(())
     }
 
+    /// DELETE는 세그먼트를 압축하지 않고 tombstone으로 표시합니다.
+    /// row index는 절대 재사용하지 않으므로 인덱스가 안정적으로 유지됩니다.
     pub(crate) async fn delete_table_rows(
         &self,
         table_name: &TableName,
@@ -160,7 +177,7 @@ impl DBEngine {
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(table_name)?;
         let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
-        let rows = match cached_rows {
+        let mut rows = match cached_rows {
             Some(rows) => rows,
             None => {
                 let disk_rows = self.read_segment_rows(&segment_path).await?;
@@ -170,12 +187,13 @@ impl DBEngine {
                     .read_rows(segment_path.clone(), || disk_rows)
             }
         };
-        let rows = rows
-            .into_iter()
-            .enumerate()
-            .filter(|(row_index, _)| !row_indexes.contains(row_index))
-            .map(|(_, row)| row)
-            .collect::<Vec<_>>();
+
+        for row_index in row_indexes {
+            let target = rows.get_mut(row_index).ok_or_else(|| {
+                ExecuteError::wrap(format!("row index '{}' not found", row_index))
+            })?;
+            *target = None;
+        }
 
         self.row_buffer_pool
             .lock()
@@ -185,7 +203,12 @@ impl DBEngine {
         Ok(())
     }
 
-    async fn read_segment_rows(&self, segment_path: &Path) -> errors::Result<Vec<TableDataRow>> {
+    /// Reads every frame in the segment in order. `None` marks a tombstoned
+    /// row; the position in the returned Vec is its stable row index.
+    async fn read_segment_rows(
+        &self,
+        segment_path: &Path,
+    ) -> errors::Result<Vec<Option<TableDataRow>>> {
         let content = match tokio::fs::read(segment_path).await {
             Ok(content) => content,
             Err(error) if error.kind() == IOErrorKind::NotFound => return Ok(Vec::new()),
@@ -197,11 +220,14 @@ impl DBEngine {
         let mut offset = 0;
 
         while offset < content.len() {
-            if content.len() - offset < size_of::<u32>() {
+            if content.len() - offset < size_of::<u8>() + size_of::<u32>() {
                 return Err(ExecuteError::wrap(
                     "truncated row segment frame header".to_string(),
                 ));
             }
+
+            let tombstoned = content[offset] != ROW_FRAME_LIVE;
+            offset += size_of::<u8>();
 
             let frame_len = u32::from_le_bytes(
                 content[offset..offset + size_of::<u32>()]
@@ -216,12 +242,17 @@ impl DBEngine {
                 ));
             }
 
-            let row = encoder
-                .decode::<TableDataRow>(&content[offset..offset + frame_len])
-                .map_err(|error| {
-                    ExecuteError::wrap(format!("invalid row segment frame: {}", error))
-                })?;
-            rows.push(row);
+            if tombstoned {
+                rows.push(None);
+            } else {
+                let row = encoder
+                    .decode::<TableDataRow>(&content[offset..offset + frame_len])
+                    .map_err(|error| {
+                        ExecuteError::wrap(format!("invalid row segment frame: {}", error))
+                    })?;
+                rows.push(Some(row));
+            }
+
             offset += frame_len;
         }
 
@@ -275,6 +306,12 @@ impl DBEngine {
             }
         };
 
+        if let Some(parent) = write.segment_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        }
+
         let mut file = match tokio::fs::OpenOptions::new()
             .create(true)
             .write(true)
@@ -301,6 +338,14 @@ impl DBEngine {
                 .await
                 .map_err(|error| ExecuteError::wrap(error.to_string()))?;
         }
+
+        self.write_segment_meta(
+            &self.row_segment_meta_path_from_segment_path(&write.segment_path),
+            &RowSegmentMeta {
+                next_row_index: write.next_row_index,
+            },
+        )
+        .await?;
 
         Ok(())
     }
@@ -336,6 +381,18 @@ impl DBEngine {
     }
 
     pub(crate) fn row_segment_path(&self, table_name: &TableName) -> errors::Result<PathBuf> {
+        Ok(self.table_rows_directory(table_name)?.join(ROW_SEGMENT_FILENAME))
+    }
+
+    fn row_segment_meta_path(&self, table_name: &TableName) -> errors::Result<PathBuf> {
+        Ok(self.table_rows_directory(table_name)?.join(ROW_META_FILENAME))
+    }
+
+    fn row_segment_meta_path_from_segment_path(&self, segment_path: &Path) -> PathBuf {
+        segment_path.with_file_name(ROW_META_FILENAME)
+    }
+
+    fn table_rows_directory(&self, table_name: &TableName) -> errors::Result<PathBuf> {
         let database_name = table_name
             .database_name
             .as_ref()
@@ -346,8 +403,43 @@ impl DBEngine {
             .join(database_name)
             .join("tables")
             .join(&table_name.table_name)
-            .join("rows")
-            .join(ROW_SEGMENT_FILENAME))
+            .join("rows"))
+    }
+
+    async fn read_segment_meta(&self, meta_path: &Path) -> errors::Result<RowSegmentMeta> {
+        match tokio::fs::read(meta_path).await {
+            Ok(content) => {
+                let encoder = StorageEncoder::new();
+                encoder.decode::<RowSegmentMeta>(&content).map_err(|error| {
+                    ExecuteError::wrap(format!("invalid row segment meta: {}", error))
+                })
+            }
+            Err(error) if error.kind() == IOErrorKind::NotFound => Ok(RowSegmentMeta::default()),
+            Err(error) => Err(ExecuteError::wrap(error.to_string())),
+        }
+    }
+
+    async fn write_segment_meta(
+        &self,
+        meta_path: &Path,
+        meta: &RowSegmentMeta,
+    ) -> errors::Result<()> {
+        if let Some(parent) = meta_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        }
+
+        let encoder = StorageEncoder::new();
+        let encoded = encoder.encode(meta);
+        let temp_path = meta_path.with_extension("bin.tmp");
+
+        tokio::fs::write(&temp_path, encoded)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        tokio::fs::rename(&temp_path, meta_path)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))
     }
 
     /// 인덱스 스캔: 인덱스에서 row index 목록을 조회한 뒤 해당 행만 반환합니다.
@@ -377,7 +469,6 @@ impl DBEngine {
             return Ok(Vec::new());
         }
 
-        // TODO(#195): 세그먼트 프레임 오프셋을 인덱스에 저장해 부분 읽기로 최적화
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(&table_name)?;
         let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
@@ -403,8 +494,8 @@ impl DBEngine {
             })?;
 
             match all_rows.get(row_index) {
-                Some(row) => result.push((RowLocation { row_index }, row.clone())),
-                None => {
+                Some(Some(row)) => result.push((RowLocation { row_index }, row.clone())),
+                Some(None) | None => {
                     return Err(ExecuteError::wrap(format!(
                         "index '{}' is out of sync with table data; drop and recreate the index",
                         plan.index_name
@@ -461,12 +552,20 @@ mod tests {
             .unwrap();
 
         let scanned = engine.full_scan(table_name).await.unwrap();
-        let segment_path = rows_path.join("00000001.rows");
+        let mut dir_entries = tokio::fs::read_dir(&rows_path).await.unwrap();
+        let mut segment_file_count = 0;
+        while let Some(entry) = dir_entries.next_entry().await.unwrap() {
+            if entry.file_type().await.unwrap().is_file()
+                && entry.path().extension().and_then(|ext| ext.to_str()) == Some("rows")
+            {
+                segment_file_count += 1;
+            }
+        }
 
         assert_eq!(scanned.len(), 2);
         assert_eq!(scanned[0].1.fields[0].data, TableDataFieldType::Integer(1));
         assert_eq!(scanned[1].1.fields[0].data, TableDataFieldType::Integer(2));
-        assert!(!segment_path.exists());
+        assert_eq!(segment_file_count, 0);
     }
 
     #[tokio::test]
@@ -490,13 +589,6 @@ mod tests {
 
         let engine = DBEngine::new(config);
         let row = |id| TableDataRow {
-            fields: vec![TableDataField {
-                table_name: table_name.clone(),
-                column_name: "id".to_string(),
-                data: TableDataFieldType::Integer(id),
-            }],
-        };
-        let row2 = |id| TableDataRow {
             fields: vec![TableDataField {
                 table_name: table_name.clone(),
                 column_name: "id".to_string(),
@@ -531,9 +623,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_table_rows_removes_buffered_rows_without_flushing_segment_file() {
+    async fn delete_table_rows_tombstones_in_place_and_keeps_row_indices_stable() {
         let base_path = PathBuf::from(format!(
-            "target/test_row_segments/delete_buffered_rows_{}",
+            "target/test_row_segments/soft_delete_stable_{}",
             std::process::id()
         ));
         if base_path.exists() {
@@ -564,12 +656,23 @@ mod tests {
             .unwrap();
 
         engine
-            .delete_table_rows(&table_name, HashSet::from([0, 2]))
+            .delete_table_rows(&table_name, HashSet::from([1usize]))
             .await
             .unwrap();
 
+        let scanned = engine.full_scan(table_name.clone()).await.unwrap();
+        assert_eq!(scanned.len(), 2);
+        assert_eq!(scanned[0].0.row_index, 0);
+        assert_eq!(scanned[0].1.fields[0].data, TableDataFieldType::Integer(1));
+        assert_eq!(scanned[1].0.row_index, 2);
+        assert_eq!(scanned[1].1.fields[0].data, TableDataFieldType::Integer(3));
+
+        let start_index = engine.append_table_rows(&table_name, &[row(4)]).await.unwrap();
+        assert_eq!(start_index, 3);
+
         let scanned = engine.full_scan(table_name).await.unwrap();
-        assert_eq!(scanned.len(), 1);
-        assert_eq!(scanned[0].1.fields[0].data, TableDataFieldType::Integer(2));
+        assert_eq!(scanned.len(), 3);
+        assert_eq!(scanned[2].0.row_index, 3);
+        assert_eq!(scanned[2].1.fields[0].data, TableDataFieldType::Integer(4));
     }
 }

@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use crate::engine::ast::{DDLStatement, SQLStatement, types::TableName};
 
 /*
 DROP INDEX [IF EXISTS] index_name [ON [database_name.]table_name];
 */
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct DropIndexQuery {
     pub index_name: String,
     /// 인덱스가 속한 데이터베이스명 (파서 컨텍스트 혹은 ON 절에서 결정)

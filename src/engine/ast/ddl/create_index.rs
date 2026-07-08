@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::engine::ast::{DDLStatement, SQLStatement, types::TableName};
 
 /*
@@ -5,7 +7,7 @@ CREATE [ UNIQUE ] INDEX [ IF NOT EXISTS ] name ON table_name
     ( column_name [, ...] )
 */
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct CreateIndexQuery {
     pub index_name: String,
     pub table: TableName,

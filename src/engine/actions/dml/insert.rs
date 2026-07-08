@@ -18,6 +18,21 @@ impl DBEngine {
         query: InsertQuery,
         wal_manager: SharedWALManager,
     ) -> errors::Result<ExecuteResult> {
+        self.insert_internal(query, Some(wal_manager)).await
+    }
+
+    /// Re-applies a previously WAL-logged INSERT during crash recovery
+    /// replay. Identical to `insert()` but skips the WAL append (the
+    /// operation is already durably recorded in the WAL being replayed).
+    pub(crate) async fn insert_replay(&self, query: InsertQuery) -> errors::Result<ExecuteResult> {
+        self.insert_internal(query, None).await
+    }
+
+    async fn insert_internal(
+        &self,
+        query: InsertQuery,
+        wal_manager: Option<SharedWALManager>,
+    ) -> errors::Result<ExecuteResult> {
         let into_table = query.into_table.as_ref().unwrap();
 
         let table_name = into_table.clone().table_name;
@@ -189,13 +204,15 @@ impl DBEngine {
                     }
                 }
 
-                let wal_payload = bincode::serialize(&(into_table, &rows))
-                    .map_err(|error| ExecuteError::wrap(error.to_string()))?;
-                wal_manager
-                    .lock()
-                    .await
-                    .append_record(EntryType::Insert, Some(wal_payload), None)
-                    .await?;
+                if let Some(wal_manager) = &wal_manager {
+                    let wal_payload = bincode::serialize(&query)
+                        .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+                    wal_manager
+                        .lock()
+                        .await
+                        .append_record(EntryType::Insert, Some(wal_payload), None)
+                        .await?;
+                }
 
                 let affected_rows = rows.len();
                 let start_index = self.append_table_rows(into_table, &rows).await?;

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::engine::DBEngine;
 use crate::engine::ast::types::TableName;
-use crate::engine::index::{IndexEntry, IndexMeta, field_to_key};
+use crate::engine::index::{IndexMeta, field_to_key};
 use crate::engine::optimizer::cost::BLOCK_SIZE;
 use crate::engine::optimizer::predule::{OptimizerContext, TableStatistics};
 use crate::engine::schema::row::{TableDataFieldType, TableDataRow};
@@ -97,36 +97,6 @@ impl DBEngine {
             }
             (None, None) => Ok(()),
         }
-    }
-
-    /// 테이블의 모든 인덱스를 현재 행 데이터 기준으로 재구축합니다.
-    /// DELETE는 세그먼트를 압축해 row index가 밀리므로 재구축이 필요합니다.
-    pub(crate) async fn rebuild_table_indices(&self, table_name: &TableName) -> errors::Result<()> {
-        let metas = self.table_index_metas(table_name).await;
-
-        if metas.is_empty() {
-            return Ok(());
-        }
-
-        let rows = self.full_scan(table_name.clone()).await?;
-
-        for meta in metas {
-            let entries = rows
-                .iter()
-                .filter_map(|(location, row)| {
-                    row_index_key(row, &meta.column_name).map(|key| IndexEntry {
-                        key,
-                        row_path: location.row_index.to_string(),
-                    })
-                })
-                .collect();
-
-            self.index_manager
-                .replace_entries(&meta.index_name, entries)
-                .await?;
-        }
-
-        Ok(())
     }
 
     /// 테이블 통계를 반환합니다. 캐시가 없으면 실제 스캔으로 계산 후 캐싱합니다.

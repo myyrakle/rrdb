@@ -24,8 +24,28 @@ impl DBEngine {
         query: UpdateQuery,
         wal_manager: SharedWALManager,
     ) -> errors::Result<ExecuteResult> {
-        let wal_payload =
-            bincode::serialize(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        self.update_internal(query, Some(wal_manager)).await
+    }
+
+    /// Re-applies a previously WAL-logged UPDATE during crash recovery
+    /// replay. Identical to `update()` but skips the WAL append (the
+    /// operation is already durably recorded in the WAL being replayed).
+    pub(crate) async fn update_replay(&self, query: UpdateQuery) -> errors::Result<ExecuteResult> {
+        self.update_internal(query, None).await
+    }
+
+    async fn update_internal(
+        &self,
+        query: UpdateQuery,
+        wal_manager: Option<SharedWALManager>,
+    ) -> errors::Result<ExecuteResult> {
+        // WAL-first: 쿼리를 실행/소비하기 전에 페이로드를 미리 직렬화합니다.
+        let wal_payload = match &wal_manager {
+            Some(_) => Some(
+                bincode::serialize(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?,
+            ),
+            None => None,
+        };
 
         let table = query.target_table.clone().unwrap().table;
         let update_items = query.update_items.clone();
@@ -180,7 +200,16 @@ impl DBEngine {
         let affected_rows = replacements.len();
 
         if !replacements.is_empty() {
-            // 인덱스 선반영: 고유 제약 위반은 여기서 검출되며, 실패 시 적용분을 되돌립니다
+            // WAL-first: 인덱스/테이블을 변경하기 전에 먼저 durable하게 기록합니다.
+            if let Some(wal_manager) = &wal_manager {
+                wal_manager
+                    .lock()
+                    .await
+                    .append_record(EntryType::Set, wal_payload, None)
+                    .await?;
+            }
+
+            // 인덱스 반영: 고유 제약 위반은 여기서 검출되며, 실패 시 적용분을 되돌립니다
             let mut applied = 0;
 
             for (index_name, old_key, new_key, row_path) in &index_operations {
@@ -200,22 +229,6 @@ impl DBEngine {
                 }
 
                 applied += 1;
-            }
-
-            // WAL 기록: 실패 시 선반영한 인덱스 변경을 되돌립니다
-            if let Err(error) = wal_manager
-                .lock()
-                .await
-                .append_record(EntryType::Set, Some(wal_payload), None)
-                .await
-            {
-                for (index_name, old_key, new_key, row_path) in index_operations.iter().rev() {
-                    let _ = self
-                        .apply_index_operation(index_name, new_key, old_key, row_path)
-                        .await;
-                }
-
-                return Err(error);
             }
 
             if let Err(error) = self.update_table_rows(&table, replacements).await {

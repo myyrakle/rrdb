@@ -22,6 +22,11 @@ use std::sync::Arc;
 use crate::common::command::{CommandRunner, RealCommandRunner};
 use crate::common::fs::{FileSystem, RealFileSystem};
 use crate::config::launch_config::LaunchConfig;
+use crate::engine::ast::ddl::create_index::CreateIndexQuery;
+use crate::engine::ast::ddl::drop_index::DropIndexQuery;
+use crate::engine::ast::dml::delete::DeleteQuery;
+use crate::engine::ast::dml::insert::InsertQuery;
+use crate::engine::ast::dml::update::UpdateQuery;
 use crate::engine::ast::types::TableName;
 use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::encoder::schema_encoder::StorageEncoder;
@@ -32,6 +37,7 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bincode::BincodeEncoder;
 use crate::engine::wal::manager::WALManager;
+use crate::engine::wal::types::{EntryType, WALEntry};
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use tokio::sync::{Mutex, RwLock};
@@ -96,9 +102,11 @@ impl DBEngine {
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
             SQLStatement::DDL(DDLStatement::CreateIndexQuery(query)) => {
-                self.create_index(query).await
+                self.create_index(query, wal_manager.clone()).await
             }
-            SQLStatement::DDL(DDLStatement::DropIndexQuery(query)) => self.drop_index(query).await,
+            SQLStatement::DDL(DDLStatement::DropIndexQuery(query)) => {
+                self.drop_index(query, wal_manager.clone()).await
+            }
             SQLStatement::DML(DMLStatement::InsertQuery(query)) => {
                 self.insert(query, wal_manager.clone()).await
             }
@@ -124,6 +132,69 @@ impl DBEngine {
             Ok(result) => Ok(result),
             Err(error) => Err(ExecuteError::wrap(error.to_string())),
         }
+    }
+
+    /// Replays WAL entries written but not yet checkpointed before a crash,
+    /// re-executing each recorded operation so its data/index mutation is
+    /// guaranteed to have taken effect (WAL-ahead recovery, mirroring
+    /// PostgreSQL's redo phase). A single entry failing to reapply (e.g. a
+    /// unique-constraint violation, which -- since WAL is written before the
+    /// mutation -- would also have failed the first time around and so never
+    /// actually took effect) is logged and does not abort the rest of
+    /// recovery.
+    pub async fn replay_wal(&self, entries: &[WALEntry]) -> errors::Result<()> {
+        for entry in entries {
+            let data = entry.data.as_deref();
+
+            let result: errors::Result<()> = async {
+                match entry.entry_type {
+                    EntryType::Insert => {
+                        let query = Self::decode_wal_payload::<InsertQuery>(data)?;
+                        self.insert_replay(query).await.map(|_| ())
+                    }
+                    EntryType::Set => {
+                        let query = Self::decode_wal_payload::<UpdateQuery>(data)?;
+                        self.update_replay(query).await.map(|_| ())
+                    }
+                    EntryType::Delete => {
+                        let query = Self::decode_wal_payload::<DeleteQuery>(data)?;
+                        self.delete_replay(query).await.map(|_| ())
+                    }
+                    EntryType::CreateIndex => {
+                        let query = Self::decode_wal_payload::<CreateIndexQuery>(data)?;
+                        self.create_index_replay(query).await.map(|_| ())
+                    }
+                    EntryType::DropIndex => {
+                        let query = Self::decode_wal_payload::<DropIndexQuery>(data)?;
+                        self.drop_index_replay(query).await.map(|_| ())
+                    }
+                    EntryType::Checkpoint
+                    | EntryType::TransactionBegin
+                    | EntryType::TransactionCommit
+                    | EntryType::TransactionRollback => Ok(()),
+                }
+            }
+            .await;
+
+            if let Err(error) = result {
+                log::warn!(
+                    "WAL replay: skipping entry {:?} due to error: {}",
+                    entry.entry_type,
+                    error
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn decode_wal_payload<T>(data: Option<&[u8]>) -> errors::Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let data =
+            data.ok_or_else(|| ExecuteError::wrap("WAL entry missing payload".to_string()))?;
+        bincode::deserialize(data).map_err(|error| ExecuteError::wrap(error.to_string()))
     }
 }
 
