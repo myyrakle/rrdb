@@ -26,14 +26,21 @@ pub struct WALManager<T>
 where
     T: WALEncoder<WALEntry>,
 {
+    /// The sequence number of the WAL file
     sequence: usize,
+    /// The buffer of the WAL file
     buffers: Vec<WALEntry>,
+    /// The page size of the WAL file
     page_size: usize,
+    /// The directory of the WAL file
     directory: PathBuf,
+    /// The extension of the WAL file
     extension: String,
     encoder: T,
     current_segment: Option<WALSegmentWriter>,
     current_offset: usize,
+    /// Bytes written to the current segment file since the last fsync
+    /// (group commit). Reset on every sync/checkpoint/rotation.
     unsynced_bytes: usize,
 }
 
@@ -44,6 +51,8 @@ struct WALSegmentWriter {
     offset: usize,
 }
 
+// TODO: gz 압축 구현
+// TODO: 대용량 페이지 파일 XLOG_CONTINUATION 처리 구현
 impl<T> WALManager<T>
 where
     T: WALEncoder<WALEntry>,
@@ -70,10 +79,14 @@ where
         }
     }
 
+    /// Entries written to the current segment but not yet checkpointed.
+    /// Used at startup to replay operations that may not have been applied
+    /// before a crash.
     pub fn pending_entries(&self) -> &[WALEntry] {
         &self.buffers
     }
 
+    /// The sequence number of the segment currently being written to.
     pub fn current_sequence(&self) -> usize {
         self.sequence
     }
@@ -108,8 +121,8 @@ where
 
         self.rotate_if_needed(frame.len()).await?;
         self.append_frame_to_mmap(&frame).await?;
-        self.unsynced_bytes += frame.len();
 
+        self.unsynced_bytes += frame.len();
         if self.unsynced_bytes >= GROUP_COMMIT_THRESHOLD_BYTES {
             self.sync_current_file().await?;
             self.unsynced_bytes = 0;
@@ -251,6 +264,10 @@ where
         Ok(())
     }
 
+    /// Force an fsync of the current segment now, without writing a
+    /// checkpoint entry or rotating. Intended for a periodic background task
+    /// so group-commit durability doesn't depend solely on hitting the byte
+    /// threshold or the next checkpoint. No-op if nothing is unsynced.
     pub async fn sync(&mut self) -> errors::Result<()> {
         if self.unsynced_bytes == 0 {
             return Ok(());
@@ -352,5 +369,134 @@ mod tests {
         file.sync_all()
             .await
             .unwrap_or_else(|e| panic!("Failed to sync wal file {:?}: {}", file_path, e));
+    }
+
+    #[tokio::test]
+    async fn test_build_no_wal_files() {
+        let wal_dir = setup_test_wal_dir("no_wal_files").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+
+        let wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        assert_eq!(
+            wal_manager.sequence, 1,
+            "Sequence should be 1 when no WAL files exist"
+        );
+        assert!(
+            wal_manager.buffers.is_empty(),
+            "Buffers should be empty when no WAL files exist"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_build_single_file_with_checkpoint() {
+        let wal_dir = setup_test_wal_dir("single_file_checkpoint").await;
+        let config = get_test_config(&wal_dir);
+
+        let entries_seq1 = vec![
+            create_entry(EntryType::Insert, Some("data1")),
+            create_entry(EntryType::Set, Some("data2")),
+            create_entry(EntryType::Checkpoint, None),
+        ];
+        write_wal_file(&config, 1, &entries_seq1).await;
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+
+        let wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        assert_eq!(
+            wal_manager.sequence, 2,
+            "Sequence should be 2 after a checkpointed file"
+        );
+        assert!(
+            wal_manager.buffers.is_empty(),
+            "Buffers should be empty after a checkpointed file"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_append_record_writes_framed_bincode_entries() {
+        let wal_dir = setup_test_wal_dir("append_record_framed_bincode").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+        let mut wal_manager = builder.build(decoder.clone(), encoder).await.unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+        wal_manager
+            .append_record(EntryType::Delete, Some(b"row-2".to_vec()), Some(2))
+            .await
+            .unwrap();
+        wal_manager.sync_current_file().await.unwrap();
+
+        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let content = tokio::fs::read(wal_path).await.unwrap();
+        let entries = decoder.decode(&content).unwrap();
+
+        assert_eq!(entries.len(), 2);
+        assert!(matches!(entries[0].entry_type, EntryType::Insert));
+        assert_eq!(entries[0].transaction_id, Some(1));
+        assert_eq!(entries[0].data, Some(b"row-1".to_vec()));
+        assert!(matches!(entries[1].entry_type, EntryType::Delete));
+        assert_eq!(entries[1].transaction_id, Some(2));
+    }
+
+    #[tokio::test]
+    async fn test_append_record_writes_single_entry_frames() {
+        let wal_dir = setup_test_wal_dir("append_record_single_entry_frames").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+        let mut wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+        wal_manager.sync_current_file().await.unwrap();
+
+        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let content = tokio::fs::read(wal_path).await.unwrap();
+        let frame_len =
+            u32::from_le_bytes(content[..size_of::<u32>()].try_into().unwrap()) as usize;
+        let entry: WALEntry =
+            bincode::deserialize(&content[size_of::<u32>()..size_of::<u32>() + frame_len]).unwrap();
+
+        assert!(matches!(entry.entry_type, EntryType::Insert));
+        assert_eq!(entry.transaction_id, Some(1));
+        assert_eq!(entry.data, Some(b"row-1".to_vec()));
+    }
+
+    #[tokio::test]
+    async fn test_append_record_appends_to_mmap_segment_without_pending_write_buffer() {
+        let wal_dir = setup_test_wal_dir("append_record_mmap_segment").await;
+        let config = get_test_config(&wal_dir);
+
+        let builder = WALBuilder::new(&config);
+        let encoder = BincodeEncoder::new();
+        let decoder = BincodeDecoder::new();
+        let mut wal_manager = builder.build(decoder, encoder).await.unwrap();
+
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
+            .await
+            .unwrap();
+
+        assert!(wal_manager.current_segment.is_some());
+        assert_eq!(wal_manager.buffers.len(), 1);
+        assert_eq!(wal_manager.current_offset, wal_manager.current_segment.as_ref().unwrap().offset);
     }
 }
