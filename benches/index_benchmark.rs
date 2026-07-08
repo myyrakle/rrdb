@@ -1,11 +1,16 @@
-//! Benchmarks for the B-tree index system (issue #160, PR #191)
+//! Benchmarks for the B-tree index system (issue #160, PR #191; page-backed
+//! disk path added in issue #230)
 //!
 //! Run with:
 //!   cargo bench --bench index_benchmark
 //!
 //! Measures:
 //!   1. BTreeIndex in-memory operations (insert, get, range, remove, update)
-//!   2. IndexManager memory+disk operations (insert with flush, get, range, reload)
+//!   2. IndexManager page-backed B+tree operations (insert, get, range,
+//!      reload) -- as of #230, IndexManager no longer rewrites the whole
+//!      index file on every mutation; each insert only touches the pages
+//!      on the path from the root to the affected leaf (see
+//!      `engine::index::page_btree`).
 //!   3. Scaling: 1K, 10K, 50K, 100K entries
 
 use std::time::{Duration, Instant};
@@ -207,7 +212,7 @@ fn bench_btree_update(n: usize) -> BenchResult {
     }
 }
 
-// ─── IndexManager (memory + disk) Benchmarks ────────────────────────────
+// ─── IndexManager (page-backed B+tree on disk) Benchmarks ──────────────
 
 async fn bench_manager_insert(n: usize) -> BenchResult {
     let dir = std::env::temp_dir().join(format!("rrdb_bench_insert_{}_{}", n, std::process::id()));
@@ -228,7 +233,7 @@ async fn bench_manager_insert(n: usize) -> BenchResult {
 
     let _ = tokio::fs::remove_dir_all(&dir).await;
     BenchResult {
-        name: format!("IndexManager::insert+flush (n={})", n),
+        name: format!("IndexManager::insert (page-backed, n={})", n),
         n,
         total,
     }
@@ -374,13 +379,16 @@ fn main() {
         println!();
     }
 
-    // ── IndexManager (memory + disk) ──
-    println!("--- IndexManager (memory + disk dual-write) ---");
+    // ── IndexManager (page-backed B+tree on disk) ──
+    println!("--- IndexManager (page-backed B+tree, issue #230) ---");
     println!();
 
-    // IndexManager disk writes are O(n^2) due to full-file rewrite on every mutation.
-    // 100K would take ~7 minutes. Cap at 50K for disk benchmarks.
-    let disk_scales: &[usize] = &[1_000, 10_000, 50_000];
+    // Prior to #230, IndexManager rewrote the entire index file on every
+    // mutation (O(n) work per insert, O(n^2) across n inserts), so 100K was
+    // capped out at ~50K to keep the benchmark run time reasonable. The
+    // page-backed B+tree only touches the pages on the root-to-leaf path
+    // per insert, so 100K is included here too.
+    let disk_scales: &[usize] = &[1_000, 10_000, 50_000, 100_000];
 
     let rt = tokio::runtime::Runtime::new().unwrap();
 

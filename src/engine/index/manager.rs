@@ -3,39 +3,36 @@ use std::path::PathBuf;
 
 use tokio::sync::{Mutex, RwLock};
 
-use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 
-use super::btree::BTreeIndex;
+use super::page_btree::PageBackedBTreeIndex;
 use super::{IndexEntry, IndexMeta};
 
-/// IndexFileManager manages a single index file on disk.
-/// Each index is persisted as a BSON-encoded file containing:
-/// - IndexMeta (index name, table, column, uniqueness)
-/// - Vec<IndexEntry> (the actual key->row_path mappings)
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-struct IndexFile {
-    meta: IndexMeta,
-    entries: Vec<IndexEntry>,
-}
-
-/// IndexManager coordinates in-memory B-tree indices with disk persistence.
+/// IndexManager coordinates page-backed B+tree indices with disk persistence.
 ///
-/// Design (issue #160):
-/// 1. B-tree indices are loaded into memory on startup (`load_all`)
-/// 2. On every mutation (insert/remove/update), memory is updated first,
-///    then the change is flushed to disk (`save_index`)
-/// 3. Disk is the backup; memory is the primary query path
-/// 4. Each index file lives at `<table_path>/index/<index_name>.idx`
+/// Design (issue #230, superseding the full-snapshot-rewrite design from
+/// issue #160):
+/// 1. Each index is a `PageBackedBTreeIndex` (see `page_btree.rs`): a real
+///    disk-facing B+tree where every mutation reads/writes only the pages
+///    it touches, instead of serializing the whole index on every insert.
+/// 2. A small `<index_name>.meta` sidecar file holds the `IndexMeta`
+///    (index/table/column names, uniqueness) next to the page-backed
+///    `<index_name>.idx` data file. The meta file is written once at
+///    `create_index` time and never rewritten.
+/// 3. `load_all`/`load_database_indices` rediscover indices by scanning for
+///    `.meta` files and opening their sibling `.idx` page file -- this is an
+///    on-disk format change from the old full-blob `.idx` files (pre-#230),
+///    which is acceptable since this feature has not shipped yet. Old-style
+///    `.idx` files without a `.meta` sidecar are simply not picked up by
+///    `load_all` (no panic, no crash -- see its doc comment).
 pub struct IndexManager {
-    /// Map: index_name -> in-memory B-tree
-    indices: RwLock<HashMap<String, BTreeIndex>>,
+    /// Map: index_name -> page-backed B+tree
+    indices: RwLock<HashMap<String, PageBackedBTreeIndex>>,
     /// Map: index_name -> IndexMeta
     metas: RwLock<HashMap<String, IndexMeta>>,
     /// Base directory for all indices (usually data_directory)
     base_directory: PathBuf,
-    encoder: StorageEncoder,
     /// Serializes create_index calls to prevent TOCTOU races
     create_lock: Mutex<()>,
 }
@@ -46,12 +43,11 @@ impl IndexManager {
             indices: RwLock::new(HashMap::new()),
             metas: RwLock::new(HashMap::new()),
             base_directory,
-            encoder: StorageEncoder::new(),
             create_lock: Mutex::new(()),
         }
     }
 
-    /// Compute the on-disk path for an index file.
+    /// Compute the on-disk path for an index's page-backed data file.
     /// Structure: <base>/<database>/tables/<table>/index/<index_name>.idx
     fn index_file_path(&self, meta: &IndexMeta) -> PathBuf {
         let database_name = meta
@@ -67,6 +63,21 @@ impl IndexManager {
             .join(table_name)
             .join("index")
             .join(format!("{}.idx", meta.index_name))
+    }
+
+    /// Compute the on-disk path for an index's small metadata sidecar file.
+    fn meta_file_path(&self, meta: &IndexMeta) -> PathBuf {
+        self.index_file_path(meta).with_extension("meta")
+    }
+
+    /// Write the (tiny, fixed-at-creation) IndexMeta sidecar file.
+    async fn write_meta_file(&self, meta: &IndexMeta) -> errors::Result<()> {
+        let path = self.meta_file_path(meta);
+        let encoded = bincode::serialize(meta)
+            .map_err(|e| ExecuteError::wrap(format!("failed to encode index meta: {}", e)))?;
+        tokio::fs::write(&path, encoded)
+            .await
+            .map_err(|e| ExecuteError::wrap(format!("failed to write index meta file: {}", e)))
     }
 
     /// Register a new index: create an empty in-memory B-tree and persist
@@ -98,18 +109,12 @@ impl IndexManager {
             })?;
         }
 
-        // Create empty in-memory tree
-        let tree = BTreeIndex::new(meta.column_name.clone(), meta.is_unique);
-
-        // Persist to disk
-        let file_data = IndexFile {
-            meta: meta.clone(),
-            entries: Vec::new(),
-        };
-        let encoded = self.encoder.encode(&file_data);
-        tokio::fs::write(&file_path, encoded)
-            .await
-            .map_err(|e| ExecuteError::wrap(format!("failed to write index file: {}", e)))?;
+        // Persist the meta sidecar, then create the (empty) page-backed
+        // data file.
+        self.write_meta_file(&meta).await?;
+        let tree =
+            PageBackedBTreeIndex::create(&file_path, meta.column_name.clone(), meta.is_unique)
+                .await?;
 
         // Update in-memory state
         {
@@ -122,7 +127,8 @@ impl IndexManager {
         Ok(())
     }
 
-    /// Drop an index: remove from memory and delete the disk file.
+    /// Drop an index: remove from memory and delete both disk files (the
+    /// page-backed data file and its meta sidecar).
     pub async fn drop_index(&self, index_name: &str) -> errors::Result<()> {
         let meta = {
             let metas = self.metas.read().await;
@@ -140,12 +146,18 @@ impl IndexManager {
         };
 
         let file_path = self.index_file_path(&meta);
+        let meta_path = self.meta_file_path(&meta);
 
         // Remove from disk
         if file_path.exists() {
             tokio::fs::remove_file(&file_path)
                 .await
                 .map_err(|e| ExecuteError::wrap(format!("failed to remove index file: {}", e)))?;
+        }
+        if meta_path.exists() {
+            tokio::fs::remove_file(&meta_path).await.map_err(|e| {
+                ExecuteError::wrap(format!("failed to remove index meta file: {}", e))
+            })?;
         }
 
         // Remove from memory
@@ -159,94 +171,44 @@ impl IndexManager {
         Ok(())
     }
 
-    /// Insert a key->row_path into an index. Updates memory and disk.
+    /// Insert a key->row_path into an index. This reads/writes only the
+    /// handful of pages the insert touches (root, target leaf, and any
+    /// split siblings) -- not the whole index file (issue #230).
     ///
-    /// The write lock is held for the in-memory mutation. Then the lock is
-    /// released and a snapshot is written to disk. If save_index fails, the
-    /// in-memory change is reverted.
+    /// The write lock on the index map is held for the whole call, which
+    /// serializes mutations to a given index the same way the previous
+    /// (in-memory-then-disk) design did; see `page_btree.rs` for why a
+    /// single page-backed tree isn't safe under fully concurrent mutation.
     pub async fn insert(
         &self,
         index_name: &str,
         key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        let (meta, entries) = {
-            let mut indices = self.indices.write().await;
-            let tree = indices
-                .get_mut(index_name)
-                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-
-            tree.insert(key.clone(), row_path.clone())
-                .map_err(ExecuteError::wrap)?;
-
-            // Snapshot while we hold the lock
-            let metas = self.metas.read().await;
-            let meta = metas.get(index_name).ok_or_else(|| {
-                ExecuteError::wrap(format!("index meta '{}' not found", index_name))
-            })?;
-            (meta.clone(), tree.to_entries())
-        };
-
-        // Disk I/O outside the lock -- avoids deadlock
-        if let Err(e) = self.write_index_file(&meta, &entries).await {
-            // Revert the in-memory change
-            let mut indices = self.indices.write().await;
-            if let Some(tree) = indices.get_mut(index_name) {
-                tree.remove(&key, &row_path);
-            }
-            return Err(e);
-        }
-
-        Ok(())
+        let indices = self.indices.write().await;
+        let tree = indices
+            .get(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        tree.insert(key, row_path).await
     }
 
-    /// Remove a key->row_path from an index. Updates memory and disk.
-    ///
-    /// Lock is released before disk I/O. If save_index fails, the in-memory
-    /// change is reverted.
+    /// Remove a key->row_path from an index, touching only the owning leaf
+    /// (and its overflow chain, if any).
     pub async fn remove(
         &self,
         index_name: &str,
         key: &str,
         row_path: &str,
     ) -> errors::Result<bool> {
-        let (removed, meta, entries) = {
-            let mut indices = self.indices.write().await;
-            let tree = indices
-                .get_mut(index_name)
-                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-
-            let removed = tree.remove(key, row_path);
-
-            if removed {
-                let metas = self.metas.read().await;
-                let meta = metas.get(index_name).ok_or_else(|| {
-                    ExecuteError::wrap(format!("index meta '{}' not found", index_name))
-                })?;
-                (removed, meta.clone(), tree.to_entries())
-            } else {
-                return Ok(false);
-            }
-        };
-
-        // Disk I/O outside the lock
-        if let Err(e) = self.write_index_file(&meta, &entries).await {
-            // Re-insert on failure
-            let mut indices = self.indices.write().await;
-            if let Some(tree) = indices.get_mut(index_name) {
-                tree.insert(key.to_string(), row_path.to_string())
-                    .map_err(ExecuteError::wrap)?;
-            }
-            return Err(e);
-        }
-
-        Ok(removed)
+        let indices = self.indices.write().await;
+        let tree = indices
+            .get(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        tree.remove(key, row_path).await
     }
 
-    /// Update a key for a given row path in an index.
-    ///
-    /// Lock is released before disk I/O. If save_index fails, the in-memory
-    /// change is reverted.
+    /// Update a key for a given row path in an index (remove old mapping,
+    /// insert new one; see `PageBackedBTreeIndex::update`).
     pub async fn update(
         &self,
         index_name: &str,
@@ -254,35 +216,11 @@ impl IndexManager {
         new_key: String,
         row_path: String,
     ) -> errors::Result<()> {
-        let (meta, entries) = {
-            let mut indices = self.indices.write().await;
-            let tree = indices
-                .get_mut(index_name)
-                .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-
-            tree.update(old_key, new_key.clone(), row_path.clone())
-                .map_err(ExecuteError::wrap)?;
-
-            let metas = self.metas.read().await;
-            let meta = metas.get(index_name).ok_or_else(|| {
-                ExecuteError::wrap(format!("index meta '{}' not found", index_name))
-            })?;
-            (meta.clone(), tree.to_entries())
-        };
-
-        // Disk I/O outside the lock
-        if let Err(e) = self.write_index_file(&meta, &entries).await {
-            // Revert: remove new key, re-insert old key
-            let mut indices = self.indices.write().await;
-            if let Some(tree) = indices.get_mut(index_name) {
-                tree.remove(&new_key, &row_path);
-                tree.insert(old_key.to_string(), row_path.to_string())
-                    .map_err(ExecuteError::wrap)?;
-            }
-            return Err(e);
-        }
-
-        Ok(())
+        let indices = self.indices.write().await;
+        let tree = indices
+            .get(index_name)
+            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
+        tree.update(old_key, new_key, row_path).await
     }
 
     /// Look up row paths for an exact key match.
@@ -291,7 +229,7 @@ impl IndexManager {
         let tree = indices
             .get(index_name)
             .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        Ok(tree.get(key))
+        tree.get(key).await
     }
 
     /// Point lookup for unique index.
@@ -300,7 +238,7 @@ impl IndexManager {
         let tree = indices
             .get(index_name)
             .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        Ok(tree.get_one(key))
+        tree.get_one(key).await
     }
 
     /// Range scan on an index.
@@ -314,7 +252,7 @@ impl IndexManager {
         let tree = indices
             .get(index_name)
             .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        Ok(tree.range(start, end))
+        tree.range(start, end).await
     }
 
     /// Full scan on an index.
@@ -323,7 +261,7 @@ impl IndexManager {
         let tree = indices
             .get(index_name)
             .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        Ok(tree.scan_all())
+        tree.scan_all().await
     }
 
     /// List all index names.
@@ -351,12 +289,16 @@ impl IndexManager {
         let tree = indices
             .get(index_name)
             .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        Ok(tree.distinct_keys())
+        tree.distinct_keys().await
     }
 
     /// 인덱스 전체 엔트리를 교체합니다.
     /// CREATE INDEX 백필, DELETE 압축 후 재구축 등에 사용합니다.
-    /// 디스크 기록이 성공한 경우에만 메모리 상태를 교체합니다.
+    ///
+    /// Not a hot path (called once per CREATE INDEX backfill or compaction,
+    /// not per row), so rebuilding by deleting and recreating the
+    /// page-backed file, then inserting each entry, is acceptable even
+    /// though it is O(n log n) rather than a bulk page-loader.
     pub async fn replace_entries(
         &self,
         index_name: &str,
@@ -370,9 +312,19 @@ impl IndexManager {
                 .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?
         };
 
-        self.write_index_file(&meta, &entries).await?;
+        let file_path = self.index_file_path(&meta);
+        if file_path.exists() {
+            tokio::fs::remove_file(&file_path)
+                .await
+                .map_err(|e| ExecuteError::wrap(format!("failed to remove index file: {}", e)))?;
+        }
 
-        let tree = BTreeIndex::from_entries(meta.column_name.clone(), meta.is_unique, entries);
+        let tree =
+            PageBackedBTreeIndex::create(&file_path, meta.column_name.clone(), meta.is_unique)
+                .await?;
+        for entry in entries {
+            tree.insert(entry.key, entry.row_path).await?;
+        }
 
         let mut indices = self.indices.write().await;
         indices.insert(index_name.to_string(), tree);
@@ -431,64 +383,17 @@ impl IndexManager {
         let tree = indices
             .get(index_name)
             .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        Ok(tree.len())
+        tree.len().await
     }
 
-    /// Persist a single index's full state to disk.
-    /// This is called after every mutation to ensure disk backup is current.
-    #[allow(dead_code)]
-    async fn save_index(&self, index_name: &str) -> errors::Result<()> {
-        let (meta, entries) = self.snapshot_index(index_name).await?;
-        self.write_index_file(&meta, &entries).await
-    }
-
-    /// Read a snapshot of (meta, entries) from the in-memory state.
-    #[allow(dead_code)]
-    async fn snapshot_index(
-        &self,
-        index_name: &str,
-    ) -> errors::Result<(IndexMeta, Vec<IndexEntry>)> {
-        let indices = self.indices.read().await;
-        let metas = self.metas.read().await;
-
-        let tree = indices
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index '{}' not found", index_name)))?;
-        let meta = metas
-            .get(index_name)
-            .ok_or_else(|| ExecuteError::wrap(format!("index meta '{}' not found", index_name)))?;
-
-        Ok((meta.clone(), tree.to_entries()))
-    }
-
-    /// Write index data to disk atomically (temp file + rename).
-    /// Does not touch any locks -- pure disk I/O.
-    async fn write_index_file(
-        &self,
-        meta: &IndexMeta,
-        entries: &[IndexEntry],
-    ) -> errors::Result<()> {
-        let file_path = self.index_file_path(meta);
-        let file_data = IndexFile {
-            meta: meta.clone(),
-            entries: entries.to_vec(),
-        };
-        let encoded = self.encoder.encode(&file_data);
-
-        let temp_path = file_path.with_extension("idx.tmp");
-        tokio::fs::write(&temp_path, encoded)
-            .await
-            .map_err(|e| ExecuteError::wrap(format!("failed to write index temp file: {}", e)))?;
-
-        tokio::fs::rename(&temp_path, &file_path)
-            .await
-            .map_err(|e| ExecuteError::wrap(format!("failed to rename index file: {}", e)))?;
-
-        Ok(())
-    }
-
-    /// Load all indices from disk into memory.
-    /// Called on server startup to restore index state.
+    /// Load all indices from disk into memory. Called on server startup to
+    /// restore index state.
+    ///
+    /// Discovers indices by scanning for `.meta` sidecar files and opening
+    /// their sibling page-backed `.idx` file (see the struct doc comment).
+    /// Pre-#230 `.idx` files that predate this sidecar (a single bincode
+    /// blob with no `.meta` file next to it) are silently skipped rather
+    /// than erroring, since this on-disk format has not shipped yet.
     pub async fn load_all(&self, index_directory: &PathBuf) -> errors::Result<()> {
         if !index_directory.exists() {
             return Ok(());
@@ -508,34 +413,35 @@ impl IndexManager {
                     }
 
                     match path.extension().and_then(|e| e.to_str()) {
-                        Some("idx") => {
+                        Some("meta") => {
                             let data = tokio::fs::read(&path).await.map_err(|e| {
                                 ExecuteError::wrap(format!(
-                                    "failed to read index file {:?}: {}",
+                                    "failed to read index meta file {:?}: {}",
                                     path, e
                                 ))
                             })?;
 
-                            let file_data: IndexFile =
-                                self.encoder.decode(data.as_slice()).map_err(|e| {
-                                    ExecuteError::wrap(format!(
-                                        "failed to decode index file {:?}: {}",
-                                        path, e
-                                    ))
-                                })?;
+                            let meta: IndexMeta = bincode::deserialize(&data).map_err(|e| {
+                                ExecuteError::wrap(format!(
+                                    "failed to decode index meta file {:?}: {}",
+                                    path, e
+                                ))
+                            })?;
 
-                            let tree = BTreeIndex::from_entries(
-                                file_data.meta.column_name.clone(),
-                                file_data.meta.is_unique,
-                                file_data.entries,
-                            );
+                            let idx_path = path.with_extension("idx");
+                            let tree = PageBackedBTreeIndex::open(
+                                &idx_path,
+                                meta.column_name.clone(),
+                                meta.is_unique,
+                            )
+                            .await?;
 
-                            let index_name = file_data.meta.index_name.clone();
+                            let index_name = meta.index_name.clone();
 
                             let mut indices = self.indices.write().await;
                             let mut metas = self.metas.write().await;
                             indices.insert(index_name.clone(), tree);
-                            metas.insert(index_name, file_data.meta);
+                            metas.insert(index_name, meta);
                         }
                         _ => continue,
                     }
