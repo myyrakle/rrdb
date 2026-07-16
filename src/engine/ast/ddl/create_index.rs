@@ -1,18 +1,17 @@
-use crate::engine::ast::{
-    DDLStatement, SQLStatement,
-    types::{Column, TableName},
-};
+use serde::{Deserialize, Serialize};
+
+use crate::engine::ast::{DDLStatement, SQLStatement, types::TableName};
 
 /*
 CREATE [ UNIQUE ] INDEX [ IF NOT EXISTS ] name ON table_name
     ( column_name [, ...] )
 */
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct CreateIndexQuery {
     pub index_name: String,
     pub table: TableName,
-    pub columns: Vec<Column>,
+    pub columns: Vec<String>,
     pub is_unique: bool,
     pub if_not_exists: bool,
 }
@@ -38,8 +37,8 @@ impl CreateIndexQuery {
         self
     }
 
-    pub fn add_column(mut self, column: Column) -> Self {
-        self.columns.push(column);
+    pub fn add_column(mut self, column_name: String) -> Self {
+        self.columns.push(column_name);
         self
     }
 
@@ -60,8 +59,6 @@ impl CreateIndexQuery {
 
 #[cfg(test)]
 mod tests {
-    use crate::engine::ast::types::DataType;
-
     use super::*;
 
     #[test]
@@ -69,12 +66,7 @@ mod tests {
         let query = CreateIndexQuery::builder()
             .set_table(TableName::new(None, "table_name".into()))
             .set_index_name("index_name".into())
-            .add_column(
-                Column::builder()
-                    .set_name("column_name".into())
-                    .set_data_type(DataType::Boolean)
-                    .build(),
-            )
+            .add_column("column_name".into())
             .set_unique(true)
             .set_if_not_exists(true)
             .build();
@@ -82,12 +74,7 @@ mod tests {
         let expected = SQLStatement::DDL(DDLStatement::CreateIndexQuery(CreateIndexQuery {
             table: TableName::new(None, "table_name".into()),
             index_name: "index_name".into(),
-            columns: vec![
-                Column::builder()
-                    .set_name("column_name".into())
-                    .set_data_type(DataType::Boolean)
-                    .build(),
-            ],
+            columns: vec!["column_name".into()],
             is_unique: true,
             if_not_exists: true,
         }));

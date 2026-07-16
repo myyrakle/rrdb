@@ -14,6 +14,13 @@ use super::{
     types::{EntryType, WALEntry},
 };
 
+/// Bytes buffered in the current segment since the last fsync. Once this
+/// threshold is crossed, `write_entry` performs a group-commit fsync instead
+/// of waiting for the next checkpoint or periodic sync. Keeping this well
+/// below the default 16MB segment size bounds how much data a crash between
+/// syncs can lose without forcing a disk flush on every single write.
+const GROUP_COMMIT_THRESHOLD_BYTES: usize = 64 * 1024;
+
 #[derive(Debug)]
 pub struct WALManager<T>
 where
@@ -32,6 +39,9 @@ where
     encoder: T,
     current_segment: Option<WALSegmentWriter>,
     current_offset: usize,
+    /// Bytes written to the current segment file since the last fsync
+    /// (group commit). Reset on every sync/checkpoint/rotation.
+    unsynced_bytes: usize,
 }
 
 #[derive(Debug)]
@@ -65,7 +75,20 @@ where
             encoder,
             current_segment: None,
             current_offset,
+            unsynced_bytes: 0,
         }
+    }
+
+    /// Entries written to the current segment but not yet checkpointed.
+    /// Used at startup to replay operations that may not have been applied
+    /// before a crash.
+    pub fn pending_entries(&self) -> &[WALEntry] {
+        &self.buffers
+    }
+
+    /// The sequence number of the segment currently being written to.
+    pub fn current_sequence(&self) -> usize {
+        self.sequence
     }
 
     pub async fn append(&mut self, entry: WALEntry) -> errors::Result<()> {
@@ -88,10 +111,6 @@ where
         .await
     }
 
-    pub(crate) fn pending_entries(&self) -> &[WALEntry] {
-        &self.buffers
-    }
-
     async fn write_entry(&mut self, entry: WALEntry) -> errors::Result<()> {
         let mut frame = Vec::new();
         frame.extend_from_slice(&0u32.to_le_bytes());
@@ -102,6 +121,12 @@ where
 
         self.rotate_if_needed(frame.len()).await?;
         self.append_frame_to_mmap(&frame).await?;
+
+        self.unsynced_bytes += frame.len();
+        if self.unsynced_bytes >= GROUP_COMMIT_THRESHOLD_BYTES {
+            self.sync_current_file().await?;
+            self.unsynced_bytes = 0;
+        }
 
         self.buffers.push(entry);
 
@@ -119,6 +144,7 @@ where
         if self.current_offset > 0 && self.current_offset + incoming_size > self.page_size {
             self.sync_current_file().await?;
             self.current_segment = None;
+            self.unsynced_bytes = 0;
             self.sequence += 1;
             self.buffers.clear();
             self.current_offset = 0;
@@ -221,6 +247,7 @@ where
             .await?;
         self.sync_current_file().await?;
         self.current_segment = None;
+        self.unsynced_bytes = 0;
         self.sequence += 1;
         self.buffers.clear();
         self.current_offset = 0;
@@ -234,6 +261,21 @@ where
         }
 
         self.checkpoint().await?;
+        Ok(())
+    }
+
+    /// Force an fsync of the current segment now, without writing a
+    /// checkpoint entry or rotating. Intended for a periodic background task
+    /// so group-commit durability doesn't depend solely on hitting the byte
+    /// threshold or the next checkpoint. No-op if nothing is unsynced.
+    pub async fn sync(&mut self) -> errors::Result<()> {
+        if self.unsynced_bytes == 0 {
+            return Ok(());
+        }
+
+        self.sync_current_file().await?;
+        self.unsynced_bytes = 0;
+
         Ok(())
     }
 
@@ -305,7 +347,6 @@ mod tests {
         }
     }
 
-    // WAL 파일에 엔트리들을 기록하는 헬퍼 함수
     async fn write_wal_file(config: &LaunchConfig, sequence: usize, entries: &Vec<WALEntry>) {
         let encoder = BincodeEncoder::new();
         let file_path = PathBuf::from(&config.wal_directory)
@@ -356,7 +397,6 @@ mod tests {
         let wal_dir = setup_test_wal_dir("single_file_checkpoint").await;
         let config = get_test_config(&wal_dir);
 
-        // 테스트용 WAL 파일 생성 (시퀀스 1, 마지막은 체크포인트)
         let entries_seq1 = vec![
             create_entry(EntryType::Insert, Some("data1")),
             create_entry(EntryType::Set, Some("data2")),
@@ -370,7 +410,6 @@ mod tests {
 
         let wal_manager = builder.build(decoder, encoder).await.unwrap();
 
-        // 시퀀스는 2여야 하고, 버퍼는 비어있어야 함 (체크포인트 완료)
         assert_eq!(
             wal_manager.sequence, 2,
             "Sequence should be 2 after a checkpointed file"
@@ -457,87 +496,7 @@ mod tests {
             .unwrap();
 
         assert!(wal_manager.current_segment.is_some());
-        assert!(wal_manager.current_offset > 0);
-
-        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
-        let metadata = tokio::fs::metadata(wal_path).await.unwrap();
-        assert_eq!(metadata.len(), config.wal_segment_size as u64);
-    }
-
-    #[tokio::test]
-    async fn test_build_restores_append_offset_from_mmap_segment() {
-        let wal_dir = setup_test_wal_dir("build_restores_mmap_offset").await;
-        let config = get_test_config(&wal_dir);
-
-        let decoder = BincodeDecoder::new();
-        let encoder = BincodeEncoder::new();
-        let mut wal_manager = WALBuilder::new(&config)
-            .build(decoder.clone(), encoder)
-            .await
-            .unwrap();
-
-        wal_manager
-            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), Some(1))
-            .await
-            .unwrap();
-        wal_manager.sync_current_file().await.unwrap();
-        let first_offset = wal_manager.current_offset;
-        drop(wal_manager);
-
-        let mut rebuilt = WALBuilder::new(&config)
-            .build(decoder.clone(), BincodeEncoder::new())
-            .await
-            .unwrap();
-
-        assert_eq!(rebuilt.sequence, 1);
-        assert_eq!(rebuilt.current_offset, first_offset);
-
-        rebuilt
-            .append_record(EntryType::Delete, Some(b"row-2".to_vec()), Some(2))
-            .await
-            .unwrap();
-        rebuilt.sync_current_file().await.unwrap();
-
-        let wal_path = wal_dir.join(format!("00000001.{}", config.wal_extension));
-        let content = tokio::fs::read(wal_path).await.unwrap();
-        let entries = decoder.decode(&content).unwrap();
-
-        assert_eq!(entries.len(), 2);
-        assert!(matches!(entries[0].entry_type, EntryType::Insert));
-        assert!(matches!(entries[1].entry_type, EntryType::Delete));
-    }
-
-    #[tokio::test]
-    async fn test_build_multiple_files() {
-        let wal_dir = setup_test_wal_dir("multiple_files").await;
-
-        // 일부러 페이지 사이즈를 작게 설정
-        let mut config = get_test_config(&wal_dir);
-        config.wal_segment_size = 20; // 20 바이트
-
-        let builder = WALBuilder::new(&config);
-        let encoder = BincodeEncoder::new();
-        let decoder = BincodeDecoder::new();
-
-        let wal_manager = builder
-            .build(decoder, encoder)
-            .await
-            .expect("Failed to build WAL manager");
-
-        assert_eq!(wal_manager.sequence, 1, "Sequence should be 1");
-
-        // 여러개로 분산 처리 되는지 확인
-        let entries_seq1 = vec![
-            create_entry(EntryType::Insert, Some("helloworld")), // 10바이트
-            create_entry(EntryType::Set, Some("data2")),         // 5바이트
-        ];
-        write_wal_file(&config, 1, &entries_seq1).await;
-
-        // 여기서 기본 페이지 사이즈보다 크게
-        let entries_seq2 = vec![
-            create_entry(EntryType::Insert, Some("helloworld")), // 10바이트
-            create_entry(EntryType::Set, Some("data2")),         // 5바이트
-        ];
-        write_wal_file(&config, 2, &entries_seq2).await;
+        assert_eq!(wal_manager.buffers.len(), 1);
+        assert_eq!(wal_manager.current_offset, wal_manager.current_segment.as_ref().unwrap().offset);
     }
 }

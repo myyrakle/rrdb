@@ -29,6 +29,9 @@ pub enum EntryType {
     Delete,
     Checkpoint,
 
+    CreateIndex,
+    DropIndex,
+
     TransactionBegin,
     TransactionCommit,
     TransactionRollback,

@@ -18,6 +18,7 @@ use crate::engine::lexer::tokens::Token;
 use crate::engine::parser::predule::Parser;
 
 #[test]
+#[allow(clippy::approx_constant)]
 fn test_parse_expression() {
     struct TestCase {
         name: String,

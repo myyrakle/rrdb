@@ -147,8 +147,16 @@ impl DBEngine {
     }
 
     pub async fn select(&self, query: SelectQuery) -> errors::Result<ExecuteResult> {
-        // 최적화 작업
-        let optimizer = Optimizer::new();
+        // 최적화 작업 (FROM 대상 테이블의 인덱스/통계로 컨텍스트 구성)
+        let optimizer = match &query.from_table {
+            Some(from_clause) => match &from_clause.from {
+                FromTarget::Table(table_name) => {
+                    Optimizer::with_context(self.build_optimizer_context(table_name).await)
+                }
+                FromTarget::Subquery(_) => Optimizer::new(),
+            },
+            None => Optimizer::new(),
+        };
 
         let select_items = query.select_items.clone();
 
@@ -191,8 +199,15 @@ impl DBEngine {
 
                             rows.append(&mut result);
                         }
-                        ScanType::IndexScan(_index) => {
-                            unimplemented!()
+                        ScanType::IndexScan(index_scan_plan) => {
+                            let mut result = self
+                                .index_scan(table_name, &index_scan_plan)
+                                .await?
+                                .into_iter()
+                                .map(|(_, row)| row)
+                                .collect();
+
+                            rows.append(&mut result);
                         }
                     }
                 }

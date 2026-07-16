@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 const DEFAULT_DURABILITY_FLUSH_INTERVAL: Duration = Duration::from_secs(10);
+const DEFAULT_WAL_SYNC_INTERVAL: Duration = Duration::from_millis(200);
 
 pub struct Server {
     pub config: Arc<LaunchConfig>,
@@ -52,6 +53,23 @@ fn spawn_durability_flush_loop(
     })
 }
 
+fn spawn_wal_sync_loop(
+    wal_manager: SharedWALManager,
+    interval_duration: Duration,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(interval_duration);
+
+        loop {
+            interval.tick().await;
+
+            if let Err(error) = wal_manager.lock().await.sync().await {
+                log::error!("periodic WAL sync failed: {}", error);
+            }
+        }
+    })
+}
+
 impl Server {
     pub fn new(config: LaunchConfig) -> Self {
         Self {
@@ -62,35 +80,31 @@ impl Server {
     /// 메인 서버 루프.
     /// 여러개의 태스크 제어
     pub async fn run(&self) -> errors::Result<()> {
-        // TODO: 인덱스 로딩 등 기본 로직 실행.
-
         let engine = Arc::new(DBEngine::new(self.config.as_ref().clone()));
 
-        // WAL 관리자 생성
         let encoder = BincodeEncoder::new();
         let decoder = BincodeDecoder::new();
 
-        let wal_manager = Arc::new(Mutex::new(
-            WALBuilder::new(&self.config)
-                .build(decoder, encoder)
-                .await
-                .map_err(|error| ExecuteError::wrap(error.to_string()))?,
-        ));
-        {
-            let mut wal_manager_guard = wal_manager.lock().await;
-            engine
-                .recover_from_wal(&mut wal_manager_guard)
-                .await
-                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        let mut wal_manager = WALBuilder::new(&self.config)
+            .build(decoder, encoder)
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+        let pending_entry_count = wal_manager.pending_entries().len();
+        if pending_entry_count > 0 {
+            log::info!("replaying {} pending WAL entries", pending_entry_count);
+            engine.recover_from_wal(&mut wal_manager).await?;
         }
+
+        let wal_manager = Arc::new(Mutex::new(wal_manager));
+        let _wal_sync_task =
+            spawn_wal_sync_loop(wal_manager.clone(), DEFAULT_WAL_SYNC_INTERVAL);
         let _durability_flush_task = spawn_durability_flush_loop(
             engine.clone(),
             wal_manager.clone(),
             DEFAULT_DURABILITY_FLUSH_INTERVAL,
         );
 
-        // connection task
-        // client와의 커넥션 처리 루프
         let listener = TcpListener::bind((self.config.host.to_owned(), self.config.port as u16))
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))?;
@@ -166,6 +180,7 @@ mod tests {
 
     use super::is_expected_disconnect;
     use super::spawn_durability_flush_loop;
+    use super::spawn_wal_sync_loop;
 
     #[test]
     fn connection_closed_is_expected_disconnect() {
@@ -254,5 +269,58 @@ mod tests {
         .unwrap();
 
         flush_task.abort();
+    }
+
+    #[tokio::test]
+    async fn wal_sync_loop_fsyncs_pending_entries_without_checkpointing() {
+        let wal_dir = setup_test_wal_dir("wal_sync_loop").await;
+        let base_path = wal_dir.join("base");
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        tokio::fs::create_dir_all(&config.wal_directory)
+            .await
+            .unwrap();
+
+        let decoder = BincodeDecoder::new();
+        let encoder = BincodeEncoder::new();
+        let wal_manager = Arc::new(Mutex::new(
+            WALBuilder::new(&config)
+                .build(decoder.clone(), encoder)
+                .await
+                .unwrap(),
+        ));
+
+        wal_manager
+            .lock()
+            .await
+            .append_record(EntryType::Insert, Some(b"row-1".to_vec()), None)
+            .await
+            .unwrap();
+
+        let sync_task = spawn_wal_sync_loop(wal_manager.clone(), Duration::from_millis(10));
+        let wal_path =
+            PathBuf::from(&config.wal_directory).join(format!("00000001.{}", config.wal_extension));
+
+        tokio::time::timeout(Duration::from_secs(1), async {
+            loop {
+                let content = tokio::fs::read(&wal_path).await.unwrap();
+                let entries = decoder.decode(&content).unwrap();
+
+                if entries
+                    .iter()
+                    .any(|entry| matches!(entry.entry_type, EntryType::Insert))
+                {
+                    assert!(entries
+                        .iter()
+                        .all(|entry| !matches!(entry.entry_type, EntryType::Checkpoint)));
+                    break;
+                }
+
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .unwrap();
+
+        sync_task.abort();
     }
 }

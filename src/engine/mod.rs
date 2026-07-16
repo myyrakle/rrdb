@@ -22,14 +22,22 @@ use std::sync::Arc;
 use crate::common::command::{CommandRunner, RealCommandRunner};
 use crate::common::fs::{FileSystem, RealFileSystem};
 use crate::config::launch_config::LaunchConfig;
+use crate::engine::ast::ddl::create_index::CreateIndexQuery;
+use crate::engine::ast::ddl::drop_index::DropIndexQuery;
+use crate::engine::ast::dml::delete::DeleteQuery;
+use crate::engine::ast::dml::insert::InsertQuery;
+use crate::engine::ast::dml::update::UpdateQuery;
 use crate::engine::ast::types::TableName;
 use crate::engine::ast::{DDLStatement, DMLStatement, OtherStatement, SQLStatement};
 use crate::engine::encoder::schema_encoder::StorageEncoder;
+use crate::engine::index::manager::IndexManager;
+use crate::engine::optimizer::statistics::StatisticsManager;
 use crate::engine::row_buffer::RowBufferPool;
 use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bincode::BincodeEncoder;
 use crate::engine::wal::manager::WALManager;
+use crate::engine::wal::types::{EntryType, WALEntry};
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use tokio::sync::{Mutex, RwLock};
@@ -42,17 +50,26 @@ pub struct DBEngine {
     pub(crate) command_runner: Arc<dyn CommandRunner + Send + Sync>,
     pub(crate) table_config_cache: Arc<RwLock<HashMap<TableName, TableSchema>>>,
     pub(crate) row_storage_lock: Arc<Mutex<()>>,
+    pub(crate) index_manager: Arc<IndexManager>,
+    pub(crate) statistics_manager: Arc<StatisticsManager>,
+    /// 디스크의 인덱스 파일을 메모리로 적재했는지 여부 (최초 사용 시 1회 적재)
+    pub(crate) indices_loaded: Arc<tokio::sync::OnceCell<()>>,
     pub(crate) row_buffer_pool: Arc<Mutex<RowBufferPool>>,
 }
 
 impl DBEngine {
     pub fn new(config: LaunchConfig) -> Self {
+        let data_directory = PathBuf::from(config.data_directory.clone());
+
         Self {
             config: Arc::new(config),
             file_system: Arc::new(RealFileSystem {}),
             command_runner: Arc::new(RealCommandRunner {}),
             table_config_cache: Arc::new(RwLock::new(HashMap::new())),
             row_storage_lock: Arc::new(Mutex::new(())),
+            index_manager: Arc::new(IndexManager::new(data_directory)),
+            statistics_manager: Arc::new(StatisticsManager::new()),
+            indices_loaded: Arc::new(tokio::sync::OnceCell::new()),
             row_buffer_pool: Arc::new(Mutex::new(RowBufferPool::default())),
         }
     }
@@ -84,6 +101,12 @@ impl DBEngine {
                 self.alter_table(query).await
             }
             SQLStatement::DDL(DDLStatement::DropTableQuery(query)) => self.drop_table(query).await,
+            SQLStatement::DDL(DDLStatement::CreateIndexQuery(query)) => {
+                self.create_index(query, wal_manager.clone()).await
+            }
+            SQLStatement::DDL(DDLStatement::DropIndexQuery(query)) => {
+                self.drop_index(query, wal_manager.clone()).await
+            }
             SQLStatement::DML(DMLStatement::InsertQuery(query)) => {
                 self.insert(query, wal_manager.clone()).await
             }
@@ -109,6 +132,69 @@ impl DBEngine {
             Ok(result) => Ok(result),
             Err(error) => Err(ExecuteError::wrap(error.to_string())),
         }
+    }
+
+    /// Replays WAL entries written but not yet checkpointed before a crash,
+    /// re-executing each recorded operation so its data/index mutation is
+    /// guaranteed to have taken effect (WAL-ahead recovery, mirroring
+    /// PostgreSQL's redo phase). A single entry failing to reapply (e.g. a
+    /// unique-constraint violation, which -- since WAL is written before the
+    /// mutation -- would also have failed the first time around and so never
+    /// actually took effect) is logged and does not abort the rest of
+    /// recovery.
+    pub async fn replay_wal(&self, entries: &[WALEntry]) -> errors::Result<()> {
+        for entry in entries {
+            let data = entry.data.as_deref();
+
+            let result: errors::Result<()> = async {
+                match entry.entry_type {
+                    EntryType::Insert => {
+                        let query = Self::decode_wal_payload::<InsertQuery>(data)?;
+                        self.insert_replay(query).await.map(|_| ())
+                    }
+                    EntryType::Set => {
+                        let query = Self::decode_wal_payload::<UpdateQuery>(data)?;
+                        self.update_replay(query).await.map(|_| ())
+                    }
+                    EntryType::Delete => {
+                        let query = Self::decode_wal_payload::<DeleteQuery>(data)?;
+                        self.delete_replay(query).await.map(|_| ())
+                    }
+                    EntryType::CreateIndex => {
+                        let query = Self::decode_wal_payload::<CreateIndexQuery>(data)?;
+                        self.create_index_replay(query).await.map(|_| ())
+                    }
+                    EntryType::DropIndex => {
+                        let query = Self::decode_wal_payload::<DropIndexQuery>(data)?;
+                        self.drop_index_replay(query).await.map(|_| ())
+                    }
+                    EntryType::Checkpoint
+                    | EntryType::TransactionBegin
+                    | EntryType::TransactionCommit
+                    | EntryType::TransactionRollback => Ok(()),
+                }
+            }
+            .await;
+
+            if let Err(error) = result {
+                log::warn!(
+                    "WAL replay: skipping entry {:?} due to error: {}",
+                    entry.entry_type,
+                    error
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn decode_wal_payload<T>(data: Option<&[u8]>) -> errors::Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let data =
+            data.ok_or_else(|| ExecuteError::wrap("WAL entry missing payload".to_string()))?;
+        bincode::deserialize(data).map_err(|error| ExecuteError::wrap(error.to_string()))
     }
 }
 

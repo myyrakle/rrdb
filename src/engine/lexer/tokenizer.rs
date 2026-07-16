@@ -140,6 +140,8 @@ impl Tokenizer {
                 "PRIMARY" => Token::Primary,
                 "FOREIGN" => Token::Foreign,
                 "KEY" => Token::Key,
+                "INDEX" => Token::Index,
+                "UNIQUE" => Token::Unique,
                 "ADD" => Token::Add,
                 "RENAME" => Token::Rename,
                 "TO" => Token::To,

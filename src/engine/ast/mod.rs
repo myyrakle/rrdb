@@ -11,7 +11,7 @@ use crate::engine::ast::{
         alter_database::AlterDatabaseQuery, alter_table::AlterTableQuery,
         create_database::CreateDatabaseQuery, create_index::CreateIndexQuery,
         create_table::CreateTableQuery, drop_database::DropDatabaseQuery,
-        drop_table::DropTableQuery,
+        drop_index::DropIndexQuery, drop_table::DropTableQuery,
     },
     dml::{delete::DeleteQuery, insert::InsertQuery, select::SelectQuery, update::UpdateQuery},
     other::{
@@ -42,6 +42,7 @@ pub enum DDLStatement {
     AlterTableQuery(AlterTableQuery),
     DropTableQuery(DropTableQuery),
     CreateIndexQuery(CreateIndexQuery),
+    DropIndexQuery(DropIndexQuery),
 }
 
 #[derive(Clone, Debug, PartialEq)]

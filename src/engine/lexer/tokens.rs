@@ -49,6 +49,8 @@ pub enum Token {
     Primary,
     Foreign,
     Key,
+    Index,
+    Unique,
     Add,
     If,
     Rename,

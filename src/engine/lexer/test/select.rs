@@ -4,6 +4,7 @@ use crate::engine::lexer::predule::OperatorToken;
 use crate::engine::lexer::predule::{Token, Tokenizer};
 
 #[test]
+#[allow(clippy::approx_constant)]
 pub fn test_number_literal() {
     struct TestCase {
         name: String,

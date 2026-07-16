@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use futures::future::join_all;
 
+use crate::engine::actions::index::row_index_key;
 use crate::engine::ast::dml::plan::select::scan::ScanType;
 use crate::engine::ast::dml::plan::update::update_plan::UpdatePlanItem;
 use crate::engine::ast::dml::update::UpdateQuery;
@@ -23,14 +24,34 @@ impl DBEngine {
         query: UpdateQuery,
         wal_manager: SharedWALManager,
     ) -> errors::Result<ExecuteResult> {
-        let wal_payload =
-            bincode::serialize(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        self.update_internal(query, Some(wal_manager)).await
+    }
+
+    /// Re-applies a previously WAL-logged UPDATE during crash recovery
+    /// replay. Identical to `update()` but skips the WAL append (the
+    /// operation is already durably recorded in the WAL being replayed).
+    pub(crate) async fn update_replay(&self, query: UpdateQuery) -> errors::Result<ExecuteResult> {
+        self.update_internal(query, None).await
+    }
+
+    async fn update_internal(
+        &self,
+        query: UpdateQuery,
+        wal_manager: Option<SharedWALManager>,
+    ) -> errors::Result<ExecuteResult> {
+        // WAL-first: 쿼리를 실행/소비하기 전에 페이로드를 미리 직렬화합니다.
+        let wal_payload = match &wal_manager {
+            Some(_) => Some(
+                bincode::serialize(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?,
+            ),
+            None => None,
+        };
 
         let table = query.target_table.clone().unwrap().table;
         let update_items = query.update_items.clone();
 
-        // 최적화 작업
-        let optimizer = Optimizer::new();
+        // 최적화 작업 (대상 테이블의 인덱스/통계로 컨텍스트 구성)
+        let optimizer = Optimizer::with_context(self.build_optimizer_context(&table).await);
 
         let plan = optimizer.optimize_update(query).await?;
 
@@ -60,8 +81,10 @@ impl DBEngine {
 
                             rows.append(&mut result);
                         }
-                        ScanType::IndexScan(_index) => {
-                            unimplemented!()
+                        ScanType::IndexScan(index_scan_plan) => {
+                            let mut result = self.index_scan(table_name, &index_scan_plan).await?;
+
+                            rows.append(&mut result);
                         }
                     }
                 }
@@ -119,9 +142,15 @@ impl DBEngine {
             .collect::<Vec<_>>();
 
         // 수정 작업
+        self.ensure_indices_loaded().await?;
+        let index_metas = self.table_index_metas(&table).await;
+
         let mut replacements = HashMap::new();
+        // 인덱스 반영 목록: (index_name, old_key, new_key, row_path)
+        let mut index_operations: Vec<(String, Option<String>, Option<String>, String)> = vec![];
 
         for (location, mut row) in rows.into_iter() {
+            let old_row = row.clone();
             let reduce_context = ReduceContext {
                 row: None,
                 table_alias_map: table_alias_map.clone(),
@@ -150,18 +179,66 @@ impl DBEngine {
                 }
             }
 
+            // 인덱스 컬럼 값 변경 감지 (#217)
+            for meta in &index_metas {
+                let old_key = row_index_key(&old_row, &meta.column_name);
+                let new_key = row_index_key(&row, &meta.column_name);
+
+                if old_key != new_key {
+                    index_operations.push((
+                        meta.index_name.clone(),
+                        old_key,
+                        new_key,
+                        location.row_index.to_string(),
+                    ));
+                }
+            }
+
             replacements.insert(location.row_index, row);
         }
 
         let affected_rows = replacements.len();
 
         if !replacements.is_empty() {
-            wal_manager
-                .lock()
-                .await
-                .append_record(EntryType::Set, Some(wal_payload), None)
-                .await?;
-            self.update_table_rows(&table, replacements).await?;
+            // WAL-first: 인덱스/테이블을 변경하기 전에 먼저 durable하게 기록합니다.
+            if let Some(wal_manager) = &wal_manager {
+                wal_manager
+                    .lock()
+                    .await
+                    .append_record(EntryType::Set, wal_payload, None)
+                    .await?;
+            }
+
+            // 인덱스 반영: 고유 제약 위반은 여기서 검출되며, 실패 시 적용분을 되돌립니다
+            for (i, (index_name, old_key, new_key, row_path)) in
+                index_operations.iter().enumerate()
+            {
+                if let Err(error) = self
+                    .apply_index_operation(index_name, old_key, new_key, row_path)
+                    .await
+                {
+                    for (index_name, old_key, new_key, row_path) in
+                        index_operations[..i].iter().rev()
+                    {
+                        let _ = self
+                            .apply_index_operation(index_name, new_key, old_key, row_path)
+                            .await;
+                    }
+
+                    return Err(error);
+                }
+            }
+
+            if let Err(error) = self.update_table_rows(&table, replacements).await {
+                // 저장 실패 시 인덱스 되돌리기
+                for (index_name, old_key, new_key, row_path) in index_operations.iter().rev() {
+                    let _ = self
+                        .apply_index_operation(index_name, new_key, old_key, row_path)
+                        .await;
+                }
+
+                return Err(error);
+            }
         }
 
         Ok(ExecuteResult::with_affected_rows(
