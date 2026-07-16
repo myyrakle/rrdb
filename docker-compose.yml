@@ -1,0 +1,18 @@
+services:
+  rrdb:
+    build: .
+    environment:
+      RUST_LOG: info
+    volumes:
+      - rrdb_data:/var/lib/rrdb
+    ports:
+      - "22208:22208"
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8096M
+
+volumes:
+  rrdb_data:
+    driver: local
