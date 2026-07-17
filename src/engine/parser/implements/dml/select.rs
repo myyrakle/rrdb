@@ -5,7 +5,7 @@ use crate::engine::ast::dml::parts::group_by::GroupByItem;
 use crate::engine::ast::dml::parts::having::HavingClause;
 use crate::engine::ast::dml::parts::join::{JoinClause, JoinType};
 use crate::engine::ast::dml::parts::order_by::{OrderByItem, OrderByNulls, OrderByType};
-use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectWildCard};
+use crate::engine::ast::dml::parts::select_item::{SelectItem, SelectKind, SelectWildCard};
 use crate::engine::ast::dml::select::SelectQuery;
 use crate::engine::lexer::predule::{OperatorToken, Token};
 use crate::engine::parser::predule::{Parser, ParserContext};
@@ -115,39 +115,75 @@ impl Parser {
             self.get_next_token();
             self.get_next_token();
 
-            loop {
-                if !self.has_next_token() {
-                    break;
-                }
+            if !self.has_next_token() {
+                return Err(ParsingError::wrap("need more tokens"));
+            }
 
-                let current_token = self.get_next_token();
+            let current_token = self.get_next_token();
+            if current_token == Token::All {
+                query_builder = query_builder.set_group_by_all();
+            } else {
+                self.unget_next_token(current_token);
 
-                match current_token {
-                    Token::SemiColon => {
-                        return Ok(query_builder.build());
-                    }
-                    Token::RightParentheses => {
-                        self.unget_next_token(current_token);
-                        return Ok(query_builder.build());
-                    }
-                    Token::Comma => continue,
-                    Token::Having | Token::Limit | Token::Offset | Token::Order => {
-                        self.unget_next_token(current_token);
+                loop {
+                    if !self.has_next_token() {
                         break;
                     }
-                    _ => {
-                        if current_token.is_expression() {
+
+                    let current_token = self.get_next_token();
+
+                    match current_token {
+                        Token::SemiColon => {
+                            return Ok(query_builder.build());
+                        }
+                        Token::RightParentheses => {
                             self.unget_next_token(current_token);
-                            let group_by_item = self.parse_group_by_item(context.clone())?;
-                            query_builder = query_builder.add_group_by(group_by_item);
-                        } else {
-                            return Err(ParsingError::wrap(format!(
-                                "unexpected token '{:?}'",
-                                current_token
-                            )));
+                            return Ok(query_builder.build());
+                        }
+                        Token::Comma => continue,
+                        Token::Having | Token::Limit | Token::Offset | Token::Order => {
+                            self.unget_next_token(current_token);
+                            break;
+                        }
+                        _ => {
+                            if current_token.is_expression() {
+                                self.unget_next_token(current_token);
+                                let group_by_item = self.parse_group_by_item(context.clone())?;
+                                query_builder = query_builder.add_group_by(group_by_item);
+                            } else {
+                                return Err(ParsingError::wrap(format!(
+                                    "unexpected token '{:?}'",
+                                    current_token
+                                )));
+                            }
                         }
                     }
                 }
+            }
+        }
+
+        let needs_expand = query_builder
+            .group_by_clause
+            .as_ref()
+            .is_some_and(|clause| clause.group_by_all);
+        if needs_expand {
+            let has_wildcard = query_builder
+                .select_items
+                .iter()
+                .any(|item| matches!(item, SelectKind::WildCard(_)));
+            if has_wildcard {
+                return Err(ParsingError::wrap(
+                    "GROUP BY ALL cannot be used with a wildcard select list",
+                ));
+            }
+
+            let non_aggregate = query_builder.get_non_aggregate_column();
+            if let Some(ref mut clause) = query_builder.group_by_clause {
+                clause.group_by_items = non_aggregate
+                    .into_iter()
+                    .map(|item| GroupByItem { item })
+                    .collect();
+                clause.group_by_all = false;
             }
         }
 

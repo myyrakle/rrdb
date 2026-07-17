@@ -2473,3 +2473,88 @@ fn test_parse_limit() {
         }
     }
 }
+
+#[test]
+fn test_parse_group_by_all() {
+    let tokens = vec![
+        Token::Select,
+        Token::Identifier("a".into()),
+        Token::Comma,
+        Token::Identifier("b".into()),
+        Token::Comma,
+        Token::Identifier("sum".into()),
+        Token::LeftParentheses,
+        Token::Identifier("c".into()),
+        Token::RightParentheses,
+        Token::From,
+        Token::Identifier("t".into()),
+        Token::Group,
+        Token::By,
+        Token::All,
+    ];
+
+    let mut parser = Parser::new(tokens);
+    let select = parser.handle_select_query(Default::default()).unwrap();
+
+    assert!(select.has_group_by());
+
+    let group_by = select.group_by_clause.unwrap();
+    assert_eq!(group_by.group_by_items.len(), 2);
+    assert!(!group_by.group_by_all);
+
+    let columns: Vec<&str> = group_by
+        .group_by_items
+        .iter()
+        .map(|item| item.item.column_name.as_str())
+        .collect();
+    assert!(columns.contains(&"a"));
+    assert!(columns.contains(&"b"));
+    assert!(!columns.contains(&"c"));
+}
+
+#[test]
+fn test_parse_group_by_all_with_wildcard_fails() {
+    let tokens = vec![
+        Token::Select,
+        Token::Operator(OperatorToken::Asterisk),
+        Token::From,
+        Token::Identifier("t".into()),
+        Token::Group,
+        Token::By,
+        Token::All,
+    ];
+
+    let mut parser = Parser::new(tokens);
+    let got = parser.handle_select_query(Default::default());
+
+    assert!(got.is_err());
+    assert_eq!(
+        got.err().unwrap().to_string(),
+        "parsing error: GROUP BY ALL cannot be used with a wildcard select list"
+    );
+}
+
+#[test]
+fn test_parse_group_by_all_with_only_aggregates() {
+    let tokens = vec![
+        Token::Select,
+        Token::Identifier("sum".into()),
+        Token::LeftParentheses,
+        Token::Identifier("c".into()),
+        Token::RightParentheses,
+        Token::From,
+        Token::Identifier("t".into()),
+        Token::Group,
+        Token::By,
+        Token::All,
+    ];
+
+    let mut parser = Parser::new(tokens);
+    let select = parser.handle_select_query(Default::default()).unwrap();
+
+    assert!(!select.has_group_by());
+
+    let group_by = select.group_by_clause.unwrap();
+    assert!(group_by.group_by_items.is_empty());
+    assert!(!group_by.group_by_all);
+}

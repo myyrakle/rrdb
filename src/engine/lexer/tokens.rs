@@ -15,6 +15,7 @@ pub enum Token {
     As,
     Order,
     By,
+    All,
     Asc,
     Desc,
     Group,
