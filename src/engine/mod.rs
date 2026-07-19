@@ -140,10 +140,10 @@ impl DBEngine {
     /// PostgreSQL's redo phase). A single entry failing to reapply (e.g. a
     /// unique-constraint violation, which -- since WAL is written before the
     /// mutation -- would also have failed the first time around and so never
-    /// actually took effect) is logged and does not abort the rest of
-    /// recovery.
+    /// actually took effect) aborts recovery so that the WAL is preserved for
+    /// diagnosis and a later retry.
     pub async fn replay_wal(&self, entries: &[WALEntry]) -> errors::Result<()> {
-        for entry in entries {
+        for (index, entry) in entries.iter().enumerate() {
             let data = entry.data.as_deref();
 
             let result: errors::Result<()> = async {
@@ -176,13 +176,12 @@ impl DBEngine {
             }
             .await;
 
-            if let Err(error) = result {
-                log::warn!(
-                    "WAL replay: skipping entry {:?} due to error: {}",
-                    entry.entry_type,
-                    error
-                );
-            }
+            result.map_err(|error| {
+                ExecuteError::wrap(format!(
+                    "WAL replay failed at entry {} ({:?}): {}",
+                    index, entry.entry_type, error
+                ))
+            })?;
         }
 
         Ok(())
@@ -278,6 +277,27 @@ mod tests {
     use crate::engine::ast::types::{Column, DataType, TableName};
     use crate::engine::encoder::schema_encoder::StorageEncoder;
     use crate::engine::schema::table::TableSchema;
+    use crate::engine::wal::types::{EntryType, WALEntry};
+
+    #[tokio::test]
+    async fn replay_wal_returns_contextual_error_for_invalid_payload() {
+        let config = LaunchConfig::default_for_base_path(PathBuf::from(
+            "target/test_wal_replay/invalid_payload",
+        ));
+        let engine = DBEngine::new(config);
+        let entry = WALEntry {
+            entry_type: EntryType::Insert,
+            data: Some(vec![0xff]),
+            timestamp: 1,
+            transaction_id: None,
+            is_continuation: false,
+        };
+
+        let error = engine.replay_wal(&[entry]).await.unwrap_err();
+
+        assert!(error.to_string().contains("entry 0"));
+        assert!(error.to_string().contains("Insert"));
+    }
 
     #[tokio::test]
     async fn get_table_config_cached_reuses_loaded_schema() {

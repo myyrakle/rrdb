@@ -290,12 +290,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::fs::{FileSystemEntry, MockFileSystem};
     use crate::config::launch_config::LaunchConfig;
     use crate::engine::wal::endec::WALDecoder;
     use crate::engine::wal::endec::implements::bincode::{BincodeDecoder, BincodeEncoder};
     use crate::engine::wal::manager::builder::WALBuilder;
     use crate::engine::wal::types::{EntryType, WALEntry};
     use std::path::{Path, PathBuf};
+    use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
     use tokio::io::AsyncWriteExt;
 
@@ -347,6 +349,19 @@ mod tests {
         }
     }
 
+    fn encode_entries(entries: &[WALEntry]) -> Vec<u8> {
+        let encoder = BincodeEncoder::new();
+        let mut content = Vec::new();
+
+        for entry in entries {
+            let encoded = encoder.encode(entry).unwrap();
+            content.extend_from_slice(&u32::try_from(encoded.len()).unwrap().to_le_bytes());
+            content.extend_from_slice(&encoded);
+        }
+
+        content
+    }
+
     async fn write_wal_file(config: &LaunchConfig, sequence: usize, entries: &Vec<WALEntry>) {
         let encoder = BincodeEncoder::new();
         let file_path = PathBuf::from(&config.wal_directory)
@@ -393,6 +408,105 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_build_reads_segments_through_injected_file_system() {
+        let config = get_test_config(Path::new("/virtual/wal"));
+        let segment_1 = PathBuf::from("/virtual/wal/00000001.waltest");
+        let segment_2 = PathBuf::from("/virtual/wal/00000002.waltest");
+        let content_1 = encode_entries(&[create_entry(EntryType::Insert, Some("first"))]);
+        let content_2 = encode_entries(&[create_entry(EntryType::Delete, Some("second"))]);
+        let mut file_system = MockFileSystem::new();
+
+        let listed_segment_1 = segment_1.clone();
+        let listed_segment_2 = segment_2.clone();
+        file_system
+            .expect_read_dir()
+            .with(mockall::predicate::eq(config.wal_directory.clone()))
+            .times(1)
+            .return_once(move |_| {
+                Ok(vec![
+                    FileSystemEntry {
+                        path: listed_segment_2,
+                        is_file: true,
+                    },
+                    FileSystemEntry {
+                        path: listed_segment_1,
+                        is_file: true,
+                    },
+                ])
+            });
+        file_system.expect_read().times(2).returning(move |path| {
+            if path.ends_with("00000001.waltest") {
+                Ok(content_1.clone())
+            } else {
+                Ok(content_2.clone())
+            }
+        });
+
+        let wal_manager = WALBuilder::with_file_system(&config, Arc::new(file_system))
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .unwrap();
+
+        let payloads: Vec<_> = wal_manager
+            .pending_entries()
+            .iter()
+            .map(|entry| entry.data.clone().unwrap())
+            .collect();
+        assert_eq!(payloads, vec![b"first".to_vec(), b"second".to_vec()]);
+    }
+
+    #[tokio::test]
+    async fn test_build_propagates_injected_directory_read_error() {
+        let config = get_test_config(Path::new("/virtual/wal"));
+        let mut file_system = MockFileSystem::new();
+        file_system
+            .expect_read_dir()
+            .times(1)
+            .return_once(|_| Err(std::io::Error::other("directory unavailable")));
+
+        let error = match WALBuilder::with_file_system(&config, Arc::new(file_system))
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+        {
+            Ok(_) => panic!("directory read error was ignored"),
+            Err(error) => error,
+        };
+
+        assert!(error.to_string().contains("directory unavailable"));
+    }
+
+    #[tokio::test]
+    async fn test_build_preserves_segment_path_for_injected_read_error() {
+        let config = get_test_config(Path::new("/virtual/wal"));
+        let segment = PathBuf::from("/virtual/wal/00000001.waltest");
+        let mut file_system = MockFileSystem::new();
+        file_system.expect_read_dir().times(1).return_once({
+            let segment = segment.clone();
+            move |_| {
+                Ok(vec![FileSystemEntry {
+                    path: segment,
+                    is_file: true,
+                }])
+            }
+        });
+        file_system
+            .expect_read()
+            .times(1)
+            .return_once(|_| Err(std::io::Error::other("segment unavailable")));
+
+        let error = match WALBuilder::with_file_system(&config, Arc::new(file_system))
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+        {
+            Ok(_) => panic!("segment read error was ignored"),
+            Err(error) => error,
+        };
+
+        assert!(error.to_string().contains("00000001.waltest"));
+        assert!(error.to_string().contains("segment unavailable"));
+    }
+
+    #[tokio::test]
     async fn test_build_single_file_with_checkpoint() {
         let wal_dir = setup_test_wal_dir("single_file_checkpoint").await;
         let config = get_test_config(&wal_dir);
@@ -418,6 +532,108 @@ mod tests {
             wal_manager.buffers.is_empty(),
             "Buffers should be empty after a checkpointed file"
         );
+    }
+
+    #[tokio::test]
+    async fn test_build_loads_pending_entries_from_all_segments() {
+        let wal_dir = setup_test_wal_dir("multi_segment_pending").await;
+        let config = get_test_config(&wal_dir);
+        write_wal_file(
+            &config,
+            1,
+            &vec![create_entry(EntryType::Insert, Some("segment-1"))],
+        )
+        .await;
+        write_wal_file(
+            &config,
+            2,
+            &vec![create_entry(EntryType::Delete, Some("segment-2"))],
+        )
+        .await;
+
+        let wal_manager = WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .unwrap();
+
+        let payloads: Vec<_> = wal_manager
+            .pending_entries()
+            .iter()
+            .map(|entry| entry.data.clone().unwrap())
+            .collect();
+        assert_eq!(payloads, vec![b"segment-1".to_vec(), b"segment-2".to_vec()]);
+        assert_eq!(wal_manager.current_sequence(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_build_keeps_only_entries_after_last_checkpoint_across_segments() {
+        let wal_dir = setup_test_wal_dir("checkpoint_across_segments").await;
+        let config = get_test_config(&wal_dir);
+        write_wal_file(
+            &config,
+            1,
+            &vec![
+                create_entry(EntryType::Insert, Some("durable")),
+                create_entry(EntryType::Checkpoint, None),
+            ],
+        )
+        .await;
+        write_wal_file(
+            &config,
+            2,
+            &vec![create_entry(EntryType::Set, Some("pending"))],
+        )
+        .await;
+
+        let wal_manager = WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .unwrap();
+
+        assert_eq!(wal_manager.pending_entries().len(), 1);
+        assert!(matches!(
+            wal_manager.pending_entries()[0].entry_type,
+            EntryType::Set
+        ));
+        assert_eq!(
+            wal_manager.pending_entries()[0].data,
+            Some(b"pending".to_vec())
+        );
+    }
+
+    #[tokio::test]
+    async fn test_build_rejects_corrupt_intermediate_segment() {
+        let wal_dir = setup_test_wal_dir("corrupt_intermediate_segment").await;
+        let config = get_test_config(&wal_dir);
+        write_wal_file(
+            &config,
+            1,
+            &vec![create_entry(EntryType::Insert, Some("first"))],
+        )
+        .await;
+        tokio::fs::write(
+            wal_dir.join(format!("00000002.{}", config.wal_extension)),
+            [8, 0, 0, 0, 1, 2],
+        )
+        .await
+        .unwrap();
+        write_wal_file(
+            &config,
+            3,
+            &vec![create_entry(EntryType::Delete, Some("last"))],
+        )
+        .await;
+
+        let error = match WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+        {
+            Ok(_) => panic!("corrupt intermediate WAL segment was accepted"),
+            Err(error) => error,
+        };
+
+        assert!(error.to_string().contains("00000002"));
+        assert!(error.to_string().contains("truncated wal frame body"));
     }
 
     #[tokio::test]
@@ -497,6 +713,9 @@ mod tests {
 
         assert!(wal_manager.current_segment.is_some());
         assert_eq!(wal_manager.buffers.len(), 1);
-        assert_eq!(wal_manager.current_offset, wal_manager.current_segment.as_ref().unwrap().offset);
+        assert_eq!(
+            wal_manager.current_offset,
+            wal_manager.current_segment.as_ref().unwrap().offset
+        );
     }
 }
