@@ -336,12 +336,17 @@ impl DBEngine {
                 SelectPlanItem::LimitOffset(limit_offset) => {
                     let offset = limit_offset.offset.unwrap_or(0) as usize;
 
-                    match limit_offset.limit {
-                        Some(limit) => {
-                            rows = rows.drain(offset..(offset + limit as usize)).collect()
-                        }
-                        None => rows = rows.drain(offset..).collect(),
-                    }
+                    // OFFSET/LIMIT은 사용자가 주는 값이라 행 수를 넘을 수 있습니다.
+                    // `drain`에 범위를 그대로 넘기면 인덱스 초과로 패닉하므로
+                    // (`LIMIT 100`을 3행짜리 테이블에 쓰면 바로 재현됩니다)
+                    // 실제 행 수로 잘라냅니다.
+                    let start = offset.min(rows.len());
+                    let end = match limit_offset.limit {
+                        Some(limit) => start.saturating_add(limit as usize).min(rows.len()),
+                        None => rows.len(),
+                    };
+
+                    rows = rows.drain(start..end).collect();
                 }
                 SelectPlanItem::Order(ref order_by_clause) => {
                     let futures = rows.into_iter().map(|e| {
@@ -721,5 +726,64 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(3));
+    }
+
+    /// `LIMIT`/`OFFSET`은 사용자가 주는 값이라 실제 행 수를 넘을 수 있습니다.
+    /// 이전 구현은 `rows.drain(offset..(offset + limit))`을 그대로 호출해서
+    /// 범위가 행 수를 넘으면 패닉했습니다. 3행짜리 테이블에 `LIMIT 100`이면
+    /// 바로 재현되고, 쿼리를 처리하던 연결 태스크가 죽습니다.
+    #[tokio::test]
+    async fn limit_offset_beyond_row_count_is_clamped() {
+        let (engine, wal) = build_test_engine("test_limit_offset_out_of_range").await;
+
+        execute_sql(&engine, wal.clone(), "create database rrdb;")
+            .await
+            .unwrap();
+        execute_sql(&engine, wal.clone(), "create table key_value (id integer);")
+            .await
+            .unwrap();
+        for value in 1..=3 {
+            insert_id(&engine, wal.clone(), value).await;
+        }
+
+        let cases = [
+            ("select id from key_value limit 100;", 3),
+            ("select id from key_value offset 10;", 0),
+            ("select id from key_value limit 5 offset 10;", 0),
+            ("select id from key_value limit 5 offset 2;", 1),
+        ];
+
+        for (sql, expected) in cases {
+            let result = execute_sql(&engine, wal.clone(), sql)
+                .await
+                .unwrap_or_else(|error| panic!("{sql} failed: {error}"));
+
+            assert_eq!(result.rows.len(), expected, "unexpected row count for {sql}");
+        }
+    }
+
+    /// 범위 안에 들어오는 일반적인 조합은 그대로 동작해야 합니다.
+    #[tokio::test]
+    async fn limit_offset_within_range_still_works() {
+        let (engine, wal) = build_test_engine("test_limit_offset_in_range").await;
+
+        execute_sql(&engine, wal.clone(), "create database rrdb;")
+            .await
+            .unwrap();
+        execute_sql(&engine, wal.clone(), "create table key_value (id integer);")
+            .await
+            .unwrap();
+        for value in 1..=3 {
+            insert_id(&engine, wal.clone(), value).await;
+        }
+
+        for (sql, expected) in [
+            ("select id from key_value limit 2;", 2),
+            ("select id from key_value limit 2 offset 1;", 2),
+            ("select id from key_value offset 1;", 2),
+        ] {
+            let result = execute_sql(&engine, wal.clone(), sql).await.unwrap();
+            assert_eq!(result.rows.len(), expected, "unexpected row count for {sql}");
+        }
     }
 }
