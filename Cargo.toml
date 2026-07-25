@@ -44,6 +44,9 @@ memmap2 = "0.9.5"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
 
+[dev-dependencies]
+proptest = "1"
+
 [lib]
 name = "rrdb"
 path = "./src/lib.rs"
@@ -59,7 +62,7 @@ path = "./src/test.rs"
 
 [[bench]]
 name = "index_benchmark"
-path = "./src/benches/index_benchmark.rs"
+path = "./benches/index_benchmark.rs"
 harness = false
 
 [features]

@@ -24,7 +24,10 @@ impl Tokenizer {
     }
 
     pub fn is_whitespace(&self) -> bool {
-        self.last_char == ' ' || self.last_char == '\n' || self.last_char == '\t'
+        self.last_char == ' '
+            || self.last_char == '\n'
+            || self.last_char == '\t'
+            || self.last_char == '\r'
     }
 
     pub fn is_digit(&self) -> bool {

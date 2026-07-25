@@ -23,3 +23,4 @@ pub(crate) mod ddl;
 
 pub(crate) mod coverage;
 pub(crate) mod parser;
+pub(crate) mod property;
