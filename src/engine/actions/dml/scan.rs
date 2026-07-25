@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
-
 use crate::engine::DBEngine;
 use crate::engine::ast::dml::plan::select::scan::IndexScanPlan;
 use crate::engine::ast::types::TableName;
@@ -18,7 +17,6 @@ use crate::errors::execute_error::ExecuteError;
 const ROW_SEGMENT_FILENAME: &str = "00000001.rows";
 const ROW_META_FILENAME: &str = "meta.bin";
 const DEFAULT_ROW_WRITE_BUFFER_LIMIT_BYTES: usize = 16 * 1024 * 1024;
-
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct RowLocation {
@@ -59,6 +57,11 @@ impl DBEngine {
     /// 행을 세그먼트 파일 끝에 추가하고 시작 row index를 반환합니다.
     /// 반환된 시작 인덱스는 인덱스 유지보수(key -> row index)에 사용됩니다.
     /// 시작 인덱스는 meta.bin + 버퍼 상태를 사용해 계산하므로 세그먼트 전체 스캔이 필요 없습니다.
+    ///
+    /// 프로덕션 INSERT 경로는 WAL 기록과 위치 확정을 원자적으로 처리해야 하므로
+    /// `append_table_rows_with_reservation`을 사용합니다 (#236). 이 함수는 WAL이
+    /// 필요 없는 테스트/내부 용도로 남겨둡니다.
+    #[cfg(test)]
     pub(crate) async fn append_table_rows(
         &self,
         table_name: &TableName,
@@ -72,12 +75,80 @@ impl DBEngine {
         .await
     }
 
+    /// 행을 추가하되, 추가할 위치를 확정한 직후 `on_reserved`를 호출합니다.
+    ///
+    /// INSERT는 WAL 기록과 행 추가가 같은 row index를 가리켜야 replay가
+    /// 멱등해집니다 (#236). 두 작업을 따로 하면 그 사이에 다른 INSERT가
+    /// 끼어들어 인덱스가 어긋나므로, `row_storage_lock`을 쥔 채로 위치를
+    /// 확정하고 콜백에서 WAL을 기록합니다.
+    pub(crate) async fn append_table_rows_with_reservation<F, Fut>(
+        &self,
+        table_name: &TableName,
+        rows: &[TableDataRow],
+        on_reserved: F,
+    ) -> errors::Result<usize>
+    where
+        F: FnOnce(usize) -> Fut,
+        Fut: std::future::Future<Output = errors::Result<()>>,
+    {
+        self.append_table_rows_inner(
+            table_name,
+            rows,
+            DEFAULT_ROW_WRITE_BUFFER_LIMIT_BYTES,
+            Some(on_reserved),
+        )
+        .await
+    }
+
+    #[cfg(test)]
     async fn append_table_rows_with_buffer_limit(
         &self,
         table_name: &TableName,
         rows: &[TableDataRow],
         buffer_limit_bytes: usize,
     ) -> errors::Result<usize> {
+        self.append_table_rows_inner(
+            table_name,
+            rows,
+            buffer_limit_bytes,
+            None::<fn(usize) -> std::future::Ready<errors::Result<()>>>,
+        )
+        .await
+    }
+
+    /// 현재 테이블의 다음 row index(= 논리적 행 개수)를 반환합니다.
+    ///
+    /// `append_table_rows`와 같은 계산(meta.bin + 버퍼 상태)이라 세그먼트 전체
+    /// 스캔이 필요 없습니다. WAL replay가 이 INSERT를 이미 반영했는지 판단할 때
+    /// 사용합니다 (#236).
+    pub(crate) async fn next_row_index(&self, table_name: &TableName) -> errors::Result<usize> {
+        let _guard = self.row_storage_lock.lock().await;
+
+        let segment_path = self.row_segment_path(table_name)?;
+        if let Some(count) = self
+            .row_buffer_pool
+            .lock()
+            .await
+            .cached_row_count(&segment_path)
+        {
+            return Ok(count);
+        }
+
+        let meta_path = self.row_segment_meta_path(table_name)?;
+        Ok(self.read_segment_meta(&meta_path).await?.next_row_index)
+    }
+
+    async fn append_table_rows_inner<F, Fut>(
+        &self,
+        table_name: &TableName,
+        rows: &[TableDataRow],
+        buffer_limit_bytes: usize,
+        on_reserved: Option<F>,
+    ) -> errors::Result<usize>
+    where
+        F: FnOnce(usize) -> Fut,
+        Fut: std::future::Future<Output = errors::Result<()>>,
+    {
         if rows.is_empty() {
             return Ok(0);
         }
@@ -86,7 +157,12 @@ impl DBEngine {
         let segment_path = self.row_segment_path(table_name)?;
         let meta_path = self.row_segment_meta_path(table_name)?;
 
-        let cached_start_index = { self.row_buffer_pool.lock().await.cached_row_count(&segment_path) };
+        let cached_start_index = {
+            self.row_buffer_pool
+                .lock()
+                .await
+                .cached_row_count(&segment_path)
+        };
         let start_index = match cached_start_index {
             Some(count) => count,
             None => {
@@ -99,6 +175,12 @@ impl DBEngine {
                 start_index
             }
         };
+
+        // 위치가 확정된 뒤, 아직 락을 쥔 상태에서 WAL을 기록합니다. 실패하면
+        // 행을 추가하지 않고 그대로 반환하므로 WAL과 데이터가 어긋나지 않습니다.
+        if let Some(on_reserved) = on_reserved {
+            on_reserved(start_index).await?;
+        }
 
         let frame = encode_live_row_frames(rows)?;
 
@@ -380,11 +462,15 @@ impl DBEngine {
     }
 
     pub(crate) fn row_segment_path(&self, table_name: &TableName) -> errors::Result<PathBuf> {
-        Ok(self.table_rows_directory(table_name)?.join(ROW_SEGMENT_FILENAME))
+        Ok(self
+            .table_rows_directory(table_name)?
+            .join(ROW_SEGMENT_FILENAME))
     }
 
     fn row_segment_meta_path(&self, table_name: &TableName) -> errors::Result<PathBuf> {
-        Ok(self.table_rows_directory(table_name)?.join(ROW_META_FILENAME))
+        Ok(self
+            .table_rows_directory(table_name)?
+            .join(ROW_META_FILENAME))
     }
 
     fn row_segment_meta_path_from_segment_path(&self, segment_path: &Path) -> PathBuf {
@@ -604,13 +690,16 @@ mod tests {
         engine
             .update_table_rows(
                 &table_name_clone,
-                HashMap::from([(0, TableDataRow {
-                    fields: vec![TableDataField {
-                        table_name: table_name.clone(),
-                        column_name: "id".to_string(),
-                        data: TableDataFieldType::Integer(10),
-                    }],
-                })]),
+                HashMap::from([(
+                    0,
+                    TableDataRow {
+                        fields: vec![TableDataField {
+                            table_name: table_name.clone(),
+                            column_name: "id".to_string(),
+                            data: TableDataFieldType::Integer(10),
+                        }],
+                    },
+                )]),
             )
             .await
             .unwrap();
@@ -666,7 +755,10 @@ mod tests {
         assert_eq!(scanned[1].0.row_index, 2);
         assert_eq!(scanned[1].1.fields[0].data, TableDataFieldType::Integer(3));
 
-        let start_index = engine.append_table_rows(&table_name, &[row(4)]).await.unwrap();
+        let start_index = engine
+            .append_table_rows(&table_name, &[row(4)])
+            .await
+            .unwrap();
         assert_eq!(start_index, 3);
 
         let scanned = engine.full_scan(table_name).await.unwrap();

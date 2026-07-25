@@ -7,7 +7,7 @@ use crate::engine::schema::row::{TableDataField, TableDataRow};
 use crate::engine::types::{
     ExecuteColumn, ExecuteColumnType, ExecuteField, ExecuteResult, ExecuteRow,
 };
-use crate::engine::wal::types::EntryType;
+use crate::engine::wal::types::{EntryType, InsertWALPayload};
 use crate::engine::{DBEngine, SharedWALManager};
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
@@ -26,6 +26,49 @@ impl DBEngine {
     /// operation is already durably recorded in the WAL being replayed).
     pub(crate) async fn insert_replay(&self, query: InsertQuery) -> errors::Result<ExecuteResult> {
         self.insert_internal(query, None).await
+    }
+
+    /// WAL replay용 INSERT.
+    ///
+    /// 행이 durable해진 뒤 WAL 체크포인트 경계가 진행되기 전에 크래시하면,
+    /// 이미 디스크에 있는 행을 replay가 다시 추가할 수 있습니다. unique 인덱스가
+    /// 없는 테이블에서는 값으로 중복을 판별할 수 없으므로(중복 행이 합법),
+    /// WAL에 기록해 둔 start_row_index로 판단합니다: 테이블이 이미 그 위치까지
+    /// 채워져 있다면 이 INSERT는 이미 반영된 것이므로 건너뜁니다 (#236).
+    pub(crate) async fn insert_replay_with_payload(
+        &self,
+        payload: InsertWALPayload,
+    ) -> errors::Result<ExecuteResult> {
+        let Some(into_table) = payload.query.into_table.as_ref() else {
+            return self.insert_replay(payload.query).await;
+        };
+
+        let next_row_index = self.next_row_index(into_table).await?;
+
+        if next_row_index >= payload.start_row_index + payload.row_count {
+            log::debug!(
+                "skipping already-applied INSERT replay for {} (rows {}..{}, table holds {})",
+                into_table.table_name,
+                payload.start_row_index,
+                payload.start_row_index + payload.row_count,
+                next_row_index
+            );
+            return Ok(ExecuteResult::with_affected_rows(
+                vec![ExecuteColumn {
+                    name: "desc".into(),
+                    data_type: ExecuteColumnType::String,
+                }],
+                vec![ExecuteRow {
+                    fields: vec![ExecuteField::String(format!(
+                        "skipped already-applied insert into {}",
+                        into_table.table_name
+                    ))],
+                }],
+                0,
+            ));
+        }
+
+        self.insert_replay(payload.query).await
     }
 
     async fn insert_internal(
@@ -204,18 +247,37 @@ impl DBEngine {
                     }
                 }
 
-                if let Some(wal_manager) = &wal_manager {
-                    let wal_payload = bincode::serialize(&query)
-                        .map_err(|error| ExecuteError::wrap(error.to_string()))?;
-                    wal_manager
-                        .lock()
-                        .await
-                        .append_record(EntryType::Insert, Some(wal_payload), None)
-                        .await?;
-                }
-
                 let affected_rows = rows.len();
-                let start_index = self.append_table_rows(into_table, &rows).await?;
+                let row_count = rows.len();
+
+                // WAL은 행 위치가 확정된 직후, 아직 row storage 락을 쥔 상태에서
+                // 기록합니다. 그래야 기록된 start_row_index가 실제로 이 INSERT가
+                // 차지한 범위와 일치하고, replay가 멱등해집니다 (#236).
+                let start_index = self
+                    .append_table_rows_with_reservation(into_table, &rows, |start_row_index| {
+                        let wal_manager = wal_manager.clone();
+                        let query = query.clone();
+                        async move {
+                            let Some(wal_manager) = wal_manager else {
+                                return Ok(());
+                            };
+
+                            let payload = InsertWALPayload {
+                                query,
+                                start_row_index,
+                                row_count,
+                            };
+                            let wal_payload = bincode::serialize(&payload)
+                                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+
+                            wal_manager
+                                .lock()
+                                .await
+                                .append_record(EntryType::Insert, Some(wal_payload), None)
+                                .await
+                        }
+                    })
+                    .await?;
 
                 // 인덱스 반영 (#217)
                 // 안전성: append_table_rows가 row_storage_lock으로 직렬화되므로,
@@ -253,7 +315,11 @@ impl DBEngine {
                                 return Err(error);
                             }
 
-                            applied_index_entries.push((meta.index_name.clone(), key, row_path.clone()));
+                            applied_index_entries.push((
+                                meta.index_name.clone(),
+                                key,
+                                row_path.clone(),
+                            ));
                         }
                     }
                 }
