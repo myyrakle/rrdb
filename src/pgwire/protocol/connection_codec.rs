@@ -79,7 +79,7 @@ impl Decoder for ConnectionCodec {
             }
 
             let mut header_buf = src.clone();
-            let message_len = header_buf.get_i32() as usize;
+            let declared_len = header_buf.get_i32();
             let protocol_version_major = header_buf.get_i16();
             let protocol_version_minor = header_buf.get_i16();
 
@@ -92,6 +92,16 @@ impl Decoder for ConnectionCodec {
                 src.advance(STARTUP_HEADER_SIZE);
                 return Ok(Some(ClientMessage::GSSENCRequest));
             }
+
+            // 길이는 클라이언트가 보낸 값이므로 신뢰할 수 없습니다. 헤더보다 짧으면
+            // 아래 `message_len - STARTUP_HEADER_SIZE`가 언더플로해 패닉하고,
+            // 음수면 usize 캐스팅 후 거대한 값이 되어 `reserve`가 할당에 실패합니다.
+            // 둘 다 인증 이전 단계라 누구나 서버를 죽일 수 있습니다.
+            if declared_len < STARTUP_HEADER_SIZE as i32 {
+                return Err(ProtocolError::ParserError);
+            }
+
+            let message_len = declared_len as usize;
 
             if src.len() < message_len {
                 src.reserve(message_len - src.len());
@@ -137,11 +147,15 @@ impl Decoder for ConnectionCodec {
 
         let mut header_buf = src.clone();
         let message_tag = header_buf.get_u8();
-        let message_len = header_buf.get_i32() as usize;
+        let declared_len = header_buf.get_i32();
 
-        if message_len < size_of::<i32>() {
+        // 음수 길이는 usize 캐스팅 시 거대한 값이 되어 `reserve`가 할당에
+        // 실패하며 패닉합니다. 캐스팅 전에 걸러냅니다.
+        if declared_len < size_of::<i32>() as i32 {
             return Err(ProtocolError::ParserError);
         }
+
+        let message_len = declared_len as usize;
 
         let total_message_len = 1 + message_len;
 
@@ -475,5 +489,76 @@ mod tests {
         let decoded = codec.decode(&mut message);
 
         assert!(decoded.is_err());
+    }
+
+    /// 길이 필드는 클라이언트가 보낸 값이라 신뢰할 수 없습니다. 헤더 크기보다
+    /// 작거나 음수인 길이는 `usize` 캐스팅 전에 걸러야 합니다. 그러지 않으면
+    /// `message_len - STARTUP_HEADER_SIZE`가 언더플로해 패닉하거나, 음수가
+    /// 거대한 `usize`가 되어 `reserve`가 할당에 실패합니다.
+    ///
+    /// startup 메시지는 인증 이전 단계라 아무나 보낼 수 있어, 이 패닉은 원격에서
+    /// 연결 태스크를 죽이는 데 쓰일 수 있었습니다.
+    #[test]
+    fn malformed_startup_length_is_rejected_without_panicking() {
+        for declared_len in [0i32, 1, 4, 7, -1, i32::MIN] {
+            let mut codec = ConnectionCodec::new();
+            let mut message = BytesMut::new();
+            message.put_i32(declared_len);
+            message.put_i16(3);
+            message.put_i16(0);
+            message.put_slice(b"user\0me\0\0");
+
+            assert!(
+                codec.decode(&mut message).is_err(),
+                "startup length {declared_len} should be rejected"
+            );
+        }
+    }
+
+    /// 정상적인 startup 메시지는 그대로 처리되어야 합니다.
+    #[test]
+    fn well_formed_startup_message_still_decodes() {
+        let mut codec = ConnectionCodec::new();
+        let mut body = BytesMut::new();
+        body.put_i16(3);
+        body.put_i16(0);
+        body.put_slice(b"user\0me\0\0");
+
+        let mut message = BytesMut::new();
+        message.put_i32((4 + body.len()) as i32);
+        message.extend_from_slice(&body);
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        match decoded {
+            ClientMessage::Startup(startup) => {
+                assert_eq!(startup.requested_protocol_version, (3, 0));
+                assert_eq!(
+                    startup.parameters.get("user").map(String::as_str),
+                    Some("me")
+                );
+            }
+            other => panic!("expected startup, got {other:?}"),
+        }
+        assert!(codec.startup_received);
+    }
+
+    /// 일반 메시지 경로도 같은 이유로 음수 길이를 캐스팅 전에 걸러야 합니다.
+    #[test]
+    fn negative_regular_message_length_is_rejected_without_panicking() {
+        for declared_len in [-1i32, i32::MIN] {
+            let mut codec = ConnectionCodec {
+                startup_received: true,
+            };
+            let mut message = BytesMut::new();
+            message.put_u8(b'Q');
+            message.put_i32(declared_len);
+            message.put_slice(b"select 1\0");
+
+            assert!(
+                codec.decode(&mut message).is_err(),
+                "message length {declared_len} should be rejected"
+            );
+        }
     }
 }
