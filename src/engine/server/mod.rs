@@ -94,6 +94,9 @@ impl Server {
         if pending_entry_count > 0 {
             log::info!("replaying {} pending WAL entries", pending_entry_count);
             engine.recover_from_wal(&mut wal_manager).await?;
+            log::info!("WAL replay complete ({} entries)", pending_entry_count);
+        } else {
+            log::debug!("no pending WAL entries to replay");
         }
 
         let wal_manager = Arc::new(Mutex::new(wal_manager));
@@ -109,6 +112,12 @@ impl Server {
             .await
             .map_err(|error| ExecuteError::wrap(error.to_string()))?;
 
+        log::info!(
+            "server listening on {}:{}",
+            self.config.host,
+            self.config.port
+        );
+
         let connection_task = tokio::spawn(async move {
             loop {
                 let accepted = listener.accept().await;
@@ -116,7 +125,7 @@ impl Server {
                 let (stream, address) = match accepted {
                     Ok((stream, address)) => (stream, address),
                     Err(error) => {
-                        log::error!("socket error {:?}", error);
+                        log::error!("failed to accept connection: {}", error);
                         continue;
                     }
                 };
@@ -127,6 +136,12 @@ impl Server {
                     database: "None".into(),
                 };
 
+                log::debug!(
+                    "connection accepted from {} (connection_id: {})",
+                    address,
+                    client_info.connection_id
+                );
+
                 let shared_state = SharedState {
                     engine: engine.clone(),
                     wal_manager: wal_manager.clone(),
@@ -134,23 +149,20 @@ impl Server {
                 };
 
                 tokio::spawn(async move {
+                    let connection_id = shared_state.client_info.connection_id.clone();
                     let mut conn = Connection::new(shared_state);
                     if let Err(error) = conn.run(stream).await {
                         if is_expected_disconnect(&error) {
-                            log::debug!("connection closed");
+                            log::debug!("connection {} closed", connection_id);
                         } else {
-                            log::error!("connection error {:?}", error);
+                            log::error!("connection {} failed: {}", connection_id, error);
                         }
+                    } else {
+                        log::debug!("connection {} closed", connection_id);
                     }
                 });
             }
         });
-
-        log::info!(
-            "Server is running on {}:{}",
-            self.config.host,
-            self.config.port
-        );
 
         connection_task
             .await

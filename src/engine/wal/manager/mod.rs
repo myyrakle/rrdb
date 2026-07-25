@@ -243,6 +243,9 @@ where
     }
 
     async fn checkpoint(&mut self) -> errors::Result<()> {
+        let entry_count = self.buffers.len();
+        let sequence = self.sequence;
+
         self.append_record(EntryType::Checkpoint, None, None)
             .await?;
         self.sync_current_file().await?;
@@ -251,6 +254,13 @@ where
         self.sequence += 1;
         self.buffers.clear();
         self.current_offset = 0;
+
+        log::debug!(
+            "WAL checkpoint written for segment {} ({} buffered entries); rotating to segment {}",
+            sequence,
+            entry_count,
+            self.sequence
+        );
 
         Ok(())
     }

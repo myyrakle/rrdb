@@ -75,9 +75,9 @@ impl DBEngine {
         if let Err(error) = self.file_system.create_dir(base_path).await
             && error.kind() != std::io::ErrorKind::AlreadyExists
         {
-            println!("path {:?}", base_path);
-            println!("error: {:?}", error.to_string());
-            return Err(ExecuteError::wrap(error.to_string()));
+            return Err(ExecuteError::wrap(format!(
+                "failed to create data directory {base_path}: {error}"
+            )));
         }
 
         Ok(())
