@@ -7,6 +7,9 @@ pub struct Tokenizer {
     buffer: Vec<char>,
     buffer_index: usize,
     last_char: char,
+    // last_char에 아직 토큰으로 소비되지 않은 입력 문자가 들어있는지 여부.
+    // 버퍼 끝을 넘어서 읽은 경우에는 false가 됩니다.
+    has_pending_char: bool,
 }
 
 impl Tokenizer {
@@ -16,6 +19,7 @@ impl Tokenizer {
             last_char: ' ',
             buffer: text.chars().collect(),
             buffer_index: 0,
+            has_pending_char: false,
         }
     }
 
@@ -64,25 +68,47 @@ impl Tokenizer {
     }
 
     pub fn is_eof(&self) -> bool {
-        self.buffer_index >= self.buffer.len()
+        // 버퍼를 모두 읽었더라도 아직 토큰화되지 않은 선행 문자가 남아있다면 EOF가 아닙니다.
+        self.buffer_index >= self.buffer.len() && !self.has_pending_char
+    }
+
+    // 버퍼에 아직 읽지 않은 문자가 남아있는지 확인합니다.
+    fn has_more_char(&self) -> bool {
+        self.buffer_index < self.buffer.len()
     }
 
     // 버퍼에서 문자 하나를 읽어서 last_char에 보관합니다.
     pub fn read_char(&mut self) {
         if self.buffer_index >= self.buffer.len() {
             self.last_char = ' ';
+            self.has_pending_char = false;
         } else {
             self.last_char = self.buffer[self.buffer_index];
             self.buffer_index += 1;
+            self.has_pending_char = true;
         }
     }
 
     // 보관했던 문자 하나를 다시 버퍼에 돌려놓습니다.
     pub fn unread_char(&mut self) {
+        // 버퍼 끝을 넘어서 읽은 경우에는 되돌릴 문자가 없습니다.
+        // 이때 인덱스를 되돌리면 마지막 문자를 중복해서 읽게 됩니다.
+        if !self.has_pending_char {
+            return;
+        }
+
         if self.buffer_index != 0 {
             self.buffer_index -= 1;
             self.last_char = self.buffer[self.buffer_index];
         }
+
+        self.has_pending_char = false;
+    }
+
+    // 보관 중인 문자를 토큰으로 소비 처리합니다.
+    fn consume_last_char(&mut self) {
+        self.last_char = ' ';
+        self.has_pending_char = false;
     }
 
     // 주어진 텍스트에서 토큰을 순서대로 획득해 반환합니다.
@@ -238,7 +264,9 @@ impl Tokenizer {
                     if self.last_char == '-' {
                         let mut comment = vec![];
 
-                        while !self.is_eof() {
+                        // 주석은 개행 또는 입력의 끝까지 읽습니다.
+                        // 버퍼 끝을 넘어 읽으면 공백이 덧붙으므로 버퍼 잔량으로 판단합니다.
+                        while self.has_more_char() {
                             self.read_char();
 
                             if self.last_char == '\n' {
@@ -249,6 +277,7 @@ impl Tokenizer {
                         }
 
                         let comment: String = comment.into_iter().collect();
+                        self.consume_last_char();
                         Token::CodeComment(comment)
                     } else {
                         self.unread_char();
@@ -264,7 +293,7 @@ impl Tokenizer {
                         let mut comment = vec![];
 
                         self.read_char();
-                        while !self.is_eof() {
+                        while self.has_more_char() {
                             if self.last_char == '*' {
                                 self.read_char();
                                 if self.last_char == '/' {
@@ -278,6 +307,7 @@ impl Tokenizer {
                         }
 
                         let comment: String = comment.into_iter().collect();
+                        self.consume_last_char();
                         Token::CodeComment(comment)
                     } else {
                         self.unread_char();
@@ -341,11 +371,20 @@ impl Tokenizer {
 
                 self.read_char();
                 while self.last_char != '"' {
+                    // 닫는 큰따옴표 없이 입력이 끝난 경우 무한루프에 빠지지 않도록 오류로 처리
+                    if self.is_eof() {
+                        return Err(LexingError::wrap(
+                            "unterminated quoted identifier: missing closing '\"'",
+                        ));
+                    }
+
                     identifier.push(self.last_char);
                     self.read_char();
                 }
 
                 let identifier: String = identifier.into_iter().collect::<String>();
+
+                self.consume_last_char();
 
                 Token::Identifier(identifier)
             } else {
@@ -428,7 +467,8 @@ impl Tokenizer {
             )));
         };
 
-        self.last_char = ' ';
+        // 방금 토큰으로 소비한 문자를 비웁니다.
+        self.consume_last_char();
 
         Ok(token)
     }
@@ -440,7 +480,15 @@ impl Tokenizer {
         let mut tokens = vec![];
 
         while !tokenizer.is_eof() {
-            tokens.push(tokenizer.get_token()?);
+            let token = tokenizer.get_token()?;
+
+            // 입력 끝에 도달했을 때의 EOF 센티널은 목록에 포함하지 않습니다.
+            // (입력 끝 공백 유무에 따라 결과가 달라지지 않도록 정규화)
+            if token.is_eof() {
+                break;
+            }
+
+            tokens.push(token);
         }
 
         Ok(tokens)
