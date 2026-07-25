@@ -78,6 +78,23 @@ impl PageBackedBTreeIndex {
         })
     }
 
+    /// Create an index with a non-default page size. Tests use this to build
+    /// deep/split-heavy trees from far fewer entries than a 4KiB page needs.
+    #[cfg(test)]
+    async fn create_with_page_size(
+        path: &Path,
+        column_name: String,
+        is_unique: bool,
+        page_size: usize,
+    ) -> errors::Result<Self> {
+        let store = PageStore::create(path, page_size).await?;
+        Ok(Self {
+            store,
+            column_name,
+            is_unique,
+        })
+    }
+
     /// Open an existing index file at `path`.
     pub async fn open(path: &Path, column_name: String, is_unique: bool) -> errors::Result<Self> {
         let store = PageStore::open(path).await?;
@@ -106,6 +123,37 @@ impl PageBackedBTreeIndex {
     /// Diagnostic helper, also used by tests.
     pub async fn allocated_page_count(&self) -> errors::Result<PageId> {
         self.store.allocated_page_count().await
+    }
+
+    /// Height of the tree in pages (0 for an empty index, 1 when the root is
+    /// a leaf). Diagnostic helper, also used by tests.
+    pub async fn tree_height(&self) -> errors::Result<usize> {
+        let Some(root_id) = self.store.root_page_id().await? else {
+            return Ok(0);
+        };
+
+        let mut height = 1;
+        let mut current = root_id;
+        loop {
+            match self.store.read_page(current).await? {
+                Page::Leaf(_) => return Ok(height),
+                Page::Internal(internal) => {
+                    current = *internal.children.first().ok_or_else(|| {
+                        ExecuteError::wrap(format!(
+                            "corrupt index: internal page {} has no children",
+                            current
+                        ))
+                    })?;
+                    height += 1;
+                }
+                Page::Free(_) => {
+                    return Err(ExecuteError::wrap(format!(
+                        "corrupt index: tree descent reached freed page {}",
+                        current
+                    )));
+                }
+            }
+        }
     }
 
     /// Read `page_id`, requiring it to be a leaf page.
@@ -456,25 +504,25 @@ impl PageBackedBTreeIndex {
     /// Three things have to stay consistent:
     /// 1. the `next_leaf` chain used by range scans, so the predecessor
     ///    leaf is re-pointed past the removed leaf;
-    /// 2. the parent internal page, which loses the child pointer and the
-    ///    separator key that introduced it;
+    /// 2. the ancestors, which lose the child pointer and the separator key
+    ///    that introduced it -- and which must themselves be reclaimed when
+    ///    that leaves them childless, all the way up;
     /// 3. the root, which is dropped entirely when the last leaf goes away
     ///    and collapsed when an internal root is left with a single child.
     async fn reclaim_empty_leaf(&self, path: &LeafPath) -> errors::Result<()> {
         let leaf_id = path.leaf_id;
         let leaf = self.read_leaf(leaf_id).await?;
 
-        let Some(&(parent_id, child_index)) = path.parents.last() else {
-            // The leaf is the root. An empty root leaf is left in place --
-            // freeing it would mean clearing `root_page_id`, and the empty
-            // tree state is already represented by that being `None`. Only
-            // do so when it truly holds nothing.
+        if path.parents.is_empty() {
+            // The leaf is the root. Clearing `root_page_id` is how the empty
+            // tree state is represented, so only do it when it truly holds
+            // nothing.
             if leaf.entries.is_empty() && leaf.overflow.is_none() {
                 self.store.set_root_page_id(None).await?;
                 self.store.free_page(leaf_id).await?;
             }
             return Ok(());
-        };
+        }
 
         // Re-point the previous leaf in the scan chain past this one.
         if let Some(previous_id) = self.find_previous_leaf(path).await? {
@@ -485,53 +533,81 @@ impl PageBackedBTreeIndex {
                 .await?;
         }
 
-        let mut parent = match self.store.read_page(parent_id).await? {
-            Page::Internal(internal) => internal,
-            _ => {
+        self.store.free_page(leaf_id).await?;
+        self.detach_child_from_ancestors(&path.parents, leaf_id)
+            .await
+    }
+
+    /// Remove `child_id` from the last page in `parents`, then walk back up:
+    /// an ancestor left with no children is itself freed and detached from
+    /// its own parent, and a root left with a single child is collapsed.
+    ///
+    /// `parents` is the recorded descent (`(page_id, child_index)` from the
+    /// root down to `child_id`'s immediate parent).
+    async fn detach_child_from_ancestors(
+        &self,
+        parents: &[(PageId, usize)],
+        child_id: PageId,
+    ) -> errors::Result<()> {
+        let mut removed_child = child_id;
+
+        for depth in (0..parents.len()).rev() {
+            let (page_id, child_index) = parents[depth];
+
+            let mut internal = match self.store.read_page(page_id).await? {
+                Page::Internal(internal) => internal,
+                _ => {
+                    return Err(ExecuteError::wrap(format!(
+                        "corrupt index: expected an internal page at {}",
+                        page_id
+                    )));
+                }
+            };
+
+            if internal.children.get(child_index) != Some(&removed_child) {
                 return Err(ExecuteError::wrap(format!(
-                    "corrupt index: expected an internal page at {}",
-                    parent_id
+                    "corrupt index: page {} does not point at child {} at index {}",
+                    page_id, removed_child, child_index
                 )));
             }
-        };
 
-        if parent.children.get(child_index) != Some(&leaf_id) {
-            return Err(ExecuteError::wrap(format!(
-                "corrupt index: parent {} does not point at leaf {} at index {}",
-                parent_id, leaf_id, child_index
-            )));
-        }
+            internal.children.remove(child_index);
+            // `keys[i]` separates `children[i]` from `children[i + 1]`, so
+            // drop the separator that introduced the removed child: the one
+            // to its left, or (for the leftmost child) the one to its right.
+            if !internal.keys.is_empty() {
+                let key_index = if child_index == 0 { 0 } else { child_index - 1 };
+                internal.keys.remove(key_index);
+            }
 
-        parent.children.remove(child_index);
-        // `keys[i]` separates `children[i]` from `children[i + 1]`, so drop
-        // the separator that introduced the removed child: the one to its
-        // left, or (for the leftmost child) the one to its right.
-        if !parent.keys.is_empty() {
-            let key_index = if child_index == 0 { 0 } else { child_index - 1 };
-            parent.keys.remove(key_index);
-        }
+            if internal.children.is_empty() {
+                // This ancestor lost its last child: free it and keep
+                // unwinding so no childless internal page stays in the tree.
+                self.store.free_page(page_id).await?;
 
-        self.store.free_page(leaf_id).await?;
+                if depth == 0 {
+                    // The root itself is now childless -- the tree is empty.
+                    self.store.set_root_page_id(None).await?;
+                    return Ok(());
+                }
 
-        if parent.children.is_empty() {
-            // Should not happen (a parent always has >= 2 children), but
-            // handle it rather than leaving a childless internal page.
+                removed_child = page_id;
+                continue;
+            }
+
             self.store
-                .write_page(parent_id, &Page::Internal(parent))
+                .write_page(page_id, &Page::Internal(internal.clone()))
                 .await?;
+
+            // A root left with one child adds a pointless level; promote the
+            // child in its place.
+            if depth == 0 && internal.children.len() == 1 {
+                let only_child = internal.children[0];
+                self.store.set_root_page_id(Some(only_child)).await?;
+                self.store.free_page(page_id).await?;
+            }
+
             return Ok(());
-        }
-
-        self.store
-            .write_page(parent_id, &Page::Internal(parent.clone()))
-            .await?;
-
-        // If the root collapsed to a single child, promote that child so the
-        // tree does not accumulate pointless levels.
-        if path.parents.len() == 1 && parent.children.len() == 1 {
-            let only_child = parent.children[0];
-            self.store.set_root_page_id(Some(only_child)).await?;
-            self.store.free_page(parent_id).await?;
         }
 
         Ok(())
@@ -705,7 +781,21 @@ impl PageBackedBTreeIndex {
                 let overflow = self.read_leaf(overflow_id).await?;
                 leaf.entries = overflow.entries;
                 leaf.overflow = overflow.overflow;
-                self.store.write_page(leaf_id, &Page::Leaf(leaf)).await?;
+
+                // The promoted entries were sized to fill a page whose
+                // `next_leaf` was `None`, while this leaf may carry
+                // `Some(..)` -- 4 bytes more under bincode. Overflow pages
+                // are packed entry-by-entry and so normally keep more slack
+                // than that, but re-checking here keeps the delete from
+                // failing mid-way on a write that cannot fit.
+                if super::page::encode_page(&Page::Leaf(leaf.clone()), self.store.page_size())
+                    .is_ok()
+                {
+                    self.store.write_page(leaf_id, &Page::Leaf(leaf)).await?;
+                } else {
+                    self.push_tail_into_overflow(leaf_id, leaf).await?;
+                }
+
                 self.store.free_page(overflow_id).await?;
                 return Ok(true);
             }
@@ -1529,6 +1619,174 @@ mod tests {
         // Range scans see the same surviving entries.
         assert_eq!(idx.range(Some("K:dup"), None).await.unwrap().len(), 10);
         assert_index_is_consistent(&idx).await;
+    }
+
+    /// Draining a leaf that owns an overflow chain must pull the chain head
+    /// back into the leaf (rather than stranding it) and reclaim the page --
+    /// including when the merged page no longer fits its slot, since the
+    /// leaf carries a `next_leaf` pointer the overflow page did not.
+    #[tokio::test]
+    async fn promoting_an_overflow_head_keeps_the_group_and_fits_the_page() {
+        let path = temp_path("overflow_promote_fit.idx");
+        let page_size = 256;
+        let idx =
+            PageBackedBTreeIndex::create_with_page_size(&path, "id".to_string(), false, page_size)
+                .await
+                .unwrap();
+
+        // Build the shape directly: a leaf holding one entry of a duplicate
+        // group, a `next_leaf` pointer, and an overflow page packed with the
+        // rest of the group.
+        let leaf_id = idx.store.allocate_page().await.unwrap();
+        let tail_id = idx.store.allocate_page().await.unwrap();
+        let overflow_id = idx.store.allocate_page().await.unwrap();
+
+        // Fill the overflow page as full as it can go.
+        let mut overflow_entries = Vec::new();
+        loop {
+            let mut candidate = overflow_entries.clone();
+            candidate.push(LeafEntry {
+                key: "B:dup".to_string(),
+                row_path: format!("/r/b{:03}", candidate.len()),
+            });
+            let page = LeafPage {
+                entries: candidate.clone(),
+                next_leaf: None,
+                overflow: None,
+            };
+            if super::super::page::encode_page(&Page::Leaf(page), page_size).is_err() {
+                break;
+            }
+            overflow_entries = candidate;
+        }
+        assert!(
+            overflow_entries.len() > 1,
+            "expected the overflow page to hold several entries"
+        );
+        let overflow_len = overflow_entries.len();
+
+        // Sanity: this packed group plus the leaf's `next_leaf` pointer must
+        // actually exceed one page, otherwise the guard below is untested.
+
+        idx.store
+            .write_page(
+                overflow_id,
+                &Page::Leaf(LeafPage {
+                    entries: overflow_entries,
+                    next_leaf: None,
+                    overflow: None,
+                }),
+            )
+            .await
+            .unwrap();
+
+        idx.store
+            .write_page(
+                leaf_id,
+                &Page::Leaf(LeafPage {
+                    entries: vec![LeafEntry {
+                        key: "B:dup".to_string(),
+                        row_path: "/r/resident".to_string(),
+                    }],
+                    next_leaf: Some(tail_id),
+                    overflow: Some(overflow_id),
+                }),
+            )
+            .await
+            .unwrap();
+
+        idx.store
+            .write_page(
+                tail_id,
+                &Page::Leaf(LeafPage {
+                    entries: vec![LeafEntry {
+                        key: "C:last".to_string(),
+                        row_path: "/r/c".to_string(),
+                    }],
+                    next_leaf: None,
+                    overflow: None,
+                }),
+            )
+            .await
+            .unwrap();
+
+        idx.store
+            .write_page(
+                idx.store.allocate_page().await.unwrap(),
+                &Page::Internal(InternalPage {
+                    keys: vec!["C:last".to_string()],
+                    children: vec![leaf_id, tail_id],
+                }),
+            )
+            .await
+            .unwrap();
+        let root_id = idx.store.allocated_page_count().await.unwrap() - 1;
+        idx.store.set_root_page_id(Some(root_id)).await.unwrap();
+
+        assert_eq!(idx.get("B:dup").await.unwrap().len(), overflow_len + 1);
+
+        // Removing the leaf's only resident entry promotes the overflow head.
+        assert!(idx.remove("B:dup", "/r/resident").await.unwrap());
+
+        // The whole surviving group is still reachable, the overflow page was
+        // reclaimed, and every page still fits its slot.
+        assert_eq!(idx.get("B:dup").await.unwrap().len(), overflow_len);
+        assert_eq!(idx.get("C:last").await.unwrap(), vec!["/r/c".to_string()]);
+        assert_eq!(idx.scan_all().await.unwrap().len(), overflow_len + 1);
+        assert!(
+            idx.free_page_count().await.unwrap() > 0,
+            "the drained overflow page should have been reclaimed"
+        );
+        assert_index_is_consistent(&idx).await;
+    }
+
+    /// Regression for a deeper (3+ level) tree: draining whole subtrees must
+    /// not leave childless internal pages behind, which later descents would
+    /// index out of bounds on.
+    #[tokio::test]
+    async fn draining_a_deep_tree_leaves_no_childless_internal_pages() {
+        let path = temp_path("deep_tree_drain.idx");
+        // A small page size builds a 3+ level tree from far fewer entries
+        // than the 4KiB default would need.
+        let idx = PageBackedBTreeIndex::create_with_page_size(&path, "id".to_string(), false, 256)
+            .await
+            .unwrap();
+
+        let total = 600;
+        for i in 0..total {
+            idx.insert(format!("I:{:06}", i), format!("/r/{}", i))
+                .await
+                .unwrap();
+        }
+        assert!(
+            idx.tree_height().await.unwrap() >= 3,
+            "test needs a tree of height >= 3, got {}",
+            idx.tree_height().await.unwrap()
+        );
+
+        // Drain a large contiguous prefix, which empties whole subtrees.
+        for i in 0..(total / 2) {
+            assert!(
+                idx.remove(&format!("I:{:06}", i), &format!("/r/{}", i))
+                    .await
+                    .unwrap(),
+                "failed to remove key {}",
+                i
+            );
+        }
+
+        assert_index_is_consistent(&idx).await;
+        assert_eq!(idx.scan_all().await.unwrap().len(), (total / 2) as usize);
+
+        // Every surviving key must still be reachable through a descent.
+        for i in (total / 2)..total {
+            assert_eq!(
+                idx.get(&format!("I:{:06}", i)).await.unwrap(),
+                vec![format!("/r/{}", i)],
+                "lost key {}",
+                i
+            );
+        }
     }
 
     /// Reclamation must survive a reopen: the free-list lives in the
