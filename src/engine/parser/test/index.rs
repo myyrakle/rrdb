@@ -55,8 +55,7 @@ pub fn create_unique_index_if_not_exists() {
 
 #[test]
 pub fn create_index_without_semicolon() {
-    // 입력 끝의 공백: 토크나이저가 EOF 직전의 ')'를 소실하는 기존 동작 우회
-    let text = "create index foo_id_idx on foo (id) ".to_owned();
+    let text = "create index foo_id_idx on foo (id)".to_owned();
 
     let mut parser = Parser::with_string(text).unwrap();
 

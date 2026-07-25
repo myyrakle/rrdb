@@ -59,7 +59,7 @@ path = "./src/test.rs"
 
 [[bench]]
 name = "index_benchmark"
-path = "./benches/index_benchmark.rs"
+path = "./src/benches/index_benchmark.rs"
 harness = false
 
 [features]
