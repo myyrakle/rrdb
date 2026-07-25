@@ -37,7 +37,7 @@ use crate::engine::schema::table::TableSchema;
 use crate::engine::types::ExecuteResult;
 use crate::engine::wal::endec::implements::bincode::BincodeEncoder;
 use crate::engine::wal::manager::WALManager;
-use crate::engine::wal::types::{EntryType, WALEntry};
+use crate::engine::wal::types::{EntryType, InsertWALPayload, WALEntry};
 use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use tokio::sync::{Mutex, RwLock};
@@ -149,8 +149,18 @@ impl DBEngine {
             let result: errors::Result<()> = async {
                 match entry.entry_type {
                     EntryType::Insert => {
-                        let query = Self::decode_wal_payload::<InsertQuery>(data)?;
-                        self.insert_replay(query).await.map(|_| ())
+                        // 새 형식은 start_row_index를 포함합니다. 이전 형식(InsertQuery
+                        // 단독)으로 기록된 WAL도 그대로 읽을 수 있어야 하므로,
+                        // 실패 시 이전 형식으로 폴백합니다 (#236).
+                        match Self::decode_wal_payload::<InsertWALPayload>(data) {
+                            Ok(payload) => {
+                                self.insert_replay_with_payload(payload).await.map(|_| ())
+                            }
+                            Err(_) => {
+                                let query = Self::decode_wal_payload::<InsertQuery>(data)?;
+                                self.insert_replay(query).await.map(|_| ())
+                            }
+                        }
                     }
                     EntryType::Set => {
                         let query = Self::decode_wal_payload::<UpdateQuery>(data)?;
@@ -274,10 +284,13 @@ mod tests {
 
     use crate::config::launch_config::LaunchConfig;
     use crate::engine::DBEngine;
+    use crate::engine::ast::dml::insert::{InsertData, InsertQuery};
+    use crate::engine::ast::dml::parts::insert_values::InsertValue;
+    use crate::engine::ast::types::SQLExpression;
     use crate::engine::ast::types::{Column, DataType, TableName};
     use crate::engine::encoder::schema_encoder::StorageEncoder;
     use crate::engine::schema::table::TableSchema;
-    use crate::engine::wal::types::{EntryType, WALEntry};
+    use crate::engine::wal::types::{EntryType, InsertWALPayload, WALEntry};
 
     #[tokio::test]
     async fn replay_wal_returns_contextual_error_for_invalid_payload() {
@@ -345,5 +358,121 @@ mod tests {
 
         assert_eq!(first.columns.len(), 1);
         assert_eq!(second.columns[0].name, "id");
+    }
+
+    /// 행이 durable해진 뒤 WAL 체크포인트 경계가 진행되기 전에 크래시하면,
+    /// 재시작 시 replay가 이미 디스크에 있는 행을 다시 추가할 수 있었습니다.
+    /// unique 인덱스가 없는 테이블에서는 값으로 중복을 판별할 수 없으므로
+    /// (중복 행이 합법) WAL에 남긴 start_row_index로 판단합니다 (#236).
+    #[tokio::test]
+    async fn insert_replay_is_idempotent_for_non_unique_table() {
+        let base_path = PathBuf::from("target/test_wal_replay/idempotent_insert");
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let engine = build_engine_with_table(&base_path, "events").await;
+        let table_name = TableName::new(Some("rrdb".to_string()), "events".to_string());
+
+        let query = insert_query(&table_name, 1);
+        let payload = InsertWALPayload {
+            query: query.clone(),
+            start_row_index: 0,
+            row_count: 1,
+        };
+
+        // 첫 replay: 행이 아직 없으므로 반영되어야 합니다.
+        engine
+            .insert_replay_with_payload(payload.clone())
+            .await
+            .unwrap();
+        engine.flush_row_buffers().await.unwrap();
+        assert_eq!(engine.next_row_index(&table_name).await.unwrap(), 1);
+
+        // 두 번째 replay: 같은 WAL 엔트리가 다시 재생되어도 중복 삽입되면 안 됩니다.
+        engine.insert_replay_with_payload(payload).await.unwrap();
+        engine.flush_row_buffers().await.unwrap();
+        assert_eq!(
+            engine.next_row_index(&table_name).await.unwrap(),
+            1,
+            "replaying an already-applied INSERT must not duplicate the row"
+        );
+    }
+
+    /// 멱등성 처리가 정상적인 중복 INSERT까지 막으면 안 됩니다. 서로 다른
+    /// start_row_index를 가진 두 INSERT는 값이 같아도 모두 보존되어야 합니다.
+    #[tokio::test]
+    async fn legitimate_duplicate_inserts_are_preserved() {
+        let base_path = PathBuf::from("target/test_wal_replay/duplicate_inserts");
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let engine = build_engine_with_table(&base_path, "events").await;
+        let table_name = TableName::new(Some("rrdb".to_string()), "events".to_string());
+
+        for start_row_index in 0..3 {
+            engine
+                .insert_replay_with_payload(InsertWALPayload {
+                    query: insert_query(&table_name, 7),
+                    start_row_index,
+                    row_count: 1,
+                })
+                .await
+                .unwrap();
+            engine.flush_row_buffers().await.unwrap();
+        }
+
+        assert_eq!(
+            engine.next_row_index(&table_name).await.unwrap(),
+            3,
+            "identical rows inserted by distinct statements must all survive"
+        );
+    }
+
+    fn insert_query(table_name: &TableName, value: i64) -> InsertQuery {
+        InsertQuery {
+            into_table: Some(table_name.clone()),
+            columns: vec!["id".to_string()],
+            data: InsertData::Values(vec![InsertValue {
+                list: vec![Some(SQLExpression::Integer(value))],
+            }]),
+        }
+    }
+
+    async fn build_engine_with_table(base_path: &PathBuf, table: &str) -> DBEngine {
+        let config = LaunchConfig::default_for_base_path(base_path);
+        let table_name = TableName::new(Some("rrdb".to_string()), table.to_string());
+        let table_path = PathBuf::from(&config.data_directory)
+            .join("rrdb")
+            .join("tables")
+            .join(table);
+
+        tokio::fs::create_dir_all(table_path.join("rows"))
+            .await
+            .unwrap();
+
+        let table_config = TableSchema {
+            table: table_name,
+            columns: vec![
+                Column::builder()
+                    .set_name("id".to_string())
+                    .set_data_type(DataType::Int)
+                    .build(),
+            ],
+            primary_key: vec![],
+            foreign_keys: vec![],
+            unique_keys: vec![],
+        };
+
+        let encoder = StorageEncoder::new();
+        tokio::fs::write(
+            table_path.join("table.config"),
+            encoder.encode(table_config),
+        )
+        .await
+        .unwrap();
+
+        DBEngine::new(config)
     }
 }
