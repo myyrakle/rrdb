@@ -202,7 +202,12 @@ impl DBEngine {
                     BinaryOperator::Add => match lhs {
                         TableDataFieldType::Integer(lhs_value) => {
                             if let TableDataFieldType::Integer(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Integer(lhs_value + rhs_value));
+                                let value = lhs_value.checked_add(rhs_value).ok_or_else(|| {
+                                    TypeError::wrap(format!(
+                                        "integer overflow: {lhs_value} + {rhs_value}"
+                                    ))
+                                })?;
+                                return Ok(TableDataFieldType::Integer(value));
                             }
                             unreachable!()
                         }
@@ -227,7 +232,12 @@ impl DBEngine {
                     BinaryOperator::Sub => match lhs {
                         TableDataFieldType::Integer(lhs_value) => {
                             if let TableDataFieldType::Integer(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Integer(lhs_value - rhs_value));
+                                let value = lhs_value.checked_sub(rhs_value).ok_or_else(|| {
+                                    TypeError::wrap(format!(
+                                        "integer overflow: {lhs_value} - {rhs_value}"
+                                    ))
+                                })?;
+                                return Ok(TableDataFieldType::Integer(value));
                             }
                             unreachable!()
                         }
@@ -244,7 +254,12 @@ impl DBEngine {
                     BinaryOperator::Mul => match lhs {
                         TableDataFieldType::Integer(lhs_value) => {
                             if let TableDataFieldType::Integer(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Integer(lhs_value * rhs_value));
+                                let value = lhs_value.checked_mul(rhs_value).ok_or_else(|| {
+                                    TypeError::wrap(format!(
+                                        "integer overflow: {lhs_value} * {rhs_value}"
+                                    ))
+                                })?;
+                                return Ok(TableDataFieldType::Integer(value));
                             }
                             unreachable!()
                         }
@@ -261,7 +276,18 @@ impl DBEngine {
                     BinaryOperator::Div => match lhs {
                         TableDataFieldType::Integer(lhs_value) => {
                             if let TableDataFieldType::Integer(rhs_value) = rhs {
-                                return Ok(TableDataFieldType::Integer(lhs_value / rhs_value));
+                                // `checked_div`는 0으로 나누기와 `i64::MIN / -1`
+                                // 오버플로를 모두 None으로 돌려줍니다.
+                                if rhs_value == 0 {
+                                    return Err(TypeError::wrap("division by zero"));
+                                }
+
+                                let value = lhs_value.checked_div(rhs_value).ok_or_else(|| {
+                                    TypeError::wrap(format!(
+                                        "integer overflow: {lhs_value} / {rhs_value}"
+                                    ))
+                                })?;
+                                return Ok(TableDataFieldType::Integer(value));
                             }
                             unreachable!()
                         }
@@ -748,5 +774,79 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, TableDataFieldType::Integer(3));
+    }
+
+    use crate::engine::ast::dml::expressions::binary::BinaryOperatorExpression;
+    use crate::engine::ast::dml::expressions::operators::BinaryOperator;
+
+    async fn reduce_binary(
+        operator: BinaryOperator,
+        lhs: i64,
+        rhs: i64,
+    ) -> crate::errors::Result<TableDataFieldType> {
+        let engine = DBEngine::new(LaunchConfig::default());
+        let expression = SQLExpression::Binary(Box::new(BinaryOperatorExpression {
+            operator,
+            lhs: SQLExpression::Integer(lhs),
+            rhs: SQLExpression::Integer(rhs),
+        }));
+
+        engine
+            .reduce_expression(expression, ReduceContext::default())
+            .await
+    }
+
+    /// 정수 나눗셈에 0 검사가 없어서 `SELECT 1 / 0` 한 줄로 표현식 평가가
+    /// 패닉했습니다. 쿼리를 처리하던 연결 태스크가 그대로 죽습니다.
+    #[tokio::test]
+    async fn integer_division_by_zero_returns_error() {
+        let error = reduce_binary(BinaryOperator::Div, 1, 0)
+            .await
+            .expect_err("division by zero must not panic");
+
+        assert!(
+            error.to_string().contains("division by zero"),
+            "unexpected error: {error}"
+        );
+    }
+
+    /// 산술 연산이 checked 계열을 쓰지 않아, 경계값 입력이 debug 빌드에서
+    /// 패닉하고 release 빌드에서는 조용히 wrapping 되어 잘못된 값을 냈습니다.
+    #[tokio::test]
+    async fn integer_arithmetic_overflow_returns_error() {
+        let cases = [
+            (BinaryOperator::Add, i64::MAX, 1),
+            (BinaryOperator::Sub, i64::MIN, 1),
+            (BinaryOperator::Mul, i64::MAX, 2),
+            (BinaryOperator::Div, i64::MIN, -1),
+        ];
+
+        for (operator, lhs, rhs) in cases {
+            let label = format!("{operator:?}");
+            let error = reduce_binary(operator, lhs, rhs)
+                .await
+                .expect_err("overflowing arithmetic must not panic");
+
+            assert!(
+                error.to_string().contains("overflow"),
+                "unexpected error for {label}: {error}"
+            );
+        }
+    }
+
+    /// 경계에 걸리지 않는 정상 연산은 그대로 동작해야 합니다.
+    #[tokio::test]
+    async fn integer_arithmetic_still_computes_normal_values() {
+        let cases = [
+            (BinaryOperator::Add, 2, 3, 5),
+            (BinaryOperator::Sub, 10, 4, 6),
+            (BinaryOperator::Mul, 6, 7, 42),
+            (BinaryOperator::Div, 9, 3, 3),
+        ];
+
+        for (operator, lhs, rhs, expected) in cases {
+            let result = reduce_binary(operator, lhs, rhs).await.unwrap();
+            assert_eq!(result, TableDataFieldType::Integer(expected));
+        }
     }
 }
