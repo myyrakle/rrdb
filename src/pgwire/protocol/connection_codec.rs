@@ -115,9 +115,16 @@ impl Decoder for ConnectionCodec {
             let mut param_str_start_pos = 0;
             let mut current_key = None;
 
-            for (i, &blah) in src.iter().enumerate() {
-                if blah == 0 {
-                    let string_value = String::from_utf8(src[param_str_start_pos..i].to_owned())?;
+            // 파라미터 영역은 이 메시지 안으로 한정해야 합니다. `src`는 아직
+            // 소비되지 않은 스트림 전체라, 뒤에 파이프라이닝된 다음 메시지가
+            // 붙어 있으면 그 바이트까지 파라미터로 읽힙니다.
+            let parameters_len = message_len - STARTUP_HEADER_SIZE;
+            let parameters_buf = &src[..parameters_len];
+
+            for (i, &byte) in parameters_buf.iter().enumerate() {
+                if byte == 0 {
+                    let string_value =
+                        String::from_utf8(parameters_buf[param_str_start_pos..i].to_owned())?;
 
                     param_str_start_pos = i + 1;
 
@@ -131,7 +138,7 @@ impl Decoder for ConnectionCodec {
                 }
             }
 
-            src.advance(message_len - STARTUP_HEADER_SIZE);
+            src.advance(parameters_len);
 
             self.startup_received = true;
             return Ok(Some(ClientMessage::Startup(Startup {
@@ -560,5 +567,49 @@ mod tests {
                 "message length {declared_len} should be rejected"
             );
         }
+    }
+
+    /// startup 파라미터 파싱은 이 메시지의 길이 안에서만 이뤄져야 합니다.
+    ///
+    /// 이전 구현은 아직 소비되지 않은 스트림 전체(`src`)를 순회해서, 클라이언트가
+    /// startup 뒤에 다음 메시지를 곧바로 이어 보내면(파이프라이닝) 그 바이트까지
+    /// 파라미터로 읽었습니다. 결과적으로 보내지도 않은 항목이 파라미터 맵에
+    /// 들어가고, 이어지는 메시지도 일부 소비되어 프레이밍이 어긋납니다.
+    #[test]
+    fn startup_parameters_stop_at_message_boundary() {
+        let mut codec = ConnectionCodec::new();
+
+        let mut body = BytesMut::new();
+        body.put_i16(3);
+        body.put_i16(0);
+        body.put_slice(b"user\0me\0\0");
+
+        let mut message = BytesMut::new();
+        message.put_i32((4 + body.len()) as i32);
+        message.extend_from_slice(&body);
+
+        // startup 직후에 이어지는 바이트. 파라미터로 섞여 들어가면 안 됩니다.
+        message.put_slice(b"INJECTED\0VALUE\0");
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        match decoded {
+            ClientMessage::Startup(startup) => {
+                assert_eq!(
+                    startup.parameters.get("user").map(String::as_str),
+                    Some("me")
+                );
+                assert_eq!(
+                    startup.parameters.len(),
+                    1,
+                    "bytes after the startup message must not become parameters, got {:?}",
+                    startup.parameters
+                );
+            }
+            other => panic!("expected startup, got {other:?}"),
+        }
+
+        // 뒤따르던 바이트는 그대로 남아 다음 디코딩에 쓰여야 합니다.
+        assert_eq!(&message[..], b"INJECTED\0VALUE\0");
     }
 }
