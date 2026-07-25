@@ -329,6 +329,7 @@ mod tests {
     use crate::pgwire::protocol::client::{ClientMessage, Close};
 
     use super::ConnectionCodec;
+    use super::STARTUP_HEADER_SIZE;
 
     fn close_message(target_type: u8, name: &str) -> BytesMut {
         let mut message = BytesMut::new();
@@ -611,5 +612,111 @@ mod tests {
 
         // 뒤따르던 바이트는 그대로 남아 다음 디코딩에 쓰여야 합니다.
         assert_eq!(&message[..], b"INJECTED\0VALUE\0");
+    }
+
+    /// 결정적 xorshift. 실패하면 seed 하나로 그대로 재현됩니다.
+    struct FuzzRng(u64);
+
+    impl FuzzRng {
+        fn next(&mut self) -> u64 {
+            let mut x = self.0;
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            self.0 = x;
+            x
+        }
+    }
+
+    /// 구조를 갖춘 퍼징: 헤더(tag + length)는 항상 올바르게 만들어서
+    /// 길이 검사를 통과시킨 뒤 본문 파서까지 도달시킵니다. 순수 랜덤
+    /// 바이트는 유효한 헤더를 거의 만들지 못해 이 경로를 못 건드립니다.
+    #[test]
+    fn decoder_never_panics_on_structured_garbage() {
+        let tags: [u8; 8] = [b'B', b'Q', b'P', b'D', b'E', b'C', b'X', b'F'];
+
+        for seed in 1u64..20000 {
+            let mut rng = FuzzRng(seed);
+            let tag = tags[(rng.next() % 8) as usize];
+            let body_len = (rng.next() % 40) as usize;
+
+            let mut body = Vec::with_capacity(body_len);
+            for _ in 0..body_len {
+                let r = rng.next();
+                body.push(match r % 5 {
+                    0 => 0u8,
+                    1 => 0xff,
+                    2 => 0x80,
+                    3 => (r >> 16) as u8,
+                    _ => b'a',
+                });
+            }
+
+            // 길이 필드 자체도 퍼징 대상입니다. 여기를 항상 올바르게 계산하면
+            // 조작된 길이로 인한 언더플로/거대 할당 경로를 영영 못 건드립니다.
+            let honest = (size_of::<i32>() + body.len()) as i32;
+            let declared = match rng.next() % 8 {
+                0 => 0,
+                1 => -1,
+                2 => i32::MIN,
+                3 => i32::MAX,
+                4 => honest.wrapping_neg(),
+                5 => (rng.next() >> 32) as i32,
+                6 => honest.wrapping_sub((rng.next() % 16) as i32),
+                _ => honest,
+            };
+            let mut buf = BytesMut::new();
+            buf.put_u8(tag);
+            buf.put_i32(declared);
+            buf.put_slice(&body);
+
+            let mut codec = ConnectionCodec::new();
+            codec.startup_received = true;
+            // 패닉하지 않는 것이 조건입니다. Err는 정상적인 거부입니다.
+            let _ = codec.decode(&mut buf);
+        }
+    }
+
+    /// 인증 이전 startup 경로도 같은 방식으로 훑습니다.
+    #[test]
+    fn startup_decoder_never_panics_on_structured_garbage() {
+        for seed in 1u64..20000 {
+            let mut rng = FuzzRng(seed);
+            let body_len = (rng.next() % 40) as usize;
+
+            let mut body = Vec::with_capacity(body_len);
+            for _ in 0..body_len {
+                let r = rng.next();
+                body.push(match r % 4 {
+                    0 => 0u8,
+                    1 => 0xff,
+                    2 => (r >> 16) as u8,
+                    _ => b'k',
+                });
+            }
+
+            let honest = (STARTUP_HEADER_SIZE + body.len()) as i32;
+            let declared = match rng.next() % 8 {
+                0 => 0,
+                1 => -1,
+                2 => i32::MIN,
+                3 => i32::MAX,
+                4 => honest.wrapping_neg(),
+                5 => (rng.next() >> 32) as i32,
+                6 => honest.wrapping_sub((rng.next() % 16) as i32),
+                _ => honest,
+            };
+            let major = (rng.next() % 4) as i16;
+            let minor = (rng.next() % 4) as i16;
+
+            let mut buf = BytesMut::new();
+            buf.put_i32(declared);
+            buf.put_i16(major);
+            buf.put_i16(minor);
+            buf.put_slice(&body);
+
+            let mut codec = ConnectionCodec::new();
+            let _ = codec.decode(&mut buf);
+        }
     }
 }
