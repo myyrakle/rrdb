@@ -4,6 +4,7 @@ pub mod index;
 pub mod lexer;
 pub mod optimizer;
 pub mod parser;
+pub mod path_identifier;
 pub mod row_buffer;
 pub mod schema;
 pub mod server;

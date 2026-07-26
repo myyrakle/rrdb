@@ -19,6 +19,10 @@ impl DBEngine {
         let database_name = query.table.clone().unwrap().database_name.unwrap();
         let table_name = query.table.clone().unwrap().table_name;
 
+        // Both names become directories under the data directory (#255).
+        crate::engine::path_identifier::validate_path_identifier(&database_name, "database name")?;
+        crate::engine::path_identifier::validate_path_identifier(&table_name, "table name")?;
+
         let base_path = self.get_data_directory();
         let database_path = base_path.clone().join(&database_name);
 
