@@ -732,6 +732,12 @@ mod tests {
 
         let path = wal_dir.join(format!("00000001.{}", config.wal_extension));
         let intact = tokio::fs::read(&path).await.unwrap();
+        let baseline = BincodeDecoder::new().decode(&intact).unwrap();
+        assert_eq!(
+            baseline.last().unwrap().data,
+            Some(vec![b'c'; 32]),
+            "guard rail: the last entry must round-trip before it is damaged"
+        );
         let used = intact
             .iter()
             .rposition(|byte| *byte != 0)
@@ -743,6 +749,24 @@ mod tests {
             torn[used - cut..used].fill(0);
             tokio::fs::write(&path, &torn).await.unwrap();
 
+            // The damage must actually change the decoded value; otherwise the
+            // assertions below would hold for reasons unrelated to corruption.
+            // The damage must actually change the decoded entry; otherwise the
+            // assertions below would hold for reasons unrelated to corruption.
+            // Note the zeroed tail lands on the fields serialized after `data`
+            // (timestamp, transaction_id, is_continuation), so the payload can
+            // survive while the entry as a whole does not.
+            let damaged = BincodeDecoder::new().decode(&torn).unwrap();
+            let baseline_last = baseline.last().unwrap();
+            let damaged_last = damaged.last().unwrap();
+            assert!(
+                damaged_last.timestamp != baseline_last.timestamp
+                    || damaged_last.data != baseline_last.data
+                    || damaged_last.transaction_id != baseline_last.transaction_id,
+                "cut={}: the zeroed bytes should have altered the last entry",
+                cut
+            );
+
             let reopened = WALBuilder::new(&config)
                 .build(BincodeDecoder::new(), BincodeEncoder::new())
                 .await
@@ -753,6 +777,17 @@ mod tests {
                 reopened.pending_entries().len(),
                 3,
                 "cut={}: all three entries are still reported as replayable",
+                cut
+            );
+            let replayed = reopened.pending_entries().last().unwrap();
+            assert_eq!(
+                (replayed.timestamp, &replayed.data, replayed.transaction_id),
+                (
+                    damaged_last.timestamp,
+                    &damaged_last.data,
+                    damaged_last.transaction_id
+                ),
+                "cut={}: the damaged entry itself is what would be replayed",
                 cut
             );
         }
