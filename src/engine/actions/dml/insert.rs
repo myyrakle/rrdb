@@ -116,7 +116,16 @@ impl DBEngine {
 
                     // 명시적으로 전달된 컬럼값 리스트 처리
                     for (i, column_name) in query.columns.iter().enumerate() {
-                        let column_config_info = columns_map.get(column_name).unwrap();
+                        // `query.columns`는 SQL에서 그대로 온 값이라 스키마에 없는
+                        // 이름이 들어올 수 있습니다. 파서는 값 개수만 확인하고
+                        // 컬럼의 존재 여부는 모릅니다 (#260).
+                        let column_config_info =
+                            columns_map.get(column_name).ok_or_else(|| {
+                                ExecuteError::wrap(format!(
+                                    "column '{}' does not exist on table '{}'",
+                                    column_name, table_name
+                                ))
+                            })?;
 
                         let default_value = match &column_config_info.default {
                             Some(default) => default.to_owned(),
@@ -424,6 +433,74 @@ mod tests {
     /// 두 INSERT를 동시에 실행해 unique 인덱스 사전 검증과 실제
     /// `index_manager.insert` 사이의 경합 창을 유도합니다. 롤백이 없다면
     /// 패자 쪽 row가 테이블에는 남고 인덱스에는 반영되지 않는 상태가 됩니다.
+    /// #260: `query.columns` comes straight from the SQL text, so a column
+    /// that does not exist reached `columns_map.get(...).unwrap()` and panicked
+    /// the task handling the query. It has to be an ordinary SQL error.
+    #[tokio::test]
+    async fn insert_reports_an_unknown_column_instead_of_panicking() {
+        let (engine, wal) = build_test_engine("insert_unknown_column").await;
+        execute_sql(&engine, wal.clone(), "create database rrdb;")
+            .await
+            .unwrap();
+        execute_sql(
+            &engine,
+            wal.clone(),
+            "create table users (id integer primary key, score integer);",
+        )
+        .await
+        .unwrap();
+
+        // Mixed with a real column, so the "required column missing" check
+        // that catches the all-unknown case does not fire first.
+        let error = execute_sql(
+            &engine,
+            wal.clone(),
+            "insert into users (id, nope) values (1, 2);",
+        )
+        .await
+        .expect_err("an unknown column must be reported, not panic");
+
+        let message = error.to_string();
+        assert!(message.contains("nope"), "got: {}", message);
+        assert!(message.contains("does not exist"), "got: {}", message);
+
+        // The failed statement must not have written anything.
+        assert!(
+            engine.full_scan(users_table()).await.unwrap().is_empty(),
+            "a rejected insert must not leave a row behind"
+        );
+    }
+
+    /// Guard rail: rejecting more is only a fix while every valid insert still
+    /// works, including the forms that exercise defaults and column reordering.
+    #[tokio::test]
+    async fn insert_still_accepts_valid_column_lists() {
+        let (engine, wal) = build_test_engine("insert_valid_columns").await;
+        execute_sql(&engine, wal.clone(), "create database rrdb;")
+            .await
+            .unwrap();
+        execute_sql(
+            &engine,
+            wal.clone(),
+            "create table users (id integer primary key, score integer);",
+        )
+        .await
+        .unwrap();
+
+        for sql in [
+            "insert into users (id, score) values (1, 10);",
+            "insert into users (score, id) values (20, 2);",
+            "insert into users (id) values (3);",
+        ] {
+            execute_sql(&engine, wal.clone(), sql)
+                .await
+                .unwrap_or_else(|error| panic!("{:?} must still be accepted: {}", sql, error));
+        }
+
+        let rows = engine.full_scan(users_table()).await.unwrap();
+        assert_eq!(rows.len(), 3, "all three valid inserts should have landed");
+    }
+
     #[tokio::test]
     async fn failed_unique_index_insert_does_not_leave_orphan_row() {
         let (engine, wal) = build_test_engine("orphan_row_rollback").await;
