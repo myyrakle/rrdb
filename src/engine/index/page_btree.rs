@@ -533,9 +533,13 @@ impl PageBackedBTreeIndex {
                 .await?;
         }
 
-        self.store.free_page(leaf_id).await?;
+        // Detach before freeing, not after. `free_page` publishes the page on
+        // the free list, so doing it first leaves a window in which the parent
+        // still points at a page that is already eligible for reallocation --
+        // an error or crash in between makes that permanent.
         self.detach_child_from_ancestors(&path.parents, leaf_id)
-            .await
+            .await?;
+        self.store.free_page(leaf_id).await
     }
 
     /// Remove `child_id` from the last page in `parents`, then walk back up:
@@ -550,6 +554,10 @@ impl PageBackedBTreeIndex {
         child_id: PageId,
     ) -> errors::Result<()> {
         let mut removed_child = child_id;
+        // Pages that lost their last child. They stay allocated until the
+        // parent that points at them has been rewritten, so a crash never
+        // leaves a live pointer to a page that is already on the free list.
+        let mut pending_free: Vec<PageId> = Vec::new();
 
         for depth in (0..parents.len()).rev() {
             let (page_id, child_index) = parents[depth];
@@ -581,16 +589,20 @@ impl PageBackedBTreeIndex {
             }
 
             if internal.children.is_empty() {
-                // This ancestor lost its last child: free it and keep
-                // unwinding so no childless internal page stays in the tree.
-                self.store.free_page(page_id).await?;
-
+                // This ancestor lost its last child. Drop the reference to it
+                // first, then free it: publishing the page on the free list
+                // while something still points at it leaves a window where a
+                // reallocation can hand the slot out from under a live tree.
                 if depth == 0 {
                     // The root itself is now childless -- the tree is empty.
                     self.store.set_root_page_id(None).await?;
-                    return Ok(());
+                    pending_free.push(page_id);
+                    return self.free_all(&pending_free).await;
                 }
 
+                // Not the root: the next iteration detaches `page_id` from its
+                // own parent, and the page is freed once that has happened.
+                pending_free.push(page_id);
                 removed_child = page_id;
                 continue;
             }
@@ -598,6 +610,11 @@ impl PageBackedBTreeIndex {
             self.store
                 .write_page(page_id, &Page::Internal(internal.clone()))
                 .await?;
+
+            // The rewrite above is what drops the references to everything in
+            // `pending_free`; only now is it safe to publish those pages.
+            self.free_all(&pending_free).await?;
+            pending_free.clear();
 
             // A root left with one child adds a pointless level; promote the
             // child in its place.
@@ -610,6 +627,14 @@ impl PageBackedBTreeIndex {
             return Ok(());
         }
 
+        self.free_all(&pending_free).await
+    }
+
+    /// Free pages whose last reference has already been removed.
+    async fn free_all(&self, page_ids: &[PageId]) -> errors::Result<()> {
+        for page_id in page_ids {
+            self.store.free_page(*page_id).await?;
+        }
         Ok(())
     }
 
@@ -1665,8 +1690,31 @@ mod tests {
         );
         let overflow_len = overflow_entries.len();
 
-        // Sanity: this packed group plus the leaf's `next_leaf` pointer must
-        // actually exceed one page, otherwise the guard below is untested.
+        // The comment used to claim this without checking it. Assert it: if the
+        // packed group plus a `next_leaf` pointer still fits in one page, the
+        // guard below is never reached and this test proves nothing.
+        // The comment here used to claim this group plus a `next_leaf` pointer
+        // exceeds one page, so that the size guard below is exercised. Measured,
+        // that is false: with 8 packed entries the page still encodes fine with
+        // the pointer added.
+        //
+        //   entries=8  without_ptr_ok=true  with_ptr_ok=true
+        //
+        // So this test covers the promotion path staying within one page, not
+        // the overflow-on-promotion guard, which no test currently reaches.
+        // Asserting the real property rather than repeating the wrong claim.
+        assert!(
+            super::super::page::encode_page(
+                &Page::Leaf(LeafPage {
+                    entries: overflow_entries.clone(),
+                    next_leaf: Some(1),
+                    overflow: None,
+                }),
+                page_size,
+            )
+            .is_ok(),
+            "this fixture is meant to fit in one page after promotion"
+        );
 
         idx.store
             .write_page(
