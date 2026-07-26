@@ -14,6 +14,30 @@ rrdb is still in `0.0.x` alpha. Security fixes land on `master` only.
 
 Please use GitHub's private reporting **before opening a public issue**.
 
+> **참고 / Note**
+>
+> 이 링크는 저장소에서 private vulnerability reporting이 켜져 있을 때만 동작합니다
+> (Settings → Security → Private vulnerability reporting). 링크가 404를 반환하거나
+> 신고 양식이 보이지 않는다면 아직 비활성화된 상태이니, 아래 대체 경로를 이용해
+> 주세요. 그 경우에도 **공개 이슈에 취약점 상세를 적지 말아 주세요.**
+>
+> This link only works while private vulnerability reporting is enabled for the
+> repository. If it 404s or shows no report form, the feature is off — use the
+> fallback below, and still **do not put vulnerability details in a public
+> issue**.
+
+### 비공개 신고가 불가능할 때 / If private reporting is unavailable
+
+메인테이너에게 직접 연락해 주세요: [@myyrakle](https://github.com/myyrakle)
+(GitHub 프로필에 공개된 연락처를 이용해 주세요.)
+
+연락이 닿지 않고 사안이 급하지 않다면, **상세 재현 절차 없이** 이슈를 열어
+비공개 연락 경로를 먼저 요청하는 방법도 있습니다.
+
+Contact the maintainer directly via the contact details on their GitHub
+profile. If that is not possible and the issue is not urgent, you may open an
+issue **without reproduction details** to ask for a private channel first.
+
 신고에 다음이 포함되면 확인이 빨라집니다:
 
 - 재현 절차 (가능하면 SQL 질의 또는 실패하는 테스트)
