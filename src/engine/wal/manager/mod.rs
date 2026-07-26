@@ -646,6 +646,118 @@ mod tests {
         assert!(error.to_string().contains("truncated wal frame body"));
     }
 
+    /// Pins the gap reported in #251: framing catches a *length* that no
+    /// longer matches, but nothing checks the frame *body*. A payload that
+    /// is corrupted in place — the length header still correct — is accepted
+    /// and replayed as if it were the value that was written.
+    ///
+    /// This test asserts today's behaviour so the eventual integrity check
+    /// has something concrete to flip. When frame checksums land, the
+    /// decode below must fail instead, and this test changes with it.
+    #[tokio::test]
+    async fn test_decode_currently_accepts_a_corrupted_frame_body() {
+        let wal_dir = setup_test_wal_dir("corrupt_frame_body").await;
+        let config = get_test_config(&wal_dir);
+
+        let mut wal_manager = WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .unwrap();
+        wal_manager
+            .append_record(EntryType::Insert, Some(b"ORIGINAL-PAYLOAD".to_vec()), None)
+            .await
+            .unwrap();
+        wal_manager.sync_current_file().await.unwrap();
+        drop(wal_manager);
+
+        let path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let intact = tokio::fs::read(&path).await.unwrap();
+        assert_eq!(
+            BincodeDecoder::new().decode(&intact).unwrap()[0].data,
+            Some(b"ORIGINAL-PAYLOAD".to_vec()),
+            "guard rail: the payload must round-trip before it is corrupted"
+        );
+
+        // Overwrite bytes *inside* the payload, leaving the length header and
+        // the frame boundary untouched: exactly what a torn write looks like.
+        let start = intact
+            .windows(8)
+            .position(|window| window == b"ORIGINAL")
+            .expect("payload should be present in the encoded frame");
+        let mut corrupted = intact.clone();
+        corrupted[start..start + 8].copy_from_slice(b"CORRUPT!");
+
+        let decoded = BincodeDecoder::new()
+            .decode(&corrupted)
+            .expect("current behaviour: a corrupted body decodes without error");
+        assert_eq!(
+            decoded[0].data,
+            Some(b"CORRUPT!-PAYLOAD".to_vec()),
+            "the corrupted bytes are returned verbatim, with no error raised"
+        );
+
+        // And the corruption survives a restart: build() accepts the segment,
+        // so recover_from_wal would replay the altered entry.
+        tokio::fs::write(&path, &corrupted).await.unwrap();
+        let reopened = WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .expect("current behaviour: the corrupted segment is accepted at startup");
+        assert_eq!(
+            reopened.pending_entries()[0].data,
+            Some(b"CORRUPT!-PAYLOAD".to_vec()),
+            "the altered entry is queued for replay"
+        );
+    }
+
+    /// The same gap seen from the other side: zeroing the tail of a frame
+    /// body — a partial flush of the last write — is not detected either.
+    #[tokio::test]
+    async fn test_decode_currently_accepts_a_zeroed_frame_tail() {
+        let wal_dir = setup_test_wal_dir("zeroed_frame_tail").await;
+        let config = get_test_config(&wal_dir);
+
+        let mut wal_manager = WALBuilder::new(&config)
+            .build(BincodeDecoder::new(), BincodeEncoder::new())
+            .await
+            .unwrap();
+        for index in 0..3 {
+            wal_manager
+                .append_record(EntryType::Insert, Some(vec![b'a' + index; 32]), None)
+                .await
+                .unwrap();
+        }
+        wal_manager.sync_current_file().await.unwrap();
+        drop(wal_manager);
+
+        let path = wal_dir.join(format!("00000001.{}", config.wal_extension));
+        let intact = tokio::fs::read(&path).await.unwrap();
+        let used = intact
+            .iter()
+            .rposition(|byte| *byte != 0)
+            .map(|index| index + 1)
+            .expect("segment should contain data");
+
+        for cut in [1usize, 5, 17] {
+            let mut torn = intact.clone();
+            torn[used - cut..used].fill(0);
+            tokio::fs::write(&path, &torn).await.unwrap();
+
+            let reopened = WALBuilder::new(&config)
+                .build(BincodeDecoder::new(), BincodeEncoder::new())
+                .await
+                .unwrap_or_else(|error| {
+                    panic!("current behaviour: cut={} was expected to be accepted, got {}", cut, error)
+                });
+            assert_eq!(
+                reopened.pending_entries().len(),
+                3,
+                "cut={}: all three entries are still reported as replayable",
+                cut
+            );
+        }
+    }
+
     #[tokio::test]
     async fn test_append_record_writes_framed_bincode_entries() {
         let wal_dir = setup_test_wal_dir("append_record_framed_bincode").await;
