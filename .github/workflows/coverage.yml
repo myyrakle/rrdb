@@ -44,7 +44,14 @@ jobs:
 
       - name: Install cargo-tarpaulin
         if: steps.cache-tarpaulin.outputs.cache-hit != 'true'
-        run: cargo install cargo-tarpaulin --locked
+        # `--force` because the two cache steps above overlap: the Cargo
+        # directory cache restores all of `~/.cargo/bin/` (which contains
+        # cargo-tarpaulin) via `restore-keys`, while this step's own cache
+        # needs an exact key match. When that key has been evicted but the
+        # directory cache still hit, the binary is already present and a
+        # plain `cargo install` aborts with
+        # `error: binary \`cargo-tarpaulin\` already exists in destination`.
+        run: cargo install cargo-tarpaulin --locked --force
 
       - name: Run cargo-tarpaulin
         run: |
