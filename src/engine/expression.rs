@@ -60,21 +60,27 @@ impl DBEngine {
 
                     match operand {
                         TableDataFieldType::Integer(value) => {
-                            Ok(TableDataFieldType::Integer(-value))
+                            let negated = value.checked_neg().ok_or_else(|| {
+                                TypeError::wrap(format!("integer overflow: -{value}"))
+                            })?;
+                            Ok(TableDataFieldType::Integer(negated))
                         }
                         TableDataFieldType::Float(value) => Ok(TableDataFieldType::Float(-value)),
                         TableDataFieldType::Array(mut array) => {
                             for e in &mut array {
                                 match e {
                                     TableDataFieldType::Integer(value) => {
-                                        *e = TableDataFieldType::Integer(-*value);
+                                        let negated = value.checked_neg().ok_or_else(|| {
+                                            TypeError::wrap(format!("integer overflow: -{value}"))
+                                        })?;
+                                        *e = TableDataFieldType::Integer(negated);
                                     }
                                     TableDataFieldType::Float(value) => {
                                         *e = TableDataFieldType::Float(-*value);
                                     }
                                     _ => {
                                         return Err(TypeError::wrap(
-                                            "unary '!' operator is valid only for integer and float types.",
+                                            "unary '-' operator is valid only for integer and float types.",
                                         ));
                                     }
                                 }
@@ -777,7 +783,8 @@ mod tests {
     }
 
     use crate::engine::ast::dml::expressions::binary::BinaryOperatorExpression;
-    use crate::engine::ast::dml::expressions::operators::BinaryOperator;
+    use crate::engine::ast::dml::expressions::operators::{BinaryOperator, UnaryOperator};
+    use crate::engine::ast::dml::expressions::unary::UnaryOperatorExpression;
 
     async fn reduce_binary(
         operator: BinaryOperator,
@@ -846,6 +853,43 @@ mod tests {
 
         for (operator, lhs, rhs, expected) in cases {
             let result = reduce_binary(operator, lhs, rhs).await.unwrap();
+            assert_eq!(result, TableDataFieldType::Integer(expected));
+        }
+    }
+
+
+    async fn negate(value: i64) -> crate::errors::Result<TableDataFieldType> {
+        let engine = DBEngine::new(LaunchConfig::default());
+        let expression = SQLExpression::Unary(Box::new(UnaryOperatorExpression {
+            operator: UnaryOperator::Neg,
+            operand: SQLExpression::Integer(value),
+        }));
+
+        engine
+            .reduce_expression(expression, ReduceContext::default())
+            .await
+    }
+
+    /// 단항 부정이 `-value`를 그대로 써서 `-i64::MIN`이 패닉했습니다.
+    /// `i64::MIN`의 절댓값은 `i64`로 표현할 수 없습니다. 쿼리를 처리하던
+    /// 연결 태스크가 그대로 죽습니다.
+    #[tokio::test]
+    async fn negating_i64_min_returns_error() {
+        let error = negate(i64::MIN)
+            .await
+            .expect_err("negating i64::MIN must not panic");
+
+        assert!(
+            error.to_string().contains("overflow"),
+            "unexpected error: {error}"
+        );
+    }
+
+    /// 경계에 걸리지 않는 부정은 그대로 동작해야 합니다.
+    #[tokio::test]
+    async fn negating_normal_integers_still_works() {
+        for (input, expected) in [(5i64, -5i64), (-5, 5), (0, 0), (i64::MAX, -i64::MAX)] {
+            let result = negate(input).await.unwrap();
             assert_eq!(result, TableDataFieldType::Integer(expected));
         }
     }
