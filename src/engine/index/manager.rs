@@ -90,6 +90,21 @@ impl IndexManager {
         let _guard = self.create_lock.lock().await;
         let index_name = meta.index_name.clone();
 
+        // index_file_path joins all three names onto the data directory, so
+        // each has to be a single contained component (#255). Checked here,
+        // before anything is created on disk.
+        crate::engine::path_identifier::validate_path_identifier(&index_name, "index name")?;
+        crate::engine::path_identifier::validate_path_identifier(
+            &meta.table_name.table_name,
+            "table name",
+        )?;
+        if let Some(database_name) = meta.table_name.database_name.as_deref() {
+            crate::engine::path_identifier::validate_path_identifier(
+                database_name,
+                "database name",
+            )?;
+        }
+
         // Check if already exists (under the exclusive lock)
         {
             let metas = self.metas.read().await;
@@ -532,6 +547,97 @@ mod tests {
             column.to_string(),
             unique,
         )
+    }
+
+    /// #255: an index name is joined onto the data directory, so a traversing
+    /// name used to create files outside it. Asserted on the filesystem, not
+    /// on the error alone -- the point of the check is where bytes land.
+    ///
+    /// The depth matters. The name sits at
+    /// `<base>/<db>/tables/<table>/index/<name>.idx`, so it takes five `../`
+    /// to clear `<base>`; with three it would still land inside, and the test
+    /// would pass against the vulnerable code too.
+    #[tokio::test]
+    async fn create_index_rejects_a_traversing_index_name() {
+        let dir = setup_temp_dir("traversal_index_name").await;
+        let escaped = dir
+            .parent()
+            .unwrap()
+            .join("escaped_by_index_name.idx");
+        let _ = tokio::fs::remove_file(&escaped).await;
+
+        let manager = IndexManager::new(dir.clone());
+        let error = manager
+            .create_index(make_meta(
+                "../../../../../escaped_by_index_name",
+                "name",
+                false,
+            ))
+            .await
+            .expect_err("a traversing index name must be rejected");
+
+        assert!(
+            error.to_string().contains("index name"),
+            "the error should name the offending identifier, got: {}",
+            error
+        );
+        assert!(
+            !escaped.exists(),
+            "nothing may be written outside the data directory: {}",
+            escaped.display()
+        );
+    }
+
+    /// The same escape through the table name half of the path. The table sits
+    /// one level shallower, so three `../` is what clears `<base>` here.
+    #[tokio::test]
+    async fn create_index_rejects_a_traversing_table_name() {
+        let dir = setup_temp_dir("traversal_table_name").await;
+        let escaped = dir.parent().unwrap().join("escaped_by_table_name");
+        let _ = tokio::fs::remove_dir_all(&escaped).await;
+
+        let manager = IndexManager::new(dir.clone());
+        let meta = IndexMeta::new(
+            "idx".to_string(),
+            TableName {
+                database_name: Some("testdb".to_string()),
+                table_name: "../../../escaped_by_table_name".to_string(),
+            },
+            "name".to_string(),
+            false,
+        );
+        let error = manager
+            .create_index(meta)
+            .await
+            .expect_err("a traversing table name must be rejected");
+
+        assert!(error.to_string().contains("table name"), "got: {}", error);
+        assert!(
+            !escaped.exists(),
+            "nothing may be created outside the data directory: {}",
+            escaped.display()
+        );
+    }
+
+    /// Guard rail for the two above: refusing more is only a fix while every
+    /// ordinary name still works end to end, contents included.
+    #[tokio::test]
+    async fn create_index_still_accepts_an_ordinary_name() {
+        let dir = setup_temp_dir("traversal_guard_rail").await;
+        let manager = IndexManager::new(dir);
+
+        manager
+            .create_index(make_meta("idx_ordinary", "name", false))
+            .await
+            .expect("an ordinary index name must still be accepted");
+        manager
+            .insert("idx_ordinary", "k".to_string(), "/r/1".to_string())
+            .await
+            .expect("the created index must be usable");
+        assert_eq!(
+            manager.get("idx_ordinary", "k").await.unwrap(),
+            vec!["/r/1".to_string()]
+        );
     }
 
     #[tokio::test]

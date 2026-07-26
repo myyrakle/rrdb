@@ -33,6 +33,12 @@ impl DBEngine {
         match query.action {
             AlterTableAction::AlterTableRenameTo(action) => {
                 let change_name = action.name;
+                // Renaming moves the table directory, so the new name is a
+                // path component too (#255).
+                crate::engine::path_identifier::validate_path_identifier(
+                    &change_name,
+                    "table name",
+                )?;
                 let change_path = database_path.clone().join(&change_name);
 
                 // table 디렉터리명 변경

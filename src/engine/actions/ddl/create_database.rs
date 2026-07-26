@@ -25,6 +25,10 @@ impl DBEngine {
             .clone()
             .ok_or_else(|| ExecuteError::wrap("no database name".to_string()))?;
 
+        // The name is about to become a directory under the data directory,
+        // so it has to be a single, contained path component (#255).
+        crate::engine::path_identifier::validate_path_identifier(&database_name, "database name")?;
+
         let database_path = base_path.clone().join(&database_name);
 
         if let Err(error) = tokio::fs::create_dir(database_path.clone()).await {
