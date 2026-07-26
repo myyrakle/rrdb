@@ -84,6 +84,33 @@ fn mutated_statement() -> impl Strategy<Value = String> {
     })
 }
 
+/// Statements that are valid by construction. Needed because every other
+/// generator here explores *malformed* input: they prove the parser does not
+/// panic, but nothing so far asserts that well-formed SQL actually parses. A
+/// parser that rejected everything would satisfy all the panic and determinism
+/// properties below.
+fn valid_statement() -> impl Strategy<Value = String> {
+    let table = prop::sample::select(vec!["foo", "bar", "baz_1"]);
+    let column = prop::sample::select(vec!["a", "b", "id"]);
+    let literal = prop::sample::select(vec!["1", "42", "'x'"]);
+    let terminator = prop::sample::select(vec!["", ";"]);
+
+    (table, column, literal, terminator).prop_flat_map(
+        |(table, column, literal, terminator)| {
+            let shapes = vec![
+                format!("SELECT {} FROM {}", column, table),
+                format!("SELECT * FROM {}", table),
+                format!("SELECT {} FROM {} WHERE {} = {}", column, table, column, literal),
+                format!("INSERT INTO {} ({}) VALUES ({})", table, column, literal),
+                format!("UPDATE {} SET {} = {}", table, column, literal),
+                format!("DELETE FROM {} WHERE {} = {}", table, column, literal),
+                format!("DROP TABLE {}", table),
+            ];
+            prop::sample::select(shapes).prop_map(move |shape| format!("{}{}", shape, terminator))
+        },
+    )
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(1024))]
 
@@ -150,6 +177,42 @@ proptest! {
 
     /// The tokenizer must terminate and must not invent trailing tokens for
     /// input that is only whitespace.
+    /// The success half of the contract: well-formed SQL must parse, and must
+    /// produce exactly one statement. Without this, "the parser never panics"
+    /// would also hold for a parser that rejected every input.
+    #[test]
+    fn valid_statements_parse_into_exactly_one_statement(sql in valid_statement()) {
+        let parsed = try_parse(&sql);
+        prop_assert!(
+            parsed.is_ok(),
+            "valid SQL should parse: {:?} -> {:?}",
+            sql,
+            parsed.as_ref().err()
+        );
+        prop_assert_eq!(
+            parsed.unwrap().len(),
+            1,
+            "valid SQL should yield one statement: {:?}",
+            sql
+        );
+    }
+
+    /// The failure half: input that cannot be a statement must come back as an
+    /// error, not as a silently empty parse. A statement keyword with nothing
+    /// after it is unambiguously incomplete.
+    #[test]
+    fn a_bare_statement_keyword_is_an_error(
+        keyword in prop::sample::select(vec!["SELECT", "INSERT", "UPDATE", "DELETE", "DROP"])
+    ) {
+        let parsed = try_parse(keyword);
+        prop_assert!(
+            parsed.is_err(),
+            "{:?} alone is incomplete and must be rejected, got {:?}",
+            keyword,
+            parsed.ok()
+        );
+    }
+
     #[test]
     fn whitespace_only_input_yields_no_statements(
         spaces in proptest::string::string_regex(r"[ \t\r\n]{0,40}").expect("valid regex")
