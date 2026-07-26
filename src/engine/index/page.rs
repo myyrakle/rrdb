@@ -126,6 +126,21 @@ pub fn decode_page(buf: &[u8]) -> errors::Result<Page> {
             let internal: InternalPage = bincode::deserialize(payload).map_err(|e| {
                 ExecuteError::wrap(format!("failed to decode internal page: {}", e))
             })?;
+            // `keys.len() + 1 == children.len()` is what makes the child
+            // lookups in page_btree.rs total: `child_index` can be as large as
+            // `keys.len()`, so a page with fewer children than that indexes out
+            // of bounds and panics the task handling the query. bincode trusts
+            // the length prefixes it reads, so a single flipped bit in one of
+            // them is enough to produce such a page without any decode error
+            // (see #258). Check it here, where every read goes through.
+            if internal.children.len() != internal.keys.len() + 1 {
+                return Err(ExecuteError::wrap(format!(
+                    "corrupt internal page: {} keys with {} children (expected {})",
+                    internal.keys.len(),
+                    internal.children.len(),
+                    internal.keys.len() + 1
+                )));
+            }
             Ok(Page::Internal(internal))
         }
         other => Err(ExecuteError::wrap(format!("unknown page tag {}", other))),
@@ -202,5 +217,98 @@ mod tests {
         let encoded = encode_page(&Page::Leaf(small.clone()), 128).unwrap();
         assert_eq!(encoded.len(), 128);
         assert_eq!(decode_page(&encoded).unwrap(), Page::Leaf(small));
+    }
+
+    fn encode_internal_unchecked(keys: Vec<&str>, children: Vec<PageId>) -> Vec<u8> {
+        let page = InternalPage {
+            keys: keys.into_iter().map(|k| k.to_string()).collect(),
+            children,
+        };
+        encode_page(&Page::Internal(page), INDEX_PAGE_SIZE).expect("encoding is not the check")
+    }
+
+    /// #258: the child lookups in page_btree.rs index `children` with a value
+    /// that can be as large as `keys.len()`, so a page with too few children
+    /// panics the task reading it. Decoding has to refuse it instead.
+    #[test]
+    fn decode_rejects_an_internal_page_with_too_few_children() {
+        for (keys, children) in [
+            (vec!["a", "b", "c"], vec![1u32]),
+            (vec!["a", "b"], vec![1, 2]),
+            (vec!["a"], vec![1]),
+            (vec![], vec![]),
+        ] {
+            let encoded = encode_internal_unchecked(keys.clone(), children.clone());
+            let error = decode_page(&encoded).expect_err(&format!(
+                "{} keys with {} children must be rejected",
+                keys.len(),
+                children.len()
+            ));
+            assert!(
+                error.to_string().contains("corrupt internal page"),
+                "got: {}",
+                error
+            );
+        }
+    }
+
+    /// A page with too *many* children is equally broken, and would make the
+    /// tree lose a subtree rather than panic. Same check covers it.
+    #[test]
+    fn decode_rejects_an_internal_page_with_too_many_children() {
+        let encoded = encode_internal_unchecked(vec!["a"], vec![1, 2, 3]);
+        let error = decode_page(&encoded).expect_err("2 keys' worth of children with 1 key");
+        assert!(error.to_string().contains("corrupt internal page"));
+    }
+
+    /// Guard rail: refusing more is only a fix while every well-formed page
+    /// still round trips. Covers the smallest legal internal page and a
+    /// multi-level one.
+    #[test]
+    fn decode_still_accepts_well_formed_internal_pages() {
+        for (keys, children) in [
+            (vec![], vec![1u32]),
+            (vec!["m"], vec![1, 2]),
+            (vec!["a", "m", "z"], vec![1, 2, 3, 4]),
+        ] {
+            let page = InternalPage {
+                keys: keys.iter().map(|k| k.to_string()).collect(),
+                children: children.clone(),
+            };
+            let encoded = encode_page(&Page::Internal(page.clone()), INDEX_PAGE_SIZE).unwrap();
+            assert_eq!(
+                decode_page(&encoded).unwrap(),
+                Page::Internal(page),
+                "{} keys / {} children must still round trip",
+                keys.len(),
+                children.len()
+            );
+        }
+    }
+
+    /// The reason the check lives at decode rather than at a length check: a
+    /// single flipped bit in one of bincode's length prefixes produces a page
+    /// that deserializes cleanly but violates the invariant.
+    #[test]
+    fn a_single_bit_flip_can_break_the_invariant_and_is_now_caught() {
+        let encoded = encode_internal_unchecked(vec!["k1", "k2"], vec![1, 2, 3]);
+        let used = encoded.iter().rposition(|b| *b != 0).unwrap() + 1;
+
+        let mut caught = 0usize;
+        for pos in PAGE_ENCODING_OVERHEAD..used {
+            for bit in 0..8u8 {
+                let mut flipped = encoded.clone();
+                flipped[pos] ^= 1 << bit;
+                if let Err(error) = decode_page(&flipped)
+                    && error.to_string().contains("corrupt internal page")
+                {
+                    caught += 1;
+                }
+            }
+        }
+        assert!(
+            caught > 0,
+            "at least one single-bit flip should now be reported as corruption"
+        );
     }
 }

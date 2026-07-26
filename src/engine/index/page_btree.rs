@@ -962,3 +962,52 @@ mod tests {
         assert_ne!(entries[split - 1].key, entries[split].key);
     }
 }
+
+#[cfg(test)]
+mod invariant_integration {
+    use super::*;
+    use crate::engine::index::page::{InternalPage, Page};
+    use crate::engine::index::page_store::PageStore;
+
+    /// #258 end to end: a corrupt root used to panic the task in
+    /// `find_leftmost_leaf`. Asserted through a real file and the public API,
+    /// because the value of the decode check is that callers see an error.
+    #[tokio::test]
+    async fn scan_reports_a_corrupt_root_instead_of_panicking() {
+        let dir = std::path::PathBuf::from("target/test_invariant_integration");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("corrupt_root.idx");
+        let _ = tokio::fs::remove_file(&path).await;
+
+        {
+            let store = PageStore::create(&path, INDEX_PAGE_SIZE).await.unwrap();
+            let id = store.allocate_page().await.unwrap();
+            store
+                .write_page(
+                    id,
+                    &Page::Internal(InternalPage {
+                        keys: vec![],
+                        children: vec![],
+                    }),
+                )
+                .await
+                .unwrap();
+            store.set_root_page_id(Some(id)).await.unwrap();
+        }
+
+        let index = PageBackedBTreeIndex::open(&path, "c".to_string(), false)
+            .await
+            .unwrap();
+        let error = index
+            .scan_all()
+            .await
+            .expect_err("a corrupt root must surface as an error");
+        assert!(
+            error.to_string().contains("corrupt internal page"),
+            "got: {}",
+            error
+        );
+
+        let _ = tokio::fs::remove_file(&path).await;
+    }
+}
