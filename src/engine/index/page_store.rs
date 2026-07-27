@@ -2,8 +2,11 @@
 //!
 //! On-disk layout: a small fixed-size superblock, followed by an array of
 //! `page_size`-byte page slots addressed by `page_id` (see `page.rs` for the
-//! per-page encoding). Pages are allocated with a simple bump allocator --
-//! there is no free-list reuse of dropped pages in this MVP.
+//! per-page encoding). Pages are allocated from a free-list when one is
+//! available (issue #232), falling back to a bump allocator otherwise.
+//! Freed pages keep their file slot but are linked into a singly-linked
+//! free-list whose head lives in the superblock; each freed slot stores the
+//! id of the next free page (`Page::Free`).
 //!
 //! File IO is synchronous (`std::fs::File` guarded by a `std::sync::Mutex`)
 //! run inline inside `async fn`s. This briefly blocks the executor thread on
@@ -25,7 +28,10 @@ use crate::errors::execute_error::ExecuteError;
 use super::page::{self, Page, PageId};
 
 const MAGIC: [u8; 4] = *b"RIDX";
-const VERSION: u16 = 1;
+/// Bumped to 2 for the free-list head added in issue #232. Version 1 files
+/// decode with `free_list_head = None` (see `read_superblock`), so existing
+/// index files keep working and simply start with an empty free-list.
+const VERSION: u16 = 2;
 /// Fixed size of the superblock region at the start of the file. Must be
 /// large enough to hold the bincode-encoded `Superblock` below; checked by a
 /// test.
@@ -33,6 +39,19 @@ pub const SUPERBLOCK_SIZE: usize = 64;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Superblock {
+    magic: [u8; 4],
+    version: u16,
+    page_size: u32,
+    root_page_id: Option<PageId>,
+    next_page_id: PageId,
+    /// Head of the free-page list, or `None` when no pages are free.
+    free_list_head: Option<PageId>,
+}
+
+/// The superblock layout as written by version 1 (before the free-list in
+/// issue #232). Used to migrate existing index files on open.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct SuperblockV1 {
     magic: [u8; 4],
     version: u16,
     page_size: u32,
@@ -69,6 +88,7 @@ impl PageStore {
                 page_size: page_size as u32,
                 root_page_id: None,
                 next_page_id: 0,
+                free_list_head: None,
             })
             .await?;
 
@@ -112,6 +132,29 @@ impl PageStore {
         file.read_exact(&mut buf)
             .map_err(|e| ExecuteError::wrap(format!("failed to read superblock: {}", e)))?;
 
+        // Version 1 files predate `free_list_head`; decode them with the old
+        // layout and treat their free-list as empty.
+        let version = u16::from_le_bytes(
+            buf.get(4..6)
+                .and_then(|b| b.try_into().ok())
+                .ok_or_else(|| ExecuteError::wrap("superblock too small to contain a version"))?,
+        );
+
+        if version < 2 {
+            let sb: SuperblockV1 = bincode::deserialize(&buf).map_err(|e| {
+                ExecuteError::wrap(format!("failed to decode v1 superblock: {}", e))
+            })?;
+
+            return Ok(Superblock {
+                magic: sb.magic,
+                version: sb.version,
+                page_size: sb.page_size,
+                root_page_id: sb.root_page_id,
+                next_page_id: sb.next_page_id,
+                free_list_head: None,
+            });
+        }
+
         bincode::deserialize(&buf)
             .map_err(|e| ExecuteError::wrap(format!("failed to decode superblock: {}", e)))
     }
@@ -147,8 +190,9 @@ impl PageStore {
             let mut file = self.file.lock().unwrap();
             file.seek(SeekFrom::Start(self.page_offset(page_id)))
                 .map_err(|e| ExecuteError::wrap(format!("failed to seek to page: {}", e)))?;
-            file.read_exact(&mut buf)
-                .map_err(|e| ExecuteError::wrap(format!("failed to read page {}: {}", page_id, e)))?;
+            file.read_exact(&mut buf).map_err(|e| {
+                ExecuteError::wrap(format!("failed to read page {}: {}", page_id, e))
+            })?;
         }
         page::decode_page(&buf)
     }
@@ -168,13 +212,84 @@ impl PageStore {
         Ok(())
     }
 
-    /// Allocate a fresh page id (bump allocator; no reuse of freed pages).
+    /// Allocate a page id, reusing the head of the free-list when one is
+    /// available and falling back to the bump allocator otherwise
+    /// (issue #232).
     pub async fn allocate_page(&self) -> errors::Result<PageId> {
         let mut sb = self.read_superblock()?;
+
+        if let Some(free_id) = sb.free_list_head {
+            // Pop the head of the free-list; its slot stores the next link.
+            let next_free = match self.read_page(free_id).await? {
+                Page::Free(next) => next,
+                _ => {
+                    return Err(ExecuteError::wrap(format!(
+                        "corrupt index: page {} is on the free-list but is not a free page",
+                        free_id
+                    )));
+                }
+            };
+
+            sb.free_list_head = next_free;
+            self.write_superblock(&sb).await?;
+            return Ok(free_id);
+        }
+
         let id = sb.next_page_id;
         sb.next_page_id += 1;
         self.write_superblock(&sb).await?;
         Ok(id)
+    }
+
+    /// Return `page_id` to the free-list so a later `allocate_page` can
+    /// reuse it. The caller must guarantee no page still references it.
+    ///
+    /// The free page is written before the superblock head is updated, so a
+    /// crash between the two leaves the page merely orphaned (leaked) rather
+    /// than producing a free-list that points at live data.
+    pub async fn free_page(&self, page_id: PageId) -> errors::Result<()> {
+        let mut sb = self.read_superblock()?;
+
+        self.write_page(page_id, &Page::Free(sb.free_list_head))
+            .await?;
+
+        sb.free_list_head = Some(page_id);
+        self.write_superblock(&sb).await
+    }
+
+    /// Number of pages currently on the free-list. Test/diagnostic helper.
+    pub async fn free_page_count(&self) -> errors::Result<usize> {
+        let mut count = 0;
+        let mut next = self.read_superblock()?.free_list_head;
+
+        while let Some(page_id) = next {
+            match self.read_page(page_id).await? {
+                Page::Free(link) => {
+                    count += 1;
+                    next = link;
+                }
+                _ => {
+                    return Err(ExecuteError::wrap(format!(
+                        "corrupt index: page {} is on the free-list but is not a free page",
+                        page_id
+                    )));
+                }
+            }
+        }
+
+        Ok(count)
+    }
+
+    /// Highest page id ever handed out by the bump allocator (i.e. the
+    /// number of page slots in the file). Test/diagnostic helper.
+    pub async fn allocated_page_count(&self) -> errors::Result<PageId> {
+        Ok(self.read_superblock()?.next_page_id)
+    }
+
+    /// Head of the free-list. Test helper for structural assertions.
+    #[cfg(test)]
+    pub(crate) fn free_list_head_for_test(&self) -> Option<PageId> {
+        self.read_superblock().unwrap().free_list_head
     }
 
     pub async fn root_page_id(&self) -> errors::Result<Option<PageId>> {
@@ -209,9 +324,76 @@ mod tests {
             page_size: page::INDEX_PAGE_SIZE as u32,
             root_page_id: Some(12345),
             next_page_id: 67890,
+            free_list_head: Some(4242),
         };
         let encoded = bincode::serialize(&sb).unwrap();
         assert!(encoded.len() <= SUPERBLOCK_SIZE);
+    }
+
+    /// `read_superblock` locates the version field by byte offset to decide
+    /// which layout to decode, so that offset must match the encoding.
+    #[test]
+    fn version_field_sits_at_the_expected_byte_offset() {
+        let sb = Superblock {
+            magic: MAGIC,
+            version: VERSION,
+            page_size: page::INDEX_PAGE_SIZE as u32,
+            root_page_id: None,
+            next_page_id: 0,
+            free_list_head: None,
+        };
+        let encoded = bincode::serialize(&sb).unwrap();
+
+        assert_eq!(&encoded[0..4], &MAGIC);
+        assert_eq!(
+            u16::from_le_bytes(encoded[4..6].try_into().unwrap()),
+            VERSION
+        );
+    }
+
+    /// Index files written before issue #232 must still open, with an empty
+    /// free-list.
+    #[tokio::test]
+    async fn opens_a_version_1_superblock_with_an_empty_free_list() {
+        let path = temp_path("v1_compat.idx");
+
+        // Hand-write a v1 file: v1 superblock + one leaf page.
+        {
+            let mut encoded = bincode::serialize(&SuperblockV1 {
+                magic: MAGIC,
+                version: 1,
+                page_size: 256,
+                root_page_id: Some(0),
+                next_page_id: 1,
+            })
+            .unwrap();
+            encoded.resize(SUPERBLOCK_SIZE, 0);
+
+            let leaf = page::encode_page(
+                &Page::Leaf(LeafPage {
+                    entries: vec![LeafEntry {
+                        key: "I:001".to_string(),
+                        row_path: "/r/1".to_string(),
+                    }],
+                    next_leaf: None,
+                    overflow: None,
+                }),
+                256,
+            )
+            .unwrap();
+
+            let mut bytes = encoded;
+            bytes.extend_from_slice(&leaf);
+            std::fs::write(&path, bytes).unwrap();
+        }
+
+        let store = PageStore::open(&path).await.unwrap();
+        assert_eq!(store.page_size(), 256);
+        assert_eq!(store.root_page_id().await.unwrap(), Some(0));
+        assert_eq!(store.free_page_count().await.unwrap(), 0);
+
+        // A fresh allocation still works and does not collide with page 0.
+        assert_eq!(store.allocate_page().await.unwrap(), 1);
     }
 
     #[tokio::test]

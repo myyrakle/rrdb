@@ -22,6 +22,10 @@ pub const PAGE_ENCODING_OVERHEAD: usize = TAG_LEN + LEN_PREFIX_LEN;
 
 const TAG_LEAF: u8 = 1;
 const TAG_INTERNAL: u8 = 2;
+/// A page that has been freed and is linked into the page store's free-list
+/// (issue #232). Its slot stays allocated in the file but is available for
+/// reuse by a later `allocate_page`.
+const TAG_FREE: u8 = 3;
 
 /// A single key -> row_path mapping stored in a leaf page.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,6 +61,9 @@ pub struct InternalPage {
 pub enum Page {
     Leaf(LeafPage),
     Internal(InternalPage),
+    /// A freed page slot, holding the id of the next free page in the
+    /// free-list (`None` marks the end of the chain).
+    Free(Option<PageId>),
 }
 
 /// Encode `page` into a `page_size`-byte buffer.
@@ -76,6 +83,11 @@ pub fn encode_page(page: &Page, page_size: usize) -> errors::Result<Vec<u8>> {
             bincode::serialize(internal).map_err(|e| {
                 ExecuteError::wrap(format!("failed to encode internal page: {}", e))
             })?,
+        ),
+        Page::Free(next_free) => (
+            TAG_FREE,
+            bincode::serialize(next_free)
+                .map_err(|e| ExecuteError::wrap(format!("failed to encode free page: {}", e)))?,
         ),
     };
 
@@ -142,6 +154,11 @@ pub fn decode_page(buf: &[u8]) -> errors::Result<Page> {
                 )));
             }
             Ok(Page::Internal(internal))
+        }
+        TAG_FREE => {
+            let next_free: Option<PageId> = bincode::deserialize(payload)
+                .map_err(|e| ExecuteError::wrap(format!("failed to decode free page: {}", e)))?;
+            Ok(Page::Free(next_free))
         }
         other => Err(ExecuteError::wrap(format!("unknown page tag {}", other))),
     }

@@ -425,7 +425,8 @@ impl IndexManager {
                                 Err(e) => {
                                     log::warn!(
                                         "skipping index meta file {:?}: failed to read: {}",
-                                        path, e
+                                        path,
+                                        e
                                     );
                                     continue;
                                 }
@@ -436,7 +437,8 @@ impl IndexManager {
                                 Err(e) => {
                                     log::warn!(
                                         "skipping index meta file {:?}: failed to decode: {}",
-                                        path, e
+                                        path,
+                                        e
                                     );
                                     continue;
                                 }
@@ -454,7 +456,9 @@ impl IndexManager {
                                 Err(e) => {
                                     log::warn!(
                                         "skipping index {:?}: failed to open {:?}: {}",
-                                        meta.index_name, idx_path, e
+                                        meta.index_name,
+                                        idx_path,
+                                        e
                                     );
                                     continue;
                                 }
@@ -762,6 +766,50 @@ mod tests {
         assert!(removed);
 
         assert_eq!(manager.len("idx_name").await.unwrap(), 0);
+    }
+
+    /// Delete-heavy churn through the manager (the path `DELETE` statements
+    /// take) must not grow the index file without bound -- issue #232.
+    #[tokio::test]
+    async fn index_file_stops_growing_under_insert_delete_churn() {
+        let dir = setup_temp_dir("churn_file_size").await;
+        let manager = IndexManager::new(dir.clone());
+
+        let meta = make_meta("idx_id", "id", false);
+        let index_path = dir
+            .join("testdb")
+            .join("tables")
+            .join("testtable")
+            .join("index")
+            .join("idx_id.idx");
+        manager.create_index(meta).await.unwrap();
+
+        let mut sizes = Vec::new();
+        for _ in 0..4 {
+            for i in 0..300 {
+                manager
+                    .insert("idx_id", format!("I:{:05}", i), format!("/r/{}", i))
+                    .await
+                    .unwrap();
+            }
+            for i in 0..300 {
+                assert!(
+                    manager
+                        .remove("idx_id", &format!("I:{:05}", i), &format!("/r/{}", i))
+                        .await
+                        .unwrap()
+                );
+            }
+            sizes.push(tokio::fs::metadata(&index_path).await.unwrap().len());
+        }
+
+        assert_eq!(manager.len("idx_id").await.unwrap(), 0);
+        assert_eq!(
+            sizes.last().unwrap(),
+            sizes.get(1).unwrap(),
+            "index file kept growing across churn rounds: {:?}",
+            sizes
+        );
     }
 
     #[tokio::test]
