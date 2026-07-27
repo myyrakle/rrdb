@@ -33,6 +33,19 @@ impl DBEngine {
         &self,
         table_name: TableName,
     ) -> errors::Result<Vec<(RowLocation, TableDataRow)>> {
+        self.full_scan_limited(table_name, None).await
+    }
+
+    /// `full_scan`, stopping once `limit` live rows have been collected.
+    ///
+    /// The limit counts rows that survive the tombstone filter, not raw slots,
+    /// so a segment whose head is mostly deleted still yields the requested
+    /// number. `None` scans everything.
+    pub(crate) async fn full_scan_limited(
+        &self,
+        table_name: TableName,
+        limit: Option<usize>,
+    ) -> errors::Result<Vec<(RowLocation, TableDataRow)>> {
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(&table_name)?;
         let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
@@ -47,11 +60,15 @@ impl DBEngine {
             }
         };
 
-        Ok(rows
+        let live = rows
             .into_iter()
             .enumerate()
-            .filter_map(|(row_index, row)| row.map(|row| (RowLocation { row_index }, row)))
-            .collect())
+            .filter_map(|(row_index, row)| row.map(|row| (RowLocation { row_index }, row)));
+
+        Ok(match limit {
+            Some(limit) => live.take(limit).collect(),
+            None => live.collect(),
+        })
     }
 
     /// 행을 세그먼트 파일 끝에 추가하고 시작 row index를 반환합니다.

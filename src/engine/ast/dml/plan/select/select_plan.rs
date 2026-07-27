@@ -83,6 +83,7 @@ mod tests {
             table_name: TableName::new(None, "table".into()),
             alias: None,
             scan: ScanType::FullScan,
+            scan_limit: None,
         };
         let select_plan_item: SelectPlanItem = select_from.clone().into();
         assert_eq!(select_plan_item, SelectPlanItem::From(select_from));
