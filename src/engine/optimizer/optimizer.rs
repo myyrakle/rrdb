@@ -78,6 +78,28 @@ impl Optimizer {
             ScanType::FullScan
         };
 
+        // LIMIT pushdown (#51). Only safe when nothing between the scan and the
+        // limit can reorder or remove rows: a filter, a sort, a grouping or a
+        // join all mean the first N rows off the table are not the first N rows
+        // of the result.
+        //
+        // The bound is OFFSET + LIMIT rather than LIMIT, since the skipped rows
+        // still have to come off the table first. Without a LIMIT there is no
+        // bound at all, even if an OFFSET is present.
+        let scan_limit = if query.join_clause.is_empty()
+            && query.where_clause.is_none()
+            && query.group_by_clause.is_none()
+            && query.having_clause.is_none()
+            && query.order_by_clause.is_none()
+            && !query.has_aggregate
+        {
+            query.limit.map(|limit| {
+                (limit as usize).saturating_add(query.offset.unwrap_or(0) as usize)
+            })
+        } else {
+            None
+        };
+
         // FROM 절 분석
         if let Some(from_clause) = query.from_table {
             has_from = true;
@@ -89,6 +111,7 @@ impl Optimizer {
                         table_name,
                         alias,
                         scan,
+                        scan_limit,
                     }
                     .into(),
                 ),
@@ -771,5 +794,77 @@ mod tests {
             SelectPlanItem::From(from) => assert_eq!(from.scan, ScanType::FullScan),
             other => panic!("expected From plan, got {:?}", other),
         }
+    }
+
+    /// Parse `sql` and return the scan limit the optimizer put on the FROM plan.
+    async fn scan_limit_for(sql: &str) -> Option<usize> {
+        let mut parser = Parser::with_string(sql.into()).unwrap();
+        let statements = parser
+            .parse(ParserContext::default().set_default_database("rrdb".to_string()))
+            .unwrap();
+        let query = match statements.into_iter().next().unwrap() {
+            crate::engine::ast::SQLStatement::DML(
+                crate::engine::ast::DMLStatement::SelectQuery(query),
+            ) => query,
+            other => panic!("expected select query, got {:?}", other),
+        };
+
+        let optimizer = Optimizer::with_context(context(10_000, true));
+        let plan = optimizer.optimize_select(query).await.unwrap();
+
+        match &plan.list[0] {
+            SelectPlanItem::From(from) => from.scan_limit,
+            other => panic!("expected From plan, got {:?}", other),
+        }
+    }
+
+    /// #51: a bare LIMIT bounds the scan, and OFFSET is included in the bound
+    /// because the skipped rows still have to be read.
+    #[tokio::test]
+    async fn limit_is_pushed_into_the_scan_when_nothing_can_reorder_rows() {
+        assert_eq!(scan_limit_for("select * from foo limit 1;").await, Some(1));
+        assert_eq!(
+            scan_limit_for("select * from foo offset 5 limit 1;").await,
+            Some(6),
+            "offset 5 limit 1 has to read 6 rows, not 1"
+        );
+        assert_eq!(
+            scan_limit_for("select * from foo limit 10 offset 90;").await,
+            Some(100)
+        );
+    }
+
+    /// The guard rail. Pushing a limit down is only correct while every stage
+    /// between the scan and the limit preserves both order and membership;
+    /// each of these breaks one of those, so the scan must stay unbounded.
+    #[tokio::test]
+    async fn limit_is_not_pushed_past_a_stage_that_can_reorder_or_drop_rows() {
+        for sql in [
+            // ORDER BY: the first row scanned is not the first row sorted.
+            "select * from foo order by a limit 1;",
+            // WHERE: rows are dropped after the scan, so N scanned may yield 0.
+            "select * from foo where a = 1 limit 1;",
+            // JOIN: one left row can produce many or no output rows.
+            "select * from foo f inner join bar b on f.id = b.id limit 1;",
+            // GROUP BY collapses rows; HAVING then drops groups.
+            "select a from foo group by a limit 1;",
+            // Aggregate over the whole table needs every row.
+            "select count(1) from foo limit 1;",
+        ] {
+            assert_eq!(
+                scan_limit_for(sql).await,
+                None,
+                "{:?} must not bound the scan",
+                sql
+            );
+        }
+    }
+
+    /// OFFSET without LIMIT is unbounded: there is no count that says when to
+    /// stop, only where to start.
+    #[tokio::test]
+    async fn offset_without_limit_does_not_bound_the_scan() {
+        assert_eq!(scan_limit_for("select * from foo offset 5;").await, None);
+        assert_eq!(scan_limit_for("select * from foo;").await, None);
     }
 }

@@ -191,7 +191,7 @@ impl DBEngine {
                     match from.scan {
                         ScanType::FullScan => {
                             let mut result = self
-                                .full_scan(table_name)
+                                .full_scan_limited(table_name, from.scan_limit)
                                 .await?
                                 .into_iter()
                                 .map(|(_, e)| e)
@@ -726,6 +726,69 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(3));
+    }
+
+    /// #51: LIMIT을 스캔까지 밀어내도 결과가 달라지면 안 됩니다. 최적화가
+    /// 값을 바꾸지 않는다는 것은 계획 모양이 아니라 실제 행으로 확인해야
+    /// 합니다.
+    #[tokio::test]
+    async fn limit_pushdown_returns_the_same_rows_as_before() {
+        let (engine, wal) = build_test_engine("test_limit_pushdown_rows").await;
+
+        execute_sql(&engine, wal.clone(), "create database rrdb;")
+            .await
+            .unwrap();
+        execute_sql(&engine, wal.clone(), "create table key_value (id integer);")
+            .await
+            .unwrap();
+        for value in 1..=5 {
+            insert_id(&engine, wal.clone(), value).await;
+        }
+
+        // 스캔이 한도에서 멈추더라도 앞에서부터 정확히 그만큼이어야 합니다.
+        let result = execute_sql(&engine, wal.clone(), "select id from key_value limit 2;")
+            .await
+            .unwrap();
+        assert_eq!(result.rows.len(), 2);
+        assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(1));
+        assert_eq!(result.rows[1].fields[0], ExecuteField::Integer(2));
+
+        // OFFSET이 있으면 건너뛴 행까지 읽어야 하므로, 한도는 offset+limit입니다.
+        // 한도를 limit만으로 잡았다면 여기서 빈 결과가 나옵니다.
+        let result = execute_sql(
+            &engine,
+            wal.clone(),
+            "select id from key_value offset 3 limit 2;",
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.rows.len(), 2);
+        assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(4));
+        assert_eq!(result.rows[1].fields[0], ExecuteField::Integer(5));
+
+        // ORDER BY가 붙으면 스캔을 자를 수 없습니다. 잘랐다면 앞의 2행만
+        // 정렬해서 5가 아니라 2가 나옵니다.
+        let result = execute_sql(
+            &engine,
+            wal.clone(),
+            "select id from key_value order by id desc limit 2;",
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.rows.len(), 2);
+        assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(5));
+        assert_eq!(result.rows[1].fields[0], ExecuteField::Integer(4));
+
+        // WHERE도 마찬가지입니다. 스캔을 1행에서 끊으면 id=4를 만나지 못합니다.
+        let result = execute_sql(
+            &engine,
+            wal,
+            "select id from key_value where id = 4 limit 1;",
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.rows.len(), 1);
+        assert_eq!(result.rows[0].fields[0], ExecuteField::Integer(4));
     }
 
     /// `LIMIT`/`OFFSET`은 사용자가 주는 값이라 실제 행 수를 넘을 수 있습니다.
