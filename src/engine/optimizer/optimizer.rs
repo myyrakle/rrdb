@@ -498,6 +498,8 @@ fn merge_bounds(existing: &mut ColumnBounds, new: ColumnBounds) {
 mod tests {
     use super::*;
     use crate::engine::ast::dml::expressions::binary::BinaryOperatorExpression;
+    use crate::engine::ast::dml::plan::delete::delete_plan::DeletePlanItem;
+    use crate::engine::ast::dml::plan::update::update_plan::UpdatePlanItem;
     use crate::engine::parser::predule::{Parser, ParserContext};
 
     fn table() -> TableName {
@@ -768,6 +770,156 @@ mod tests {
         }
 
         assert!(matches!(plan.list[1], SelectPlanItem::Filter(_)));
+    }
+
+    /// Parse `sql` into the single statement it contains.
+    fn parse_one(sql: &str) -> crate::engine::ast::SQLStatement {
+        let mut parser = Parser::with_string(sql.into()).unwrap();
+        parser
+            .parse(ParserContext::default().set_default_database("rrdb".to_string()))
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap()
+    }
+
+    fn update_query(sql: &str) -> crate::engine::ast::dml::update::UpdateQuery {
+        match parse_one(sql) {
+            crate::engine::ast::SQLStatement::DML(
+                crate::engine::ast::DMLStatement::UpdateQuery(query),
+            ) => query,
+            other => panic!("expected update query, got {:?}", other),
+        }
+    }
+
+    fn delete_query(sql: &str) -> crate::engine::ast::dml::delete::DeleteQuery {
+        match parse_one(sql) {
+            crate::engine::ast::SQLStatement::DML(
+                crate::engine::ast::DMLStatement::DeleteQuery(query),
+            ) => query,
+            other => panic!("expected delete query, got {:?}", other),
+        }
+    }
+
+    /// #134: `optimize_update` runs the same cost-based scan selection as
+    /// SELECT, but nothing exercised it — the function was never called from a
+    /// test, so an index that stopped being picked here would go unnoticed.
+    #[tokio::test]
+    async fn optimize_update_picks_an_index_for_a_selective_predicate() {
+        let optimizer = Optimizer::with_context(context(10_000, true));
+        let plan = optimizer
+            .optimize_update(update_query("update users set name = 'x' where id = 42;"))
+            .await
+            .unwrap();
+
+        match &plan.list[0] {
+            UpdatePlanItem::UpdateFrom(from) => match &from.scan {
+                ScanType::IndexScan(index) => {
+                    assert_eq!(index.index_name, "rrdb.users_pkey");
+                }
+                other => panic!("expected an index scan, got {:?}", other),
+            },
+            other => panic!("expected UpdateFrom plan, got {:?}", other),
+        }
+
+        // The filter is kept even when an index is chosen: the index narrows
+        // the rows, it does not prove the predicate.
+        assert!(
+            plan.list
+                .iter()
+                .any(|item| matches!(item, UpdatePlanItem::Filter(_))),
+            "the WHERE filter must survive index selection"
+        );
+    }
+
+    /// The other direction, so the test above cannot pass by always choosing an
+    /// index: a tiny table is cheaper to scan whole.
+    #[tokio::test]
+    async fn optimize_update_falls_back_to_full_scan_on_a_tiny_table() {
+        let optimizer = Optimizer::with_context(context(3, true));
+        let plan = optimizer
+            .optimize_update(update_query("update users set name = 'x' where id = 42;"))
+            .await
+            .unwrap();
+
+        match &plan.list[0] {
+            UpdatePlanItem::UpdateFrom(from) => assert_eq!(from.scan, ScanType::FullScan),
+            other => panic!("expected UpdateFrom plan, got {:?}", other),
+        }
+    }
+
+    /// An UPDATE with no WHERE touches every row, so there is nothing for an
+    /// index to narrow and no filter stage to add.
+    #[tokio::test]
+    async fn optimize_update_without_a_predicate_scans_everything() {
+        let optimizer = Optimizer::with_context(context(10_000, true));
+        let plan = optimizer
+            .optimize_update(update_query("update users set name = 'x';"))
+            .await
+            .unwrap();
+
+        assert_eq!(plan.list.len(), 1, "no filter stage without a WHERE clause");
+        match &plan.list[0] {
+            UpdatePlanItem::UpdateFrom(from) => assert_eq!(from.scan, ScanType::FullScan),
+            other => panic!("expected UpdateFrom plan, got {:?}", other),
+        }
+    }
+
+    /// Same three properties for DELETE, which shares the selection logic but
+    /// was equally untested.
+    #[tokio::test]
+    async fn optimize_delete_picks_an_index_for_a_selective_predicate() {
+        let optimizer = Optimizer::with_context(context(10_000, true));
+        let plan = optimizer
+            .optimize_delete(delete_query("delete from users where id = 42;"))
+            .await
+            .unwrap();
+
+        match &plan.list[0] {
+            DeletePlanItem::DeleteFrom(from) => match &from.scan {
+                ScanType::IndexScan(index) => {
+                    assert_eq!(index.index_name, "rrdb.users_pkey");
+                }
+                other => panic!("expected an index scan, got {:?}", other),
+            },
+            other => panic!("expected DeleteFrom plan, got {:?}", other),
+        }
+
+        assert!(
+            plan.list
+                .iter()
+                .any(|item| matches!(item, DeletePlanItem::Filter(_))),
+            "the WHERE filter must survive index selection"
+        );
+    }
+
+    #[tokio::test]
+    async fn optimize_delete_falls_back_to_full_scan_on_a_tiny_table() {
+        let optimizer = Optimizer::with_context(context(3, true));
+        let plan = optimizer
+            .optimize_delete(delete_query("delete from users where id = 42;"))
+            .await
+            .unwrap();
+
+        match &plan.list[0] {
+            DeletePlanItem::DeleteFrom(from) => assert_eq!(from.scan, ScanType::FullScan),
+            other => panic!("expected DeleteFrom plan, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn optimize_delete_without_a_predicate_scans_everything() {
+        let optimizer = Optimizer::with_context(context(10_000, true));
+        let plan = optimizer
+            .optimize_delete(delete_query("delete from users;"))
+            .await
+            .unwrap();
+
+        assert_eq!(plan.list.len(), 1, "no filter stage without a WHERE clause");
+        match &plan.list[0] {
+            DeletePlanItem::DeleteFrom(from) => assert_eq!(from.scan, ScanType::FullScan),
+            other => panic!("expected DeleteFrom plan, got {:?}", other),
+        }
     }
 
     #[tokio::test]
