@@ -44,6 +44,9 @@ memmap2 = "0.9.5"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"
 
+[dev-dependencies]
+proptest = "1"
+
 [lib]
 name = "rrdb"
 path = "./src/lib.rs"
