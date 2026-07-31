@@ -32,6 +32,9 @@ const MAGIC: [u8; 4] = *b"RIDX";
 /// decode with `free_list_head = None` (see `read_superblock`), so existing
 /// index files keep working and simply start with an empty free-list.
 const VERSION: u16 = 2;
+/// Oldest on-disk version this build can still read. Anything below it has a
+/// layout `read_superblock` no longer knows how to decode.
+const MIN_SUPPORTED_VERSION: u16 = 1;
 /// Fixed size of the superblock region at the start of the file. Must be
 /// large enough to hold the bincode-encoded `Superblock` below; checked by a
 /// test.
@@ -112,6 +115,23 @@ impl PageStore {
         let sb = store.read_superblock()?;
         if sb.magic != MAGIC {
             return Err(ExecuteError::wrap("index file has invalid magic bytes"));
+        }
+        // The magic only rules out files that are not index files at all. A
+        // file written by a different format version is the case actually
+        // worth guarding: page_size is read straight back out of the
+        // superblock and drives every offset, so accepting a foreign version
+        // means writing pages at the wrong place in a file that is otherwise
+        // valid.
+        // Older versions this build still understands are read through the
+        // migration path in `read_superblock`, so the check is "within the
+        // supported range", not "exactly current". What has to be refused is a
+        // version from the future: its layout is unknown, and `page_size` is
+        // read straight back out of the superblock to drive every offset.
+        if sb.version > VERSION || sb.version < MIN_SUPPORTED_VERSION {
+            return Err(ExecuteError::wrap(format!(
+                "index file version {} is not supported (this build reads {}..={})",
+                sb.version, MIN_SUPPORTED_VERSION, VERSION
+            )));
         }
 
         Ok(PageStore {
@@ -487,5 +507,122 @@ mod tests {
             ids.push(store.allocate_page().await.unwrap());
         }
         assert_eq!(ids, vec![0, 1, 2]);
+    }
+
+    /// Rewrite the superblock of an existing store, keeping everything the
+    /// caller cannot see (page contents) intact.
+    fn rewrite_superblock(path: &std::path::Path, mutate: impl FnOnce(&mut Superblock)) {
+        let mut raw = std::fs::read(path).unwrap();
+        let mut sb: Superblock = bincode::deserialize(&raw[..SUPERBLOCK_SIZE]).unwrap();
+        mutate(&mut sb);
+        let mut encoded = bincode::serialize(&sb).unwrap();
+        encoded.resize(SUPERBLOCK_SIZE, 0);
+        raw[..SUPERBLOCK_SIZE].copy_from_slice(&encoded);
+        std::fs::write(path, &raw).unwrap();
+    }
+
+    #[tokio::test]
+    async fn open_rejects_an_unsupported_format_version() {
+        let path = temp_path("foreign_version.idx");
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        drop(store);
+
+        rewrite_superblock(&path, |sb| sb.version = VERSION + 1);
+
+        let error = match PageStore::open(&path).await {
+            Ok(_) => panic!("a store written by a different format version was accepted"),
+            Err(error) => error.to_string(),
+        };
+        assert!(
+            error.contains("version"),
+            "the error should name the version, got: {}",
+            error
+        );
+    }
+
+    /// The version check is a supported *range*, not an exact match: #232 made
+    /// v1 files readable through a migration path, so refusing anything that is
+    /// not the current version would break every index written before it.
+    /// Pinning that here because the two changes pull in opposite directions.
+    #[tokio::test]
+    async fn open_accepts_an_older_but_still_supported_version() {
+        let path = temp_path("older_supported_version.idx");
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        drop(store);
+
+        rewrite_superblock(&path, |sb| sb.version = MIN_SUPPORTED_VERSION);
+
+        let reopened = PageStore::open(&path)
+            .await
+            .expect("a version this build still reads must open");
+        assert_eq!(reopened.page_size(), page::INDEX_PAGE_SIZE);
+    }
+
+    /// The guard rail for the check above: rejecting more is only a fix if
+    /// everything legitimate still opens. A store this build wrote must round
+    /// trip, contents included.
+    #[tokio::test]
+    async fn open_still_accepts_a_store_written_by_this_version() {
+        let path = temp_path("same_version.idx");
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        let id = store.allocate_page().await.unwrap();
+        store
+            .write_page(
+                id,
+                &Page::Leaf(LeafPage {
+                    entries: vec![LeafEntry {
+                        key: "k".to_string(),
+                        row_path: "/r/1".to_string(),
+                    }],
+                    next_leaf: None,
+                    overflow: None,
+                }),
+            )
+            .await
+            .unwrap();
+        drop(store);
+
+        let reopened = PageStore::open(&path).await.unwrap();
+        assert_eq!(reopened.page_size(), page::INDEX_PAGE_SIZE);
+        match reopened.read_page(id).await.unwrap() {
+            Page::Leaf(leaf) => assert_eq!(leaf.entries[0].row_path, "/r/1"),
+            other => panic!("expected the leaf page back, got {:?}", other),
+        }
+    }
+
+    /// Why the version matters rather than being cosmetic: `page_size` comes
+    /// straight out of the superblock and drives every offset. Without the
+    /// check, a foreign version whose page size differs writes pages at the
+    /// wrong offsets into an otherwise valid file.
+    #[tokio::test]
+    async fn a_foreign_version_would_write_pages_at_the_wrong_offset() {
+        let path = temp_path("wrong_offset.idx");
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        let id = store.allocate_page().await.unwrap();
+        store
+            .write_page(
+                id,
+                &Page::Leaf(LeafPage {
+                    entries: vec![LeafEntry {
+                        key: "k".to_string(),
+                        row_path: "/r/1".to_string(),
+                    }],
+                    next_leaf: None,
+                    overflow: None,
+                }),
+            )
+            .await
+            .unwrap();
+        drop(store);
+
+        rewrite_superblock(&path, |sb| {
+            sb.version = VERSION + 1;
+            sb.page_size = (page::INDEX_PAGE_SIZE * 2) as u32;
+        });
+
+        assert!(
+            PageStore::open(&path).await.is_err(),
+            "the version check has to catch this before the page size is trusted"
+        );
     }
 }
