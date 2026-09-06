@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use futures::future::join_all;
 
-use crate::engine::actions::index::row_index_key;
+use crate::engine::actions::index::{join_composite_key, row_index_keys};
 use crate::engine::ast::dml::delete::DeleteQuery;
 use crate::engine::ast::dml::plan::delete::delete_plan::DeletePlanItem;
 use crate::engine::ast::dml::plan::select::scan::ScanType;
@@ -44,7 +44,8 @@ impl DBEngine {
         // WAL-first: 쿼리를 실행/소비하기 전에 페이로드를 미리 직렬화합니다.
         let wal_payload = match &wal_manager {
             Some(_) => Some(
-                bincode::serialize(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?,
+                bincode::serialize(&query)
+                    .map_err(|error| ExecuteError::wrap(error.to_string()))?,
             ),
             None => None,
         };
@@ -140,7 +141,9 @@ impl DBEngine {
             row_indexes.insert(location.row_index);
 
             for meta in &index_metas {
-                if let Some(key) = row_index_key(row, &meta.column_name) {
+                if let Some(key) = row_index_keys(row, &meta.columns)
+                    .map(|components| join_composite_key(&components))
+                {
                     index_removals.push((
                         meta.index_name.clone(),
                         key,

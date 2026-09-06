@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use futures::future::join_all;
 
-use crate::engine::actions::index::row_index_key;
+use crate::engine::actions::index::{join_composite_key, row_index_keys};
 use crate::engine::ast::dml::plan::select::scan::ScanType;
 use crate::engine::ast::dml::plan::update::update_plan::UpdatePlanItem;
 use crate::engine::ast::dml::update::UpdateQuery;
@@ -42,7 +42,8 @@ impl DBEngine {
         // WAL-first: 쿼리를 실행/소비하기 전에 페이로드를 미리 직렬화합니다.
         let wal_payload = match &wal_manager {
             Some(_) => Some(
-                bincode::serialize(&query).map_err(|error| ExecuteError::wrap(error.to_string()))?,
+                bincode::serialize(&query)
+                    .map_err(|error| ExecuteError::wrap(error.to_string()))?,
             ),
             None => None,
         };
@@ -179,10 +180,12 @@ impl DBEngine {
                 }
             }
 
-            // 인덱스 컬럼 값 변경 감지 (#217)
+            // 인덱스 컬럼 값 변경 감지 (#217, 복합 키는 #220)
             for meta in &index_metas {
-                let old_key = row_index_key(&old_row, &meta.column_name);
-                let new_key = row_index_key(&row, &meta.column_name);
+                let old_key = row_index_keys(&old_row, &meta.columns)
+                    .map(|components| join_composite_key(&components));
+                let new_key = row_index_keys(&row, &meta.columns)
+                    .map(|components| join_composite_key(&components));
 
                 if old_key != new_key {
                     index_operations.push((
@@ -210,8 +213,7 @@ impl DBEngine {
             }
 
             // 인덱스 반영: 고유 제약 위반은 여기서 검출되며, 실패 시 적용분을 되돌립니다
-            for (i, (index_name, old_key, new_key, row_path)) in
-                index_operations.iter().enumerate()
+            for (i, (index_name, old_key, new_key, row_path)) in index_operations.iter().enumerate()
             {
                 if let Err(error) = self
                     .apply_index_operation(index_name, old_key, new_key, row_path)

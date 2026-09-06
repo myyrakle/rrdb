@@ -46,7 +46,10 @@ impl Parser {
             )));
         }
 
-        // 닫는 괄호 나올때까지 행 파싱 반복
+        // 닫는 괄호 나올때까지 행/테이블 제약 파싱 반복 (#220)
+        let mut saw_inline_primary_key = false;
+        let mut saw_table_level_primary_key = false;
+
         loop {
             if !self.has_next_token() {
                 return Err(ParsingError::wrap("need more tokens".to_string()));
@@ -58,12 +61,158 @@ impl Parser {
                 Token::RightParentheses => {
                     break;
                 }
+                // 테이블 레벨 제약: PRIMARY KEY (column_name [, ...]) (#220)
+                Token::Primary => {
+                    if !self.has_next_token() {
+                        return Err(ParsingError::wrap("need more tokens".to_string()));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    if Token::Key != current_token {
+                        return Err(ParsingError::wrap(format!(
+                            "expected 'PRIMARY KEY'. but your input word is '{:?}'",
+                            current_token
+                        )));
+                    }
+
+                    if !self.has_next_token() {
+                        return Err(ParsingError::wrap("need more tokens".to_string()));
+                    }
+
+                    let current_token = self.get_next_token();
+
+                    if Token::LeftParentheses != current_token {
+                        return Err(ParsingError::wrap(format!(
+                            "expected '('. but your input word is '{:?}'",
+                            current_token
+                        )));
+                    }
+
+                    let mut columns: Vec<String> = vec![];
+                    // 식별자와 쉼표가 교대로 와야 합니다 (#220):
+                    // PRIMARY KEY (a, b) O, (,a) / (a,) / (a,,b) X
+                    let mut expect_identifier = true;
+
+                    loop {
+                        if !self.has_next_token() {
+                            return Err(ParsingError::wrap("need more tokens".to_string()));
+                        }
+
+                        let current_token = self.get_next_token();
+
+                        match current_token {
+                            Token::RightParentheses => {
+                                if expect_identifier && !columns.is_empty() {
+                                    return Err(ParsingError::wrap(
+                                        "trailing comma in 'PRIMARY KEY (...)'".to_string(),
+                                    ));
+                                }
+                                break;
+                            }
+                            Token::Comma => {
+                                if expect_identifier {
+                                    return Err(ParsingError::wrap(
+                                        "expected column name in 'PRIMARY KEY (...)'. but your input word is 'Comma'"
+                                            .to_string(),
+                                    ));
+                                }
+                                expect_identifier = true;
+                            }
+                            Token::Identifier(column_name) => {
+                                if !expect_identifier {
+                                    return Err(ParsingError::wrap(format!(
+                                        "expected ',' or ')' after column name in 'PRIMARY KEY (...)'. but your input word is '{:?}'",
+                                        column_name
+                                    )));
+                                }
+                                columns.push(column_name);
+                                expect_identifier = false;
+                            }
+                            _ => {
+                                return Err(ParsingError::wrap(format!(
+                                    "expected column name in 'PRIMARY KEY (...)'. but your input word is '{:?}'",
+                                    current_token
+                                )));
+                            }
+                        }
+                    }
+
+                    if columns.is_empty() {
+                        return Err(ParsingError::wrap(
+                            "expected at least one column name in 'PRIMARY KEY (...)'".to_string(),
+                        ));
+                    }
+
+                    if saw_table_level_primary_key {
+                        return Err(ParsingError::wrap(
+                            "multiple table-level primary keys specified".to_string(),
+                        ));
+                    }
+
+                    saw_table_level_primary_key = true;
+                    query_builder = query_builder.set_primary_key(columns);
+                }
                 _ => {
                     self.unget_next_token(current_token);
                     let column = self.parse_table_column()?;
+
+                    if column.primary_key {
+                        saw_inline_primary_key = true;
+                    }
+
                     query_builder = query_builder.add_column(column);
                 }
             }
+        }
+
+        // 인라인 PRIMARY KEY와 테이블 레벨 PRIMARY KEY를 동시에 지정할 수 없습니다 (#220)
+        if saw_inline_primary_key && saw_table_level_primary_key {
+            return Err(ParsingError::wrap(
+                "multiple primary keys specified: cannot combine an inline 'PRIMARY KEY' column constraint with a table-level 'PRIMARY KEY (...)'" 
+                    .to_string(),
+            ));
+        }
+
+        // 테이블 레벨 PK는 정의된 컬럼만 참조할 수 있습니다 (#220)
+        if saw_table_level_primary_key {
+            let query = query_builder.build();
+            if let crate::engine::ast::SQLStatement::DDL(
+                crate::engine::ast::DDLStatement::CreateTableQuery(inner),
+            ) = &query
+            {
+                let column_names: std::collections::HashSet<&str> = inner
+                    .columns
+                    .iter()
+                    .map(|column| column.name.as_str())
+                    .collect();
+
+                for column_name in &inner.primary_key {
+                    if !column_names.contains(column_name.as_str()) {
+                        return Err(ParsingError::wrap(format!(
+                            "primary key column '{}' is not defined in the table",
+                            column_name
+                        )));
+                    }
+                }
+            }
+
+            // 문장 종료 검증은 일반 경로와 동일하게 적용합니다 (#220):
+            // 테이블 레벨 PK 뒤에 이상한 토큰이 남으면 에러.
+            if !self.has_next_token() {
+                return Ok(query);
+            }
+
+            let current_token = self.get_next_token();
+
+            if Token::SemiColon != current_token {
+                return Err(ParsingError::wrap(format!(
+                    "expected ';'. but your input word is '{:?}'",
+                    current_token
+                )));
+            }
+
+            return Ok(query);
         }
 
         if !self.has_next_token() {

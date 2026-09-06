@@ -282,6 +282,16 @@ impl Optimizer {
         let mut best: Option<(f64, IndexScanPlan)> = None;
 
         for index in &self.context.indexes {
+            // 복합 인덱스는 아직 컬럼별 prefix 스캔을 지원하지 않는다 (#220).
+            //
+            // 복합 인덱스의 저장 키는 길이 프리픽스 조합이므로 단일 컬럼의
+            // raw field_to_key 경계와 매칭되지 않는다. eq/range 경계를 그대로
+            // 사용하면 조건을 만족하는 행을 누락하는 잘못된 결과를 내므로,
+            // prefix 스캔이 구현되기 전까지는 FullScan으로 폴백한다 (안전 우선).
+            if index.is_composite() {
+                continue;
+            }
+
             let bounds = match bounds_per_column.get(&index.column_name) {
                 Some(bounds) => bounds,
                 None => continue,

@@ -62,7 +62,7 @@ impl DBEngine {
             return Err(ExecuteError::wrap(error.to_string()));
         }
 
-        // PRIMARY KEY 자동 인덱스 생성 (#217)
+        // PRIMARY KEY 자동 인덱스 생성 (#217, 복합 PK는 #220)
         let primary_key_columns: Vec<String> = if table_info.primary_key.is_empty() {
             table_info
                 .columns
@@ -74,23 +74,22 @@ impl DBEngine {
             table_info.primary_key.clone()
         };
 
-        // TODO(#217): 복합 PRIMARY KEY 인덱스는 미지원 (단일 컬럼만 자동 생성)
-        if primary_key_columns.len() == 1 {
+        if !primary_key_columns.is_empty() {
             if let Err(error) = self.ensure_indices_loaded().await {
-                let _ = tokio::fs::remove_dir_all(&table_path).await;
+                let _ = self.file_system.remove_dir_all(&table_path).await;
                 return Err(error);
             }
 
             let index_name = qualified_index_name(&database_name, &format!("{}_pkey", table_name));
-            let meta = IndexMeta::new(
+            let meta = IndexMeta::new_composite(
                 index_name,
                 table_info.table.clone(),
-                primary_key_columns[0].clone(),
+                primary_key_columns,
                 true,
             );
 
             if let Err(error) = self.index_manager.create_index(meta).await {
-                let _ = tokio::fs::remove_dir_all(&table_path).await;
+                let _ = self.file_system.remove_dir_all(&table_path).await;
                 return Err(error);
             }
         }

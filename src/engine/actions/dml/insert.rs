@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::engine::actions::index::row_index_key;
+use crate::engine::actions::index::{join_composite_key, row_index_keys};
 use crate::engine::ast::dml::insert::{InsertData, InsertQuery};
 use crate::engine::ast::types::SQLExpression;
 use crate::engine::schema::row::{TableDataField, TableDataRow};
@@ -119,13 +119,12 @@ impl DBEngine {
                         // `query.columns`는 SQL에서 그대로 온 값이라 스키마에 없는
                         // 이름이 들어올 수 있습니다. 파서는 값 개수만 확인하고
                         // 컬럼의 존재 여부는 모릅니다 (#260).
-                        let column_config_info =
-                            columns_map.get(column_name).ok_or_else(|| {
-                                ExecuteError::wrap(format!(
-                                    "column '{}' does not exist on table '{}'",
-                                    column_name, table_name
-                                ))
-                            })?;
+                        let column_config_info = columns_map.get(column_name).ok_or_else(|| {
+                            ExecuteError::wrap(format!(
+                                "column '{}' does not exist on table '{}'",
+                                column_name, table_name
+                            ))
+                        })?;
 
                         let default_value = match &column_config_info.default {
                             Some(default) => default.to_owned(),
@@ -238,7 +237,9 @@ impl DBEngine {
                     let mut batch_keys = HashSet::new();
 
                     for row in &rows {
-                        if let Some(key) = row_index_key(row, &meta.column_name) {
+                        if let Some(key) = row_index_keys(row, &meta.columns)
+                            .map(|components| join_composite_key(&components))
+                        {
                             let duplicated = !self
                                 .index_manager
                                 .get(&meta.index_name, &key)
@@ -249,7 +250,7 @@ impl DBEngine {
                             if duplicated {
                                 return Err(ExecuteError::wrap(format!(
                                     "duplicate key value violates unique index on column '{}'",
-                                    meta.column_name
+                                    meta.column_name()
                                 )));
                             }
                         }
@@ -302,7 +303,9 @@ impl DBEngine {
                     let row_path = (start_index + offset).to_string();
 
                     for meta in &index_metas {
-                        if let Some(key) = row_index_key(row, &meta.column_name) {
+                        if let Some(key) = row_index_keys(row, &meta.columns)
+                            .map(|components| join_composite_key(&components))
+                        {
                             if let Err(error) = self
                                 .index_manager
                                 .insert(&meta.index_name, key.clone(), row_path.clone())
