@@ -145,13 +145,10 @@ impl DBEngine {
             return Ok(statistics);
         }
 
-        let row_count = self.full_scan(table_name.clone()).await?.len();
+        let row_count = self.row_count_for_statistics(table_name).await?;
 
         let segment_path = self.row_segment_path(table_name)?;
-        let file_size = tokio::fs::metadata(&segment_path)
-            .await
-            .map(|metadata| metadata.len())
-            .unwrap_or(0);
+        let file_size = self.file_system.metadata(&segment_path).await.unwrap_or(0);
         let block_count = file_size.div_ceil(BLOCK_SIZE).max(1) as usize;
 
         let mut distinct_values = HashMap::new();

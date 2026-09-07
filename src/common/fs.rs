@@ -1,5 +1,28 @@
 use futures::io;
 use std::path::{Path, PathBuf};
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
+
+/// One open handle for header walks and selected frame reads. No read-ahead.
+#[async_trait::async_trait]
+pub trait RandomAccessFile: Send + Sync {
+    async fn file_len(&self) -> io::Result<u64>;
+    async fn read_exact_at(&mut self, offset: u64, buffer: &mut [u8]) -> io::Result<()>;
+}
+
+struct RealRandomAccessFile(tokio::fs::File);
+
+#[async_trait::async_trait]
+impl RandomAccessFile for RealRandomAccessFile {
+    async fn file_len(&self) -> io::Result<u64> {
+        Ok(self.0.metadata().await?.len())
+    }
+
+    async fn read_exact_at(&mut self, offset: u64, buffer: &mut [u8]) -> io::Result<()> {
+        self.0.seek(std::io::SeekFrom::Start(offset)).await?;
+        self.0.read_exact(buffer).await?;
+        Ok(())
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileSystemEntry {
@@ -10,6 +33,13 @@ pub struct FileSystemEntry {
 #[mockall::automock]
 #[async_trait::async_trait]
 pub trait FileSystem {
+    /// Open once per scan, then seek past unrelated frame bodies (#221).
+    /// Default preserves compatibility with existing filesystem implementations.
+    async fn open_random_access(&self, path: &Path) -> io::Result<Box<dyn RandomAccessFile>> {
+        Ok(Box::new(RealRandomAccessFile(
+            tokio::fs::File::open(path).await?,
+        )))
+    }
     async fn create_dir(&self, path: &str) -> io::Result<()>;
     async fn write_file(&self, path: &str, content: &[u8]) -> io::Result<()>;
     async fn read_dir(&self, path: &str) -> io::Result<Vec<FileSystemEntry>>;

@@ -37,6 +37,7 @@ impl DBEngine {
                     from_path.push(from_database_name);
                     to_path.push(to_database_name.clone());
 
+                    let _storage_guard = self.row_storage_lock.lock().await;
                     // 디렉터리명 변경
                     let result = tokio::fs::rename(&from_path, &to_path).await;
 
@@ -52,6 +53,12 @@ impl DBEngine {
                             }
                         }
                     }
+
+                    // Invalidate after the physical move, even if config rewriting fails.
+                    let mut pool = self.row_buffer_pool.lock().await;
+                    pool.invalidate_directory_under(&from_path);
+                    pool.invalidate_directory_under(&to_path);
+                    drop(pool);
 
                     // config data 파일 내용 변경
                     let mut config_path = to_path.clone();

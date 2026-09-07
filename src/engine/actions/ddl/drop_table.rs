@@ -19,6 +19,7 @@ impl DBEngine {
 
         // 인덱스 메모리 상태 및 통계 정리 (인덱스 파일은 테이블 디렉토리와 함께 삭제됨)
         self.ensure_indices_loaded().await?;
+        let _storage_guard = self.row_storage_lock.lock().await;
         self.index_manager.remove_table_indices(&table).await;
         self.statistics_manager.invalidate(&table).await;
 
@@ -33,7 +34,7 @@ impl DBEngine {
             .join("tables")
             .join(&table_name);
 
-        if let Err(error) = tokio::fs::remove_dir_all(table_path).await {
+        if let Err(error) = self.file_system.remove_dir_all(&table_path).await {
             match error.kind() {
                 IOErrorKind::NotFound => {
                     if !query.if_exists {
@@ -45,6 +46,8 @@ impl DBEngine {
                 }
             }
         }
+
+        self.row_buffer_pool.lock().await.remove_under(&table_path);
 
         Ok(ExecuteResult::new(
             vec![ExecuteColumn {

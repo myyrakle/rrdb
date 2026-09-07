@@ -1,5 +1,6 @@
+use crate::engine::row_offsets::FrameDirectory;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::engine::encoder::schema_encoder::StorageEncoder;
 use crate::engine::schema::row::TableDataRow;
@@ -13,6 +14,9 @@ pub(crate) const ROW_FRAME_TOMBSTONE: u8 = 1;
 pub(crate) struct RowBufferPool {
     segments: HashMap<PathBuf, RowSegmentBuffer>,
     unsynced_segments: HashSet<PathBuf>,
+    // Deliberately a single bounded, replaceable directory, not an unbounded
+    // cache per table. Queries never clone this Vec.
+    directory: Option<(PathBuf, FrameDirectory)>,
 }
 
 #[derive(Default)]
@@ -38,6 +42,95 @@ enum RowBufferWriteKind {
 }
 
 impl RowBufferPool {
+    /// None: consult disk; Some(None): deleted or outside known logical slots.
+    /// Borrow first so the caller can reserve memory before cloning one row.
+    pub(crate) fn cached_row(&self, path: &Path, index: usize) -> Option<Option<&TableDataRow>> {
+        let segment = self.segments.get(path)?;
+        if let Some(rows) = &segment.persisted_rows {
+            if index < rows.len() {
+                return Some(rows[index].as_ref());
+            }
+            return Some(segment.pending_append_rows.get(index - rows.len()));
+        }
+        let count = segment.persisted_row_count?;
+        if index >= count {
+            return Some(segment.pending_append_rows.get(index - count));
+        }
+        None
+    }
+
+    pub(crate) fn cached_live_row_count(&self, path: &Path) -> Option<usize> {
+        let segment = self.segments.get(path)?;
+        Some(
+            segment
+                .persisted_rows
+                .as_ref()?
+                .iter()
+                .filter(|row| row.is_some())
+                .count()
+                + segment.pending_append_rows.len(),
+        )
+    }
+
+    pub(crate) fn pending_row_count(&self, path: &Path) -> usize {
+        self.segments
+            .get(path)
+            .map_or(0, |segment| segment.pending_append_rows.len())
+    }
+
+    pub(crate) fn persisted_row_count(&self, path: &Path) -> Option<usize> {
+        self.segments.get(path)?.persisted_row_count
+    }
+
+    pub(crate) fn directory(&self, path: &Path) -> Option<&FrameDirectory> {
+        self.directory
+            .as_ref()
+            .filter(|(cached, _)| cached == path)
+            .map(|(_, directory)| directory)
+    }
+
+    pub(crate) fn cache_directory(&mut self, path: PathBuf, directory: FrameDirectory) {
+        self.seed_row_count(path.clone(), directory.row_count);
+        self.directory = Some((path, directory));
+    }
+
+    pub(crate) fn invalidate_directory(&mut self, path: &Path) {
+        if self.directory(path).is_some() {
+            self.directory = None;
+        }
+    }
+
+    pub(crate) fn evict_directory(&mut self) {
+        self.directory = None;
+    }
+
+    /// Derived offsets cannot outlive a physical namespace move. Keep this
+    /// separate from the existing decoded/pending-row rename behavior.
+    pub(crate) fn invalidate_directory_under(&mut self, path: &Path) {
+        if self
+            .directory
+            .as_ref()
+            .is_some_and(|(segment, _)| segment.starts_with(path))
+        {
+            self.directory = None;
+        }
+    }
+
+    /// Path::starts_with is component-aware (does not delete prefix-like siblings).
+    pub(crate) fn remove_under(&mut self, path: &Path) {
+        self.segments
+            .retain(|segment, _| !segment.starts_with(path));
+        self.unsynced_segments
+            .retain(|segment| !segment.starts_with(path));
+        if self
+            .directory
+            .as_ref()
+            .is_some_and(|(segment, _)| segment.starts_with(path))
+        {
+            self.directory = None;
+        }
+    }
+
     pub(crate) fn seed_row_count(&mut self, segment_path: PathBuf, row_count: usize) {
         let segment = self.segments.entry(segment_path).or_default();
         segment.persisted_row_count.get_or_insert(row_count);
@@ -136,6 +229,22 @@ impl RowBufferPool {
     }
 
     pub(crate) fn complete_write(&mut self, write: RowBufferWrite, durable: bool) {
+        if let Some((path, directory)) = &mut self.directory
+            && *path == write.segment_path
+        {
+            let extended = match &write.kind {
+                RowBufferWriteKind::Append { rows }
+                    if directory.row_count == write.next_row_index - rows.len() =>
+                {
+                    directory.extend(&write.content).is_ok()
+                }
+                _ => false,
+            };
+            if !extended {
+                self.directory = None;
+            }
+        }
+
         let segment_path = write.segment_path;
         let segment = self.segments.entry(segment_path.clone()).or_default();
         match write.kind {
@@ -159,6 +268,7 @@ impl RowBufferPool {
     }
 
     pub(crate) fn restore_write(&mut self, write: RowBufferWrite) {
+        self.invalidate_directory(&write.segment_path);
         let segment = self.segments.entry(write.segment_path).or_default();
         match write.kind {
             RowBufferWriteKind::Append { rows } => {

@@ -41,6 +41,7 @@ impl DBEngine {
                 )?;
                 let change_path = database_path.clone().join(&change_name);
 
+                let _storage_guard = self.row_storage_lock.lock().await;
                 // table 디렉터리명 변경
                 if let Err(error) = tokio::fs::rename(&table_path, &change_path).await {
                     return Err(ExecuteError::wrap(format!(
@@ -48,6 +49,11 @@ impl DBEngine {
                         error
                     )));
                 }
+
+                let mut pool = self.row_buffer_pool.lock().await;
+                pool.invalidate_directory_under(&table_path);
+                pool.invalidate_directory_under(&change_path);
+                drop(pool);
 
                 // config data 파일 내용 변경
                 let config_path = change_path.clone().join("table.config");
