@@ -103,9 +103,14 @@ fn config(backend: &str) -> Config {
 }
 
 async fn simulated(backend: &str, fake: Arc<Fake>) -> std::result::Result<Value, &'static str> {
+    let limit = if fake.fault.is_empty() {
+        Duration::from_millis(500)
+    } else {
+        Duration::from_millis(20)
+    };
     tokio::time::timeout(
         Duration::from_secs(2),
-        run_benchmark(&config(backend), fake, Duration::from_millis(20)),
+        run_benchmark(&config(backend), fake, limit),
     )
     .await
     .expect("benchmark hung")

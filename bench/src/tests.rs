@@ -1,5 +1,33 @@
 use super::*;
 
+#[tokio::test]
+async fn report_output_is_complete_and_never_overwrites() {
+    let directory = std::env::temp_dir().join(format!("rrdb-report-{}", uuid::Uuid::new_v4()));
+    tokio::fs::create_dir(&directory).await.unwrap();
+    let path = directory.join("report.json");
+    let report = json!({"backend": "rrdb", "successful_writes": 20});
+    write_report(&path, &report).await.unwrap();
+    let bytes = tokio::fs::read(&path).await.unwrap();
+    assert_eq!(serde_json::from_slice::<Value>(&bytes).unwrap(), report);
+    assert_eq!(
+        write_report(&path, &json!({"replacement": true})).await,
+        Err("cannot create output file (must not already exist)")
+    );
+    assert_eq!(tokio::fs::read(&path).await.unwrap(), bytes);
+    tokio::fs::remove_dir_all(&directory).await.unwrap();
+}
+
+#[tokio::test]
+async fn report_output_creation_errors_are_redacted() {
+    let path = std::env::temp_dir()
+        .join(format!("rrdb-absent-{}", uuid::Uuid::new_v4()))
+        .join("private-path.json");
+    assert_eq!(
+        write_report(&path, &json!({})).await,
+        Err("cannot create output file (must not already exist)")
+    );
+}
+
 fn config(args: &[&str]) -> std::result::Result<Config, &'static str> {
     Config::parse(args.iter().map(|arg| arg.to_string()).collect())
 }

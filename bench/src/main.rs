@@ -168,13 +168,25 @@ async fn execute_cli() -> Result<()> {
     let url = std::env::var("BENCH_DATABASE_URL").map_err(|_| "BENCH_DATABASE_URL required")?;
     let db = bounded(DEADLINE, db::Pg::connect(&url, config.workers)).await?;
     let report = run_benchmark(&config, Arc::new(db), DEADLINE).await?;
-    let file = std::fs::OpenOptions::new()
+    write_report(&config.output, &report).await
+}
+
+/// Write a complete report without replacing an existing result file.
+async fn write_report(path: &std::path::Path, report: &Value) -> Result<()> {
+    use tokio::io::AsyncWriteExt;
+
+    let json = serde_json::to_vec_pretty(report).map_err(|_| "cannot write JSON output")?;
+    let mut file = tokio::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
-        .open(&config.output)
+        .open(path)
+        .await
         .map_err(|_| "cannot create output file (must not already exist)")?;
-    serde_json::to_writer_pretty(file, &report).map_err(|_| "cannot write JSON output")?;
-    Ok(())
+    file.write_all(&json)
+        .await
+        .map_err(|_| "cannot write JSON output")?;
+    // Tokio may still have a blocking write in flight after write_all returns.
+    file.flush().await.map_err(|_| "cannot write JSON output")
 }
 
 #[tokio::main]
