@@ -1,67 +1,65 @@
-use std::{fmt::Debug, sync::Arc};
-
-pub mod rrdb;
+use crate::{DEADLINE, Result};
+use sqlx::{
+    ConnectOptions, PgPool, Row,
+    postgres::{PgConnectOptions, PgPoolOptions},
+};
 
 #[async_trait::async_trait]
-pub trait Database {
-    // connection ping
-    async fn ping(&self) -> Result<()>;
-
-    // create table if not exists
-    // re-create table if exists
-    async fn setup(&self) -> Result<()>;
-
-    // write key, value
-    async fn write(&self, key: &str, value: &str) -> Result<()>;
-
-    fn worker_count(&self) -> usize {
-        10000
-    }
+pub(crate) trait Adapter: Send + Sync {
+    async fn execute(&self, sql: &str) -> Result<()>;
+    async fn count(&self, sql: &str) -> Result<usize>;
 }
 
-pub async fn new_database(_db_type: &str) -> Result<Arc<dyn Database + Send + Sync>> {
-    rrdb::Rrdb::new().await
+// Shared PostgreSQL wire adapter, irrespective of the selected backend label.
+pub(crate) struct Pg {
+    pool: PgPool,
 }
 
-pub enum Errors {
-    ConnectionError(String),
-    WriteError(String),
-    ReadError,
-}
-
-impl Debug for Errors {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Errors::ConnectionError(msg) => write!(f, "ConnectionError: {}", msg),
-            Errors::WriteError(msg) => write!(f, "WriteError: {}", msg),
-            Errors::ReadError => write!(f, "ReadError"),
+impl Pg {
+    pub(crate) async fn connect(url: &str, workers: usize) -> Result<Self> {
+        let options = url
+            .parse::<PgConnectOptions>()
+            .map_err(|_| "invalid BENCH_DATABASE_URL")?
+            .disable_statement_logging();
+        let pool = PgPoolOptions::new()
+            .max_connections(workers as u32)
+            .acquire_timeout(DEADLINE)
+            .test_before_acquire(false)
+            .connect_with(options)
+            .await
+            .map_err(|_| "database connection failed")?;
+        // Establish the exact same number of connections before measuring either backend.
+        let mut leases = Vec::with_capacity(workers);
+        for _ in 0..workers {
+            leases.push(
+                pool.acquire()
+                    .await
+                    .map_err(|_| "database connection failed")?,
+            );
         }
-    }
-}
-
-pub type Result<T> = std::result::Result<T, Errors>;
-
-#[derive(Clone, Debug)]
-pub struct FakeDB {}
-
-impl FakeDB {
-    pub fn new() -> Arc<dyn Database + Send + Sync> {
-        Arc::new(FakeDB {})
+        drop(leases);
+        Ok(Self { pool })
     }
 }
 
 #[async_trait::async_trait]
-impl Database for FakeDB {
-    async fn ping(&self) -> Result<()> {
+impl Adapter for Pg {
+    async fn execute(&self, sql: &str) -> Result<()> {
+        sqlx::raw_sql(sql)
+            .execute(&self.pool)
+            .await
+            .map_err(|_| "database statement failed")?;
         Ok(())
     }
 
-    async fn setup(&self) -> Result<()> {
-        Ok(())
-    }
-
-    async fn write(&self, _key: &str, _value: &str) -> Result<()> {
-        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        Ok(())
+    async fn count(&self, sql: &str) -> Result<usize> {
+        let row = sqlx::raw_sql(sql)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|_| "database readback failed")?;
+        let count = row
+            .try_get::<i64, _>(0)
+            .map_err(|_| "invalid readback count")?;
+        usize::try_from(count).map_err(|_| "invalid readback count")
     }
 }

@@ -1,0 +1,70 @@
+name: RRDB / PostgreSQL write benchmark
+
+on:
+  pull_request:
+    paths:
+      - 'bench/**'
+      - 'src/**'
+      - 'Cargo.toml'
+      - '.github/workflows/benchmark.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bench/**'
+      - 'src/**'
+      - 'Cargo.toml'
+      - '.github/workflows/benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            bench -> target
+      - name: Benchmark unit tests and lint
+        run: |
+          cargo fmt --manifest-path bench/Cargo.toml -- --check
+          cargo clippy --manifest-path bench/Cargo.toml --all-targets -- -D warnings
+          cargo test --manifest-path bench/Cargo.toml
+          python3 -m unittest discover -s bench -p 'test_*.py'
+      - name: Build release binaries
+        run: |
+          cargo build --release --bin rrdb
+          cargo build --release --manifest-path bench/Cargo.toml --bin main
+      - name: Pull comparison database
+        run: docker pull postgres:16-alpine
+
+      - name: Compare equal workloads
+        run: python3 bench/compare.py --rows 1000 --workers 4 --repeats 3 --output bench/results/ci
+      - name: Preserve results, diagnostics and resolved dependencies
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: write-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            bench/results/ci/
+            Cargo.lock
+            bench/Cargo.lock
+          if-no-files-found: warn
+          retention-days: 14
