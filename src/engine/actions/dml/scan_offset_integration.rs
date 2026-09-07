@@ -257,9 +257,22 @@ async fn offset_physical_rename_forgets_old_namespace_even_if_config_update_fail
             .await
             .unwrap();
         let old_path = engine.row_segment_path(&table()).unwrap();
+        // The PK index holds open files inside the directory. Windows cannot
+        // rename a directory with open children; index-handle retargeting is an
+        // existing DDL limitation, outside this offset-invalidation regression.
+        engine.index_manager.remove_table_indices(&table()).await;
+        assert!(
+            engine
+                .row_buffer_pool
+                .lock()
+                .await
+                .directory(&old_path)
+                .is_some(),
+            "releasing index handles must leave the offset directory warm"
+        );
         // Table rename has an existing post-rename config lookup defect. Only
         // verify this change's namespace boundary, not that unrelated DDL behavior.
-        let _ = sql(
+        let rename_result = sql(
             &engine,
             wal,
             if database {
@@ -271,7 +284,7 @@ async fn offset_physical_rename_forgets_old_namespace_even_if_config_update_fail
         .await;
         assert!(
             !old_path.exists(),
-            "physical rename must actually have occurred"
+            "physical rename must actually have occurred (database={database}): {rename_result:?}"
         );
         assert!(
             engine
