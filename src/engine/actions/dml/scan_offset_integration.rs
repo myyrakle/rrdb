@@ -317,7 +317,7 @@ async fn offset_failed_rename_retains_directory() {
         let destination = if database {
             engine.get_data_directory().join("moved")
         } else {
-            engine.get_data_directory().join("rrdb/moved")
+            engine.get_data_directory().join("rrdb").join("moved")
         };
         tokio::fs::write(&destination, b"blocks rename")
             .await

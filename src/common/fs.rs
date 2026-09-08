@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 /// One open handle for header walks and selected frame reads. No read-ahead.
+#[mockall::automock]
 #[async_trait::async_trait]
 pub trait RandomAccessFile: Send + Sync {
     async fn file_len(&self) -> io::Result<u64>;
@@ -34,12 +35,24 @@ pub struct FileSystemEntry {
 #[async_trait::async_trait]
 pub trait FileSystem {
     /// Open once per scan, then seek past unrelated frame bodies (#221).
-    /// Default preserves compatibility with existing filesystem implementations.
-    async fn open_random_access(&self, path: &Path) -> io::Result<Box<dyn RandomAccessFile>> {
-        Ok(Box::new(RealRandomAccessFile(
-            tokio::fs::File::open(path).await?,
-        )))
-    }
+    /// Each backend must explicitly implement random access to its own storage.
+    /// A backend cannot silently inherit host-filesystem access:
+    ///
+    /// ```compile_fail,E0046
+    /// use rrdb::common::fs::{FileSystem, FileSystemEntry};
+    /// use std::{io, path::Path};
+    /// struct Backend;
+    /// #[async_trait::async_trait]
+    /// impl FileSystem for Backend {
+    ///     async fn create_dir(&self, _: &str) -> io::Result<()> { Ok(()) }
+    ///     async fn write_file(&self, _: &str, _: &[u8]) -> io::Result<()> { Ok(()) }
+    ///     async fn read_dir(&self, _: &str) -> io::Result<Vec<FileSystemEntry>> { Ok(vec![]) }
+    ///     async fn read(&self, _: &Path) -> io::Result<Vec<u8>> { Ok(vec![]) }
+    ///     async fn truncate(&self, _: &Path, _: u64) -> io::Result<()> { Ok(()) }
+    ///     async fn metadata(&self, _: &Path) -> io::Result<u64> { Ok(0) }
+    /// }
+    /// ```
+    async fn open_random_access(&self, path: &Path) -> io::Result<Box<dyn RandomAccessFile>>;
     async fn create_dir(&self, path: &str) -> io::Result<()>;
     async fn write_file(&self, path: &str, content: &[u8]) -> io::Result<()>;
     async fn read_dir(&self, path: &str) -> io::Result<Vec<FileSystemEntry>>;
@@ -64,6 +77,12 @@ pub struct RealFileSystem;
 
 #[async_trait::async_trait]
 impl FileSystem for RealFileSystem {
+    async fn open_random_access(&self, path: &Path) -> io::Result<Box<dyn RandomAccessFile>> {
+        Ok(Box::new(RealRandomAccessFile(
+            tokio::fs::File::open(path).await?,
+        )))
+    }
+
     async fn create_dir(&self, path: &str) -> io::Result<()> {
         tokio::fs::create_dir(path).await
     }
@@ -102,5 +121,28 @@ impl FileSystem for RealFileSystem {
 
     async fn remove_dir_all(&self, path: &Path) -> io::Result<()> {
         tokio::fs::remove_dir_all(path).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn mock_random_access_file_supports_exact_offset_reads() {
+        let mut file = MockRandomAccessFile::new();
+        file.expect_file_len().times(1).returning(|| Ok(6));
+        file.expect_read_exact_at()
+            .withf(|offset, buffer| *offset == 2 && buffer.len() == 3)
+            .times(1)
+            .returning(|_, buffer| {
+                buffer.copy_from_slice(b"cde");
+                Ok(())
+            });
+        let mut file: Box<dyn RandomAccessFile> = Box::new(file);
+        assert_eq!(file.file_len().await.unwrap(), 6);
+        let mut buffer = [0; 3];
+        file.read_exact_at(2, &mut buffer).await.unwrap();
+        assert_eq!(&buffer, b"cde");
     }
 }
