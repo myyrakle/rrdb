@@ -77,6 +77,61 @@ pub fn create_table_with_single_column_table_level_primary_key() {
     );
 }
 
+/// 서로 다른 컬럼에 인라인 PRIMARY KEY를 중복 지정하면 에러 (#271)
+#[test]
+pub fn create_table_rejects_multiple_inline_primary_keys() {
+    let cases = [
+        "create table t (a int primary key, b int primary key);",
+        "CREATE TABLE t (a INT PRIMARY KEY, payload INT, b INT PRIMARY KEY);",
+        "CREATE TABLE t (a INT PRIMARY KEY, b INT PRIMARY KEY, c INT PRIMARY KEY);",
+        "CREATE TABLE IF NOT EXISTS t (a INT PRIMARY KEY, b INT PRIMARY KEY)",
+    ];
+
+    for text in cases {
+        let mut parser = Parser::with_string(text.to_owned()).unwrap();
+        let error = parser.parse(ParserContext::default()).expect_err(text);
+        assert_eq!(
+            error.kind,
+            crate::errors::ErrorKind::ParsingError("multiple primary keys specified".to_owned()),
+            "should reject: {}",
+            text,
+        );
+    }
+}
+
+/// 인라인 PK는 컬럼 위치와 관계없이 테이블마다 하나씩 허용합니다 (#271)
+#[test]
+pub fn create_table_accepts_one_inline_primary_key_per_table() {
+    let text = "CREATE TABLE t1 (a INT PRIMARY KEY, b INT); \
+                CREATE TABLE t2 (a INT, b INT PRIMARY KEY);";
+    let mut parser = Parser::with_string(text.to_owned()).unwrap();
+
+    let expected = [("t1", "a"), ("t2", "b")].map(|(table, primary_key)| {
+        CreateTableQuery::builder()
+            .set_table(TableName::new(None, table.to_owned()))
+            .add_column(
+                Column::builder()
+                    .set_name("a".to_owned())
+                    .set_data_type(DataType::Int)
+                    .set_primary_key(primary_key == "a")
+                    .build(),
+            )
+            .add_column(
+                Column::builder()
+                    .set_name("b".to_owned())
+                    .set_data_type(DataType::Int)
+                    .set_primary_key(primary_key == "b")
+                    .build(),
+            )
+            .build()
+    });
+
+    assert_eq!(
+        parser.parse(ParserContext::default()).unwrap(),
+        expected.to_vec(),
+    );
+}
+
 /// 인라인 PK와 테이블 레벨 PK를 동시에 지정하면 에러 (#220)
 #[test]
 pub fn create_table_rejects_mixed_inline_and_table_level_primary_keys() {

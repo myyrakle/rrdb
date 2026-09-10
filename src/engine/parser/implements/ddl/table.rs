@@ -158,6 +158,11 @@ impl Parser {
                     let column = self.parse_table_column()?;
 
                     if column.primary_key {
+                        if saw_inline_primary_key {
+                            return Err(ParsingError::wrap(
+                                "multiple primary keys specified".to_string(),
+                            ));
+                        }
                         saw_inline_primary_key = true;
                     }
 
