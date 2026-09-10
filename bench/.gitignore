@@ -25,3 +25,7 @@ Cargo.lock
 tarpaulin-report.html
 
 dataset.csv
+
+# Automated comparison outputs and Python test cache
+/results/
+__pycache__/

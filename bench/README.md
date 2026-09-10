@@ -1,34 +1,118 @@
-# Databases write performance benchmark
+# Automated write benchmark
 
-- This is a write throughput load test for each database.
-- We continuously insert 10 million records and measure how long it takes, latency, and other metrics.
+Compare RRDB and PostgreSQL using the **same deterministic single-row INSERT
+workload and PostgreSQL simple-query client**. This is a small write benchmark,
+not a general database ranking or a durability-equivalent benchmark.
 
-## Test Environment
+## Run the comparison
 
-- OS: Linux (Arch Linux)
-- CPU: Ryzen 9 7900 (docker limit 4 core)
-- RAM: docker limit 8 GB
-- Disk: SSD - SK hynix Gold P31 M.2 NVMe 2280
+Requirements: stable Rust, Python 3.10+, and a running Docker daemon. Run from
+the repository root on Linux or macOS:
 
-## Benchmark Table
+```sh
+cargo build --release --bin rrdb
+cargo build --release --manifest-path bench/Cargo.toml --bin main
+python3 bench/compare.py --rows 1000 --workers 4 --repeats 3
+```
 
-| DB             | Duration | TPS    | Avegate Latency | Min Latency | Max Latency | Disk Usage |
-| -------------- | -------- | ------ | --------------- | ----------- | ----------- | ---------- |
-| PostgreSQL     | 526 s    | 18861  | 526 ms          | 7 ms        | 2483 ms     | 3.7 GB     |
-| MySQL          | 3228 s   | 3143   | 3143 ms         | 53 ms       | 180705 ms   | 7.6 GB     |
-| MariaDB        | 2194 s   | 4751   | 2098 ms         | 3 ms        | 13098 ms    | 3.8 GB     |
-| MongoDB        | 376 s    | 26524  | 370 ms          | 201 ms      | 1288 ms     | 3.1 GB     |
-| CassandraDB    | 158 s    | 63130  | 156 ms          | 78 ms       | 1388 ms     | 2.3 GB     |
-| ScyllaDB       | 172 s    | 57848  | 156 ms          | 1 ms        | 1098 ms     | 6.2 GB     |
-| InfluxDB (v2)  | 1428 s   | 7001   | 1426 ms         | 1 ms        | 3484ms      | 1.6 GB     |
-| TimescaleDB    | 978 s    | 10224  | 976 ms          | 348 ms      | 30283 ms    | 12 GB      |
-| CouchDB        | 3800 s   | 2631   | 189 ms          | 3 ms        | 2307 ms     | 28 GB      |
-| YugabyteDB     | 3179 s   | 3145   | 3177 ms         | 623 ms      | 7064 ms     | 2 GB       |
-| CockroachDB    | 3919 s   | 2551   | 3917 ms         | 156 ms      | 16015 ms    | 3.1 GB     |
-| etcd           | 1367 s   | 7310   | 1366 ms         | 2 ms        | 2394 ms     | 2.6 GB     |
-| nats Jetstream | 83 s     | 120415 | 74 ms           | 7 ms        | 312 ms      | 1.9 GB     |
-| TiDB           | 562 s    | 17788  | 561 ms          | 2 ms        | 1626 ms     | 3.1 GB     |
-| TiKV           | 1235 s   | 8093   | 1234 ms         | 4 ms        | 2586 ms     | 24 GB      |
-| Clickhouse     | 1666 s   | 2032   | 306 ms          | 8 ms        | 9053 ms     | 2.4 GB     |
-| Elasticsearch  | 525 s    | 19037  | 47 ms           | 2 ms        | 4295 ms     | 5.2 GB     |
-| Opensearch     | 642 s    | 15556  | 59 ms           | 1 ms        | 4079 ms     | 5.3 GB     |
+The script creates a temporary RRDB data directory and a disposable
+`postgres:16-alpine` container. Both ports are bound to loopback, with dynamic
+port allocation. The container uses trust authentication **only for this local
+test database**. It does not connect to, reset, or reuse existing databases.
+RRDB processes, the PostgreSQL container, its anonymous volumes, and temporary
+RRDB data are cleaned up on completion, failure, timeout, or ordinary signal
+cancellation. Force-killing the orchestrator or losing the Docker daemon can
+prevent cleanup; remaining containers are named `rrdb-bench-<unique ID>`.
+
+Options:
+
+- `--rows`: total writes per database per trial, 1–1,000,000 (default 1,000).
+- `--workers`: concurrent writes, 1–64 and no greater than rows (default 4).
+- `--repeats`: trials per database, 1–10 (default 3). The database order alternates.
+- `--output`: **new**, non-existing output directory; default
+  `bench/results/<unique ID>`. Existing directories are rejected to avoid stale results.
+- `--postgres-image`: alternative PostgreSQL image/tag or digest. The default is
+  a floating tag; the actual image ID and server version are recorded.
+- `--rrdb-bin`, `--bench-bin`: override the two prebuilt release binary paths.
+
+A quicker correctness smoke test:
+
+```sh
+python3 bench/compare.py --rows 20 --workers 2 --repeats 1
+```
+
+## Results and failure semantics
+
+Each trial writes `<trial>-<backend>.json` and a client log. Results include:
+
+- Backend, requested rows and workers, successful/failed writes, observed row count.
+- Total measured seconds and successful writes per second.
+- Per-write client latency in milliseconds: min, mean, p50, p95, max
+  (nearest-rank percentiles; sub-millisecond values are preserved).
+- Workload schema, payload size, protocol and measurement scope.
+
+`environment.json` records revision, dirty-tree status, OS/architecture, CPU
+count, compiler version, parameters, PostgreSQL version and Docker image ID.
+`comparison.json` is emitted **only after every trial passes**. Server and client
+logs remain in the output directory on failure; a failing client or mismatched
+row count makes the script exit nonzero, never a successful comparison.
+
+The root project currently ignores `Cargo.lock`. Preserve the generated root and
+bench lockfiles alongside results when reproducing measurements; dependencies
+can otherwise change between runs.
+
+## Measurement boundaries
+
+- The workload uses integer keys `0..rows` and deterministic 128-byte hexadecimal
+  text values. Every trial owns a newly created uniquely named table with
+  `key INTEGER PRIMARY KEY, value VARCHAR(128)`.
+- Both targets use the same adapter, SQL, worker limit and simple-query protocol.
+  The measured operations are one INSERT per request, with no application-level
+  retries or explicit multi-statement transactions.
+- Schema creation, connection setup, final row-count verification and table drop
+  are outside the write measurement. Readback checks acknowledged visibility,
+  **not recovery after restart or crash**.
+- This is a write-only, closed-loop client workload, not a read/mixed workload,
+  saturation search, cold-cache test, or sustained throughput guarantee. There is
+  no dedicated warmup. Repeated trials reuse server processes and may warm caches.
+- RRDB WAL is enabled and PostgreSQL uses its default settings. An acknowledged
+  RRDB write and a PostgreSQL commit do **not** imply equal fsync, transaction,
+  isolation, recovery or durability guarantees.
+- RRDB runs natively, PostgreSQL in Docker. On macOS this also involves a Linux VM.
+  Container/VM networking and filesystem differences affect results. Shared CI
+  hosts add noise, so results must not be treated as proof one database is faster.
+
+## Run one backend manually
+
+Use **only a dedicated test database**. The client creates a unique table and
+only drops that table if creation succeeded. It never drops a pre-existing table.
+Specify the connection via `BENCH_DATABASE_URL`, not a command-line argument;
+do not put real credentials in shell history or CI logs.
+
+```sh
+BENCH_DATABASE_URL=postgres://rrdb@127.0.0.1:5432/rrdb \
+  bench/target/release/main postgres --rows 1000 --workers 4 --output /tmp/pg-run.json
+```
+
+Use `rrdb` instead of `postgres` for the backend label. Both use the same adapter;
+the URL selects the server. The output file must not already exist. Connection
+and query errors are sanitized; measured writes are not retried.
+
+The old CSV generator remains available as `cargo run --manifest-path
+bench/Cargo.toml --bin gen`; its output is not used by the comparison.
+
+## Automation and tests
+
+`.github/workflows/benchmark.yml` runs on relevant pull requests, pushes to
+`master`, and manual dispatch. It checks the bench package and Python runner,
+builds release binaries, compares 1,000 rows / 4 workers / 3 trials, and uploads
+JSON results, server/client logs, and dependency lockfiles (including on failure).
+It has read-only repository permissions and does not post comments or commit
+results. Functional failures fail the job; relative performance does not.
+
+```sh
+cargo test --manifest-path bench/Cargo.toml
+cargo clippy --manifest-path bench/Cargo.toml --all-targets -- -D warnings
+cargo fmt --manifest-path bench/Cargo.toml -- --check
+python3 -m unittest discover -s bench -p 'test_*.py'
+```
