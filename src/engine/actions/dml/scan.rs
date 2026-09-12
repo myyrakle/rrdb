@@ -2,6 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind as IOErrorKind;
 use std::path::{Path, PathBuf};
 
+use crate::common::fs::RandomAccessFile;
+use crate::engine::row_offsets::{FRAME_HEADER_LEN, FrameDirectory, FrameOffset};
+use bincode::Options;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 
@@ -426,6 +429,15 @@ impl DBEngine {
         write: &RowBufferWrite,
         durable: bool,
     ) -> errors::Result<()> {
+        // Invalidate BEFORE destructive I/O; a partial rewrite cannot leave
+        // stale offsets usable. Appends retain their directory only if its
+        // physical base still agrees, then complete_write extends new frames.
+        if write.replace_existing {
+            self.row_buffer_pool
+                .lock()
+                .await
+                .invalidate_directory(&write.segment_path);
+        }
         let existing_len = if write.replace_existing {
             0
         } else {
@@ -435,6 +447,16 @@ impl DBEngine {
                 Err(error) => return Err(ExecuteError::wrap(error.to_string())),
             }
         };
+
+        {
+            let mut pool = self.row_buffer_pool.lock().await;
+            if pool
+                .directory(&write.segment_path)
+                .is_some_and(|directory| directory.file_len != existing_len)
+            {
+                pool.invalidate_directory(&write.segment_path);
+            }
+        }
 
         if let Some(parent) = write.segment_path.parent() {
             tokio::fs::create_dir_all(parent)
@@ -576,6 +598,126 @@ impl DBEngine {
             .map_err(|error| ExecuteError::wrap(error.to_string()))
     }
 
+    /// Called only under row_storage_lock. Walk headers with ONE handle and
+    /// skip bodies. No partially built directory is published on failure.
+    async fn ensure_frame_directory(
+        &self,
+        path: &Path,
+        file: &mut dyn RandomAccessFile,
+    ) -> errors::Result<()> {
+        let file_len = file
+            .file_len()
+            .await
+            .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+        let expected_count = {
+            let mut pool = self.row_buffer_pool.lock().await;
+            if pool
+                .directory(path)
+                .is_some_and(|directory| directory.file_len == file_len)
+            {
+                return Ok(());
+            }
+            // Evict before building: retained + building capacities stay bounded.
+            pool.evict_directory();
+            pool.persisted_row_count(path)
+        };
+        let tracker = self.query_memory().await;
+        let mut directory = FrameDirectory::default();
+        let mut offset = 0;
+        while offset < file_len {
+            if file_len - offset < FRAME_HEADER_LEN {
+                return Err(ExecuteError::wrap("truncated row segment frame header"));
+            }
+            let mut header = [0; 5];
+            file.read_exact_at(offset, &mut header)
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+            let frame = FrameOffset::from_header(header, offset, file_len)?;
+            offset = frame.end();
+            directory.push(frame, tracker.as_deref())?;
+        }
+        if expected_count.is_some_and(|count| count != directory.row_count) {
+            // In particular do not reinterpret a failed append's uncommitted
+            // physical suffix as additional logical rows alongside pending rows.
+            return Err(ExecuteError::wrap(
+                "row segment does not match committed row count",
+            ));
+        }
+        self.row_buffer_pool
+            .lock()
+            .await
+            .cache_directory(path.to_path_buf(), directory);
+        Ok(())
+    }
+
+    /// Above the cache cap, walk only the uncached suffix. The bounded cache
+    /// must never turn a large otherwise-readable table into a storage error.
+    async fn selected_frame(
+        &self,
+        path: &Path,
+        row_index: usize,
+        file: &mut dyn RandomAccessFile,
+    ) -> errors::Result<Option<FrameOffset>> {
+        let (mut index, mut offset, file_len) = {
+            let pool = self.row_buffer_pool.lock().await;
+            let Some(directory) = pool.directory(path) else {
+                return Ok(None);
+            };
+            if row_index >= directory.row_count {
+                return Ok(None);
+            }
+            if let Some(frame) = directory.frames.get(row_index) {
+                return Ok(Some(*frame));
+            }
+            (
+                directory.frames.len(),
+                directory.frames.last().map_or(0, |frame| frame.end()),
+                directory.file_len,
+            )
+        };
+        loop {
+            let mut header = [0; 5];
+            file.read_exact_at(offset, &mut header)
+                .await
+                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+            let frame = FrameOffset::from_header(header, offset, file_len)?;
+            if index == row_index {
+                return Ok(Some(frame));
+            }
+            offset = frame.end();
+            index += 1;
+        }
+    }
+
+    /// Live-row count for cold optimizer statistics without decoding row bodies.
+    pub(crate) async fn row_count_for_statistics(
+        &self,
+        table: &TableName,
+    ) -> errors::Result<usize> {
+        let _guard = self.row_storage_lock.lock().await;
+        let path = self.row_segment_path(table)?;
+        if let Some(count) = self
+            .row_buffer_pool
+            .lock()
+            .await
+            .cached_live_row_count(&path)
+        {
+            return Ok(count);
+        }
+        match self.file_system.open_random_access(&path).await {
+            Ok(mut file) => self.ensure_frame_directory(&path, file.as_mut()).await?,
+            Err(error) if error.kind() == IOErrorKind::NotFound => {
+                return Ok(self.row_buffer_pool.lock().await.pending_row_count(&path));
+            }
+            Err(error) => return Err(ExecuteError::wrap(error.to_string())),
+        }
+        let pool = self.row_buffer_pool.lock().await;
+        Ok(pool
+            .directory(&path)
+            .map_or(0, |directory| directory.live_count)
+            + pool.pending_row_count(&path))
+    }
+
     /// 인덱스 스캔: 인덱스에서 row index 목록을 조회한 뒤 해당 행만 반환합니다.
     pub(crate) async fn index_scan(
         &self,
@@ -605,19 +747,18 @@ impl DBEngine {
 
         let _guard = self.row_storage_lock.lock().await;
         let segment_path = self.row_segment_path(&table_name)?;
-        let cached_rows = { self.row_buffer_pool.lock().await.cached_rows(&segment_path) };
-        let all_rows = match cached_rows {
-            Some(rows) => rows,
-            None => {
-                let disk_rows = self.read_segment_rows(&segment_path).await?;
-                self.row_buffer_pool
-                    .lock()
-                    .await
-                    .read_rows(segment_path, || disk_rows)
-            }
-        };
-
-        let mut result = Vec::with_capacity(row_paths.len());
+        let tracker = self.query_memory().await;
+        if let Some(tracker) = &tracker {
+            tracker.reserve(
+                (row_paths.len() as u64)
+                    .saturating_mul(size_of::<(RowLocation, TableDataRow)>() as u64),
+            )?;
+        }
+        let mut result = Vec::new();
+        result.try_reserve_exact(row_paths.len()).map_err(|error| {
+            ExecuteError::wrap(format!("row result allocation failed: {error}"))
+        })?;
+        let mut reader: Option<Box<dyn RandomAccessFile>> = None;
 
         for row_path in row_paths {
             let row_index = row_path.parse::<usize>().map_err(|_| {
@@ -627,26 +768,93 @@ impl DBEngine {
                 ))
             })?;
 
-            match all_rows.get(row_index) {
-                Some(Some(row)) => {
-                    // 메모리 예산 추적 (#265): 결과 행이 앱드될 때마다 크기를 reserve.
-                    if let Some(tracker) = self.query_memory().await {
-                        tracker.reserve(row.estimated_bytes() + ESTIMATED_FIELD_OVERHEAD)?;
+            let cached = {
+                let pool = self.row_buffer_pool.lock().await;
+                match pool.cached_row(&segment_path, row_index) {
+                    Some(Some(row)) => {
+                        if let Some(tracker) = &tracker {
+                            tracker.reserve(row.estimated_bytes() + ESTIMATED_FIELD_OVERHEAD)?;
+                        }
+                        Some(Some(row.clone()))
                     }
-                    result.push((RowLocation { row_index }, row.clone()));
+                    Some(None) => Some(None),
+                    None => None,
                 }
-                Some(None) | None => {
-                    return Err(ExecuteError::wrap(format!(
-                        "index '{}' is out of sync with table data; drop and recreate the index",
-                        plan.index_name
-                    )));
+            };
+            let row = match cached {
+                Some(row) => row,
+                None => {
+                    if reader.is_none() {
+                        reader = match self.file_system.open_random_access(&segment_path).await {
+                            Ok(mut file) => {
+                                self.ensure_frame_directory(&segment_path, file.as_mut())
+                                    .await?;
+                                Some(file)
+                            }
+                            Err(error) if error.kind() == IOErrorKind::NotFound => None,
+                            Err(error) => return Err(ExecuteError::wrap(error.to_string())),
+                        };
+                    }
+                    let frame = if let Some(file) = reader.as_mut() {
+                        self.selected_frame(&segment_path, row_index, file.as_mut())
+                            .await?
+                    } else {
+                        None
+                    };
+                    match (frame, reader.as_mut()) {
+                        (Some(frame), Some(file)) if frame.live => {
+                            // Bounds were checked against this handle's length while
+                            // the storage lock was held. Reserve before allocation and
+                            // decoding, including conservative decoded field overhead.
+                            if let Some(tracker) = &tracker {
+                                tracker.reserve(
+                                    u64::from(frame.len).saturating_mul(8)
+                                        + size_of::<TableDataRow>() as u64,
+                                )?;
+                            }
+                            let mut body = Vec::new();
+                            body.try_reserve_exact(frame.len as usize)
+                                .map_err(|error| {
+                                    ExecuteError::wrap(format!(
+                                        "row frame allocation failed: {error}"
+                                    ))
+                                })?;
+                            body.resize(frame.len as usize, 0);
+                            file.read_exact_at(frame.body, &mut body)
+                                .await
+                                .map_err(|error| ExecuteError::wrap(error.to_string()))?;
+                            let row = bincode::DefaultOptions::new()
+                                .with_fixint_encoding()
+                                .allow_trailing_bytes()
+                                .with_limit(u64::from(frame.len))
+                                .deserialize::<TableDataRow>(&body)
+                                .map_err(|error| {
+                                    ExecuteError::wrap(format!(
+                                        "invalid row segment frame: {error}"
+                                    ))
+                                })?;
+                            Some(row)
+                        }
+                        _ => None,
+                    }
                 }
-            }
+            };
+            let row = row.ok_or_else(|| {
+                ExecuteError::wrap(format!(
+                    "index '{}' is out of sync with table data; drop and recreate the index",
+                    plan.index_name
+                ))
+            })?;
+            result.push((RowLocation { row_index }, row));
         }
 
         Ok(result)
     }
 }
+
+#[cfg(test)]
+#[path = "scan_offset_tests.rs"]
+mod offset_tests;
 
 #[cfg(test)]
 mod tests {

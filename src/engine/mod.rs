@@ -7,6 +7,9 @@ pub mod parser;
 pub mod path_identifier;
 pub mod query_memory;
 pub mod row_buffer;
+#[cfg(test)]
+mod row_offset_model_tests;
+mod row_offsets;
 pub mod schema;
 pub mod server;
 pub mod wal;

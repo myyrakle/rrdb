@@ -23,6 +23,13 @@ pub fn full_scan_cost(row_count: usize, block_count: usize) -> f64 {
 }
 
 /// 인덱스 스캔 비용: B-tree 탐색 + 매칭 튜플별 임의 접근
+///
+/// #221: This now describes warm direct-frame reads, not full-segment decoding.
+/// Keep RANDOM_PAGE_COST conservative: cold directory construction still walks
+/// every frame header; uncached suffixes above the directory cap also need header
+/// walks. Without cache-aware statistics and device-independent measurements,
+/// lowering constants would over-favor broad ranges. See the ignored release
+/// `offset_read_benchmark` for cold-directory and warm point/range comparisons.
 pub fn index_scan_cost(row_count: usize, selectivity: f64) -> f64 {
     let rows = row_count as f64;
     let matched = (rows * selectivity).max(1.0);
