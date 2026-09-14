@@ -31,6 +31,13 @@ pub struct Connection {
     state: ConnectionState,
     statements: HashMap<String, PreparedStatement>,
     portals: HashMap<String, Option<BoundPortal<RRDBEngine>>>,
+    /// True while recovering from an extended-protocol error: every client
+    /// message except Sync/Terminate is discarded until Sync arrives.
+    skip_until_sync: bool,
+    /// Whether the message currently being processed came from simple query
+    /// mode (`Q`). Simple-query errors reply with ReadyForQuery immediately;
+    /// extended-protocol errors instead switch into `skip_until_sync`.
+    current_message_is_simple: bool,
 }
 
 impl Connection {
@@ -41,6 +48,8 @@ impl Connection {
             statements: HashMap::new(),
             portals: HashMap::new(),
             engine: RRDBEngine { shared_state },
+            skip_until_sync: false,
+            current_message_is_simple: true,
         }
     }
 
@@ -95,32 +104,12 @@ impl Connection {
     }
 
     fn query_has_parameters(text: &str) -> bool {
-        let bytes = text.as_bytes();
-        let mut index = 0;
-        let mut in_string = false;
-
-        while index < bytes.len() {
-            match bytes[index] {
-                b'\'' => {
-                    index += 1;
-
-                    if in_string && index < bytes.len() && bytes[index] == b'\'' {
-                        index += 1;
-                    } else {
-                        in_string = !in_string;
-                    }
-                }
-                b'$' if !in_string
-                    && index + 1 < bytes.len()
-                    && bytes[index + 1].is_ascii_digit() =>
-                {
-                    return true;
-                }
-                _ => index += 1,
-            }
-        }
-
-        false
+        // A scanner failure means the query is malformed; report "no parameters" and let
+        // the downstream SQL parser produce the actual syntax error.
+        matches!(
+            scan_sql_segments(text),
+            Ok(segments) if segments.iter().any(|s| matches!(s, SqlSegment::Placeholder(_))),
+        )
     }
 
     fn quote_parameter(parameter: &Option<String>) -> String {
@@ -134,61 +123,25 @@ impl Connection {
         query: &str,
         parameters: &[Option<String>],
     ) -> Result<String, ErrorResponse> {
-        let bytes = query.as_bytes();
-        let mut bound = Vec::with_capacity(query.len());
-        let mut index = 0;
-        let mut in_string = false;
+        let segments = scan_sql_segments(query)?;
+        let mut bound = String::with_capacity(query.len());
 
-        while index < bytes.len() {
-            match bytes[index] {
-                b'\'' => {
-                    bound.push(b'\'');
-                    index += 1;
-
-                    if in_string && index < bytes.len() && bytes[index] == b'\'' {
-                        bound.push(b'\'');
-                        index += 1;
-                    } else {
-                        in_string = !in_string;
-                    }
-                }
-                b'$' if !in_string
-                    && index + 1 < bytes.len()
-                    && bytes[index + 1].is_ascii_digit() =>
-                {
-                    index += 1;
-                    let number_start = index;
-
-                    while index < bytes.len() && bytes[index].is_ascii_digit() {
-                        index += 1;
-                    }
-
-                    let parameter_index: usize = query[number_start..index]
-                        .parse::<usize>()
-                        .map_err(|error| {
-                            ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string())
-                        })?;
-
-                    if parameter_index == 0 || parameter_index > parameters.len() {
+        for segment in segments {
+            match segment {
+                SqlSegment::Passthrough(text) => bound.push_str(text),
+                SqlSegment::Placeholder(index) => {
+                    if index == 0 || index > parameters.len() {
                         return Err(ErrorResponse::error(
                             SqlState::SYNTAX_ERROR,
-                            format!("missing bind parameter ${parameter_index}"),
+                            format!("missing bind parameter ${index}"),
                         ));
                     }
-
-                    bound.extend_from_slice(
-                        Self::quote_parameter(&parameters[parameter_index - 1]).as_bytes(),
-                    );
-                }
-                byte => {
-                    bound.push(byte);
-                    index += 1;
+                    bound.push_str(&Self::quote_parameter(&parameters[index - 1]));
                 }
             }
         }
 
-        String::from_utf8(bound)
-            .map_err(|error| ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string()))
+        Ok(bound)
     }
 
     async fn parse_parameterized_insert(
@@ -441,11 +394,30 @@ impl Connection {
                 Ok(Some(ConnectionState::Idle))
             }
             ConnectionState::Idle => {
-                match framed
+                let message = framed
                     .next()
                     .await
-                    .ok_or(ConnectionError::ConnectionClosed)??
-                {
+                    .ok_or(ConnectionError::ConnectionClosed)??;
+
+                // Extended-protocol error recovery: PG spec requires the backend
+                // to swallow every non-Sync message after an ErrorResponse until
+                // it sees a Sync, and only then emit ReadyForQuery.
+                if self.skip_until_sync {
+                    match message {
+                        ClientMessage::Sync => {
+                            self.skip_until_sync = false;
+                            framed.send(ReadyForQuery).await?;
+                        }
+                        ClientMessage::Terminate => return Ok(None),
+                        _ => {}
+                    }
+                    return Ok(Some(ConnectionState::Idle));
+                }
+
+                self.current_message_is_simple =
+                    matches!(&message, ClientMessage::Query(_));
+
+                match message {
                     ClientMessage::Parse(parse) => {
                         let has_parameters = !parse.parameter_types.is_empty()
                             || Self::query_has_parameters(&parse.query);
@@ -468,6 +440,7 @@ impl Connection {
                                 } else {
                                     None
                                 },
+                                parameter_types: parse.parameter_types,
                             },
                         );
                         framed.send(ParseComplete).await?;
@@ -537,8 +510,12 @@ impl Connection {
                         framed.send(BindComplete).await?;
                     }
                     ClientMessage::Describe(Describe::PreparedStatement(ref statement_name)) => {
-                        let fields = self.prepared_statement(statement_name)?.fields.clone();
-                        framed.send(ParameterDescription {}).await?;
+                        let prepared = self.prepared_statement(statement_name)?;
+                        let fields = prepared.fields.clone();
+                        let parameter_types = prepared.parameter_types.clone();
+                        framed
+                            .send(ParameterDescription { parameter_types })
+                            .await?;
                         if fields.is_empty() {
                             framed.send(NoData).await?;
                         } else {
@@ -667,7 +644,12 @@ impl Connection {
                         return Err(err_info.into());
                     }
 
-                    framed.send(ReadyForQuery).await?;
+                    if self.current_message_is_simple {
+                        framed.send(ReadyForQuery).await?;
+                    } else {
+                        // Extended-protocol error: wait for Sync before ReadyForQuery.
+                        self.skip_until_sync = true;
+                    }
                     ConnectionState::Idle
                 }
                 Err(err) => {
@@ -684,6 +666,193 @@ impl Connection {
             self.state = new_state;
         }
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum SqlSegment<'a> {
+    Passthrough(&'a str),
+    Placeholder(usize),
+}
+
+/// Splits SQL into pass-through spans and `$N` placeholder positions, respecting
+/// single-quoted strings, quoted identifiers, line comments (`-- ...`), nested
+/// block comments (`/* ... */`), and dollar-quoted strings (`$tag$ ... $tag$`).
+/// Returns an error when a literal or comment is left unterminated.
+fn scan_sql_segments(sql: &str) -> Result<Vec<SqlSegment<'_>>, ErrorResponse> {
+    let bytes = sql.as_bytes();
+    let mut segments = Vec::new();
+    let mut passthrough_start = 0usize;
+    let mut i = 0usize;
+
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\'' => {
+                // PostgreSQL E'...' escape strings recognize backslash escapes
+                // (e.g. `\'` does not terminate the literal). The prefix must
+                // sit at a word boundary — `xE'foo'` is a plain identifier.
+                let is_escape_string = i >= 1
+                    && matches!(bytes[i - 1], b'E' | b'e')
+                    && (i == 1 || !is_identifier_body_char(bytes[i - 2]));
+                i = skip_single_quoted(bytes, i, is_escape_string)?;
+            }
+            b'"' => {
+                i = skip_double_quoted(bytes, i)?;
+            }
+            b'-' if bytes.get(i + 1) == Some(&b'-') => {
+                i = skip_line_comment(bytes, i);
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
+                i = skip_block_comment(bytes, i)?;
+            }
+            b'$' => {
+                if let Some(end) = try_skip_dollar_quoted(bytes, i)? {
+                    i = end;
+                } else if bytes.get(i + 1).is_some_and(u8::is_ascii_digit) {
+                    if passthrough_start < i {
+                        segments.push(SqlSegment::Passthrough(&sql[passthrough_start..i]));
+                    }
+
+                    let number_start = i + 1;
+                    let mut j = number_start;
+                    while j < bytes.len() && bytes[j].is_ascii_digit() {
+                        j += 1;
+                    }
+
+                    let index: usize = sql[number_start..j].parse::<usize>().map_err(|error| {
+                        ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string())
+                    })?;
+                    segments.push(SqlSegment::Placeholder(index));
+                    passthrough_start = j;
+                    i = j;
+                } else {
+                    i += 1;
+                }
+            }
+            _ => i += 1,
+        }
+    }
+
+    if passthrough_start < bytes.len() {
+        segments.push(SqlSegment::Passthrough(&sql[passthrough_start..]));
+    }
+
+    Ok(segments)
+}
+
+fn skip_single_quoted(
+    bytes: &[u8],
+    start: usize,
+    escape_string: bool,
+) -> Result<usize, ErrorResponse> {
+    let mut i = start + 1;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' if escape_string && i + 1 < bytes.len() => {
+                // In E'...' strings any character after a backslash is part of
+                // the literal, so `\'` does not close the string.
+                i += 2;
+            }
+            b'\'' => {
+                if bytes.get(i + 1) == Some(&b'\'') {
+                    i += 2;
+                } else {
+                    return Ok(i + 1);
+                }
+            }
+            _ => i += 1,
+        }
+    }
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated string literal",
+    ))
+}
+
+fn is_identifier_body_char(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_'
+}
+
+fn skip_double_quoted(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse> {
+    let mut i = start + 1;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            if bytes.get(i + 1) == Some(&b'"') {
+                i += 2;
+            } else {
+                return Ok(i + 1);
+            }
+        } else {
+            i += 1;
+        }
+    }
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated quoted identifier",
+    ))
+}
+
+fn skip_line_comment(bytes: &[u8], start: usize) -> usize {
+    // PostgreSQL treats both LF and CR as line-comment terminators; without CR
+    // the scanner would swallow the rest of a `\r`-terminated line.
+    let mut i = start + 2;
+    while i < bytes.len() && !matches!(bytes[i], b'\n' | b'\r') {
+        i += 1;
+    }
+    i
+}
+
+fn skip_block_comment(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse> {
+    let mut i = start + 2;
+    let mut depth: u32 = 1;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'/' && bytes[i + 1] == b'*' {
+            depth += 1;
+            i += 2;
+        } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
+            depth -= 1;
+            i += 2;
+            if depth == 0 {
+                return Ok(i);
+            }
+        } else {
+            i += 1;
+        }
+    }
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated block comment",
+    ))
+}
+
+/// If `bytes[start]` is `$` and starts a valid dollar-quoted string, returns the
+/// index just past the closing tag. Returns `Ok(None)` when the sequence is not
+/// a dollar-quoted literal (so the caller can treat `$N` as a placeholder).
+fn try_skip_dollar_quoted(bytes: &[u8], start: usize) -> Result<Option<usize>, ErrorResponse> {
+    let mut i = start + 1;
+    while i < bytes.len() && (bytes[i].is_ascii_alphabetic() || bytes[i] == b'_') {
+        i += 1;
+    }
+    while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+        i += 1;
+    }
+
+    if bytes.get(i) != Some(&b'$') {
+        return Ok(None);
+    }
+
+    let tag = &bytes[start..=i];
+    let mut j = i + 1;
+    while j + tag.len() <= bytes.len() {
+        if &bytes[j..j + tag.len()] == tag {
+            return Ok(Some(j + tag.len()));
+        }
+        j += 1;
+    }
+
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated dollar-quoted string",
+    ))
 }
 
 #[cfg(test)]
@@ -743,6 +912,100 @@ mod tests {
     fn query_has_parameters_ignores_placeholders_inside_string_literals() {
         assert!(!Connection::query_has_parameters("select '$1'"));
         assert!(Connection::query_has_parameters("select '$1', $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_line_comments() {
+        assert!(!Connection::query_has_parameters("select 1 -- $1"));
+        assert!(!Connection::query_has_parameters("-- $1\nselect 1"));
+        assert!(Connection::query_has_parameters("-- $1\nselect $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_block_comments() {
+        assert!(!Connection::query_has_parameters("select 1 /* $1 */"));
+        assert!(!Connection::query_has_parameters("/* nested /* $1 */ */ select 1"));
+        assert!(Connection::query_has_parameters("/* $1 */ select $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_dollar_quoted_strings() {
+        assert!(!Connection::query_has_parameters("select $body$ $1 $body$"));
+        assert!(!Connection::query_has_parameters("select $$ $1 $$"));
+        assert!(Connection::query_has_parameters("select $body$ x $body$, $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_quoted_identifiers() {
+        assert!(!Connection::query_has_parameters("select \"$1\""));
+        assert!(Connection::query_has_parameters("select \"col\", $1"));
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_line_comment_body_untouched() {
+        let query = "select $1 -- ignore $1 in comment";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select 'v' -- ignore $1 in comment");
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_block_comment_body_untouched() {
+        let query = "select /* $1 */ $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select /* $1 */ 'v'");
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_dollar_quoted_body_untouched() {
+        let query = "select $body$ inner $1 $body$, $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select $body$ inner $1 $body$, 'v'");
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_quoted_identifier_body_untouched() {
+        let query = "select \"$1 column\", $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select \"$1 column\", 'v'");
+    }
+
+    #[test]
+    fn bind_query_parameters_rejects_unterminated_block_comment() {
+        let err = Connection::bind_query_parameters("select 1 /* $1 ", &[Some("v".to_string())]);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_escape_strings() {
+        // PostgreSQL E'...' escape strings: `\'` does not terminate.
+        assert!(!Connection::query_has_parameters(r"select E'it\'s $1'"));
+        assert!(!Connection::query_has_parameters(r"select e'it\'s $1'"));
+        // Placeholder outside the escape string still counts.
+        assert!(Connection::query_has_parameters(r"select E'x' , $1"));
+        // Identifier ending in `E` is not an escape prefix.
+        assert!(Connection::query_has_parameters(r"select xE, $1"));
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_escape_string_body_untouched() {
+        // `\'` inside E'...' must not be treated as a terminator, so $1 stays literal.
+        let query = r"select E'it\'s $1', $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, r"select E'it\'s $1', 'v'");
+    }
+
+    #[test]
+    fn query_has_parameters_treats_carriage_return_as_line_comment_terminator() {
+        // `\r` also ends line comments in PostgreSQL; `$1` after CR is a real placeholder.
+        assert!(Connection::query_has_parameters("select -- comment\r $1"));
+        assert!(Connection::query_has_parameters("select -- comment\r\nfrom t where a = $1"));
+    }
+
+    #[test]
+    fn bind_query_parameters_stops_line_comment_at_carriage_return() {
+        let query = "select 1 -- ignore\r $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select 1 -- ignore\r 'v'");
     }
 
     fn parse_statement(sql: &str) -> SQLStatement {
@@ -882,5 +1145,165 @@ mod tests {
         assert_eq!(values[1], Some(SQLExpression::Boolean(true)));
         assert_eq!(values[2], Some(SQLExpression::Float(3.5)));
         assert_eq!(values[3], Some(SQLExpression::String("007".to_string())));
+    }
+
+    use bytes::{BufMut, BytesMut};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    fn startup_bytes(database: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_i16(3);
+        body.put_i16(0);
+        body.put_slice(b"user\0me\0");
+        if !database.is_empty() {
+            body.put_slice(b"database\0");
+            body.put_slice(database.as_bytes());
+            body.put_u8(0);
+        }
+        body.put_u8(0);
+
+        let mut msg = BytesMut::new();
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    fn bind_bytes(portal: &str, statement: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_slice(portal.as_bytes());
+        body.put_u8(0);
+        body.put_slice(statement.as_bytes());
+        body.put_u8(0);
+        body.put_i16(0); // param format codes
+        body.put_i16(0); // param values
+        body.put_i16(0); // result format codes
+
+        let mut msg = BytesMut::new();
+        msg.put_u8(b'B');
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    fn execute_bytes(portal: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_slice(portal.as_bytes());
+        body.put_u8(0);
+        body.put_i32(0);
+
+        let mut msg = BytesMut::new();
+        msg.put_u8(b'E');
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    fn tag_only_bytes(tag: u8) -> BytesMut {
+        let mut msg = BytesMut::new();
+        msg.put_u8(tag);
+        msg.put_i32(4);
+        msg
+    }
+
+    fn simple_query_bytes(sql: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_slice(sql.as_bytes());
+        body.put_u8(0);
+
+        let mut msg = BytesMut::new();
+        msg.put_u8(b'Q');
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    async fn read_message<R: tokio::io::AsyncRead + Unpin>(reader: &mut R) -> (u8, Vec<u8>) {
+        let mut header = [0u8; 5];
+        reader.read_exact(&mut header).await.unwrap();
+        let length = i32::from_be_bytes(header[1..5].try_into().unwrap()) as usize;
+        let mut body = vec![0u8; length - 4];
+        if !body.is_empty() {
+            reader.read_exact(&mut body).await.unwrap();
+        }
+        (header[0], body)
+    }
+
+    async fn drain_startup_replies<R: tokio::io::AsyncRead + Unpin>(reader: &mut R) {
+        // AuthenticationOk, then ParameterStatus messages, then ReadyForQuery.
+        loop {
+            let (tag, _) = read_message(reader).await;
+            if tag == b'Z' {
+                return;
+            }
+        }
+    }
+
+    /// PostgreSQL extended-protocol spec: after an ErrorResponse, the backend
+    /// must silently discard every message until it sees Sync, and only then
+    /// send ReadyForQuery.
+    #[tokio::test]
+    async fn extended_protocol_error_defers_ready_for_query_until_sync() {
+        let (mut client, server) = tokio::io::duplex(4096);
+        let mut connection = build_test_connection("test_pgwire_skip_until_sync").await;
+
+        let server_task = tokio::spawn(async move {
+            let _ = connection.run(server).await;
+        });
+
+        client.write_all(&startup_bytes("")).await.unwrap();
+        drain_startup_replies(&mut client).await;
+
+        // Bind referencing a statement that was never Parsed → ErrorResponse.
+        client
+            .write_all(&bind_bytes("p1", "nonexistent"))
+            .await
+            .unwrap();
+        // Follow-up Execute must be discarded silently.
+        client.write_all(&execute_bytes("p1")).await.unwrap();
+        // Sync ends the recovery window and triggers ReadyForQuery.
+        client.write_all(&tag_only_bytes(b'S')).await.unwrap();
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(tag, b'E', "expected ErrorResponse first");
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(
+            tag, b'Z',
+            "next message must be ReadyForQuery (after Sync), not a response to the discarded Execute"
+        );
+
+        client.write_all(&tag_only_bytes(b'X')).await.unwrap();
+        let _ = server_task.await;
+    }
+
+    /// Simple query (`Q`) mode still emits ReadyForQuery immediately after an
+    /// ErrorResponse — the extended-protocol recovery window applies only to
+    /// Parse/Bind/Describe/Execute/Close/Flush.
+    #[tokio::test]
+    async fn simple_query_error_still_emits_ready_for_query_immediately() {
+        let (mut client, server) = tokio::io::duplex(4096);
+        let mut connection = build_test_connection("test_pgwire_simple_query_error").await;
+
+        let server_task = tokio::spawn(async move {
+            let _ = connection.run(server).await;
+        });
+
+        client.write_all(&startup_bytes("")).await.unwrap();
+        drain_startup_replies(&mut client).await;
+
+        // Syntax error in simple query mode (SELECT with nothing after it).
+        client
+            .write_all(&simple_query_bytes("select"))
+            .await
+            .unwrap();
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(tag, b'E', "expected ErrorResponse");
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(tag, b'Z', "simple query error must be followed by ReadyForQuery without Sync");
+
+        client.write_all(&tag_only_bytes(b'X')).await.unwrap();
+        let _ = server_task.await;
     }
 }

@@ -184,14 +184,15 @@ impl Decoder for ConnectionCodec {
                     return Err(ProtocolError::ParserError);
                 }
 
+                let mut parameter_types = Vec::with_capacity(num_params as usize);
                 for _ in 0..num_params {
-                    let _param_type = Self::read_u32(&mut body)?;
+                    parameter_types.push(Self::read_u32(&mut body)?.into());
                 }
 
                 ClientMessage::Parse(Parse {
                     prepared_statement_name,
                     query,
-                    parameter_types: Vec::new(),
+                    parameter_types,
                 })
             }
             b'D' => {
@@ -326,6 +327,7 @@ mod tests {
     use bytes::{BufMut, BytesMut};
     use tokio_util::codec::Decoder;
 
+    use crate::pgwire::protocol::DataTypeOid;
     use crate::pgwire::protocol::client::{ClientMessage, Close};
 
     use super::ConnectionCodec;
@@ -391,6 +393,46 @@ mod tests {
         message.put_i32((4 + body.len()) as i32);
         message.extend_from_slice(&body);
         message
+    }
+
+    fn parse_message(statement: &str, query: &str, param_oids: &[u32]) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_slice(statement.as_bytes());
+        body.put_u8(0);
+        body.put_slice(query.as_bytes());
+        body.put_u8(0);
+        body.put_i16(param_oids.len() as i16);
+        for oid in param_oids {
+            body.put_u32(*oid);
+        }
+
+        let mut message = BytesMut::new();
+        message.put_u8(b'P');
+        message.put_i32((4 + body.len()) as i32);
+        message.extend_from_slice(&body);
+        message
+    }
+
+    #[test]
+    fn parse_message_preserves_parameter_type_oids() {
+        let mut codec = ConnectionCodec {
+            startup_received: true,
+        };
+        // Int4 = 23, Text = 25
+        let mut message = parse_message("s1", "select $1, $2", &[23, 25]);
+
+        let decoded = codec.decode(&mut message).unwrap().unwrap();
+
+        match decoded {
+            ClientMessage::Parse(parse) => {
+                assert_eq!(parse.prepared_statement_name, "s1");
+                assert_eq!(parse.query, "select $1, $2");
+                assert_eq!(parse.parameter_types.len(), 2);
+                assert!(matches!(parse.parameter_types[0], DataTypeOid::Int4));
+                assert!(matches!(parse.parameter_types[1], DataTypeOid::Text));
+            }
+            other => panic!("expected parse, got {other:?}"),
+        }
     }
 
     #[test]
