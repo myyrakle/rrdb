@@ -95,32 +95,12 @@ impl Connection {
     }
 
     fn query_has_parameters(text: &str) -> bool {
-        let bytes = text.as_bytes();
-        let mut index = 0;
-        let mut in_string = false;
-
-        while index < bytes.len() {
-            match bytes[index] {
-                b'\'' => {
-                    index += 1;
-
-                    if in_string && index < bytes.len() && bytes[index] == b'\'' {
-                        index += 1;
-                    } else {
-                        in_string = !in_string;
-                    }
-                }
-                b'$' if !in_string
-                    && index + 1 < bytes.len()
-                    && bytes[index + 1].is_ascii_digit() =>
-                {
-                    return true;
-                }
-                _ => index += 1,
-            }
-        }
-
-        false
+        // A scanner failure means the query is malformed; report "no parameters" and let
+        // the downstream SQL parser produce the actual syntax error.
+        matches!(
+            scan_sql_segments(text),
+            Ok(segments) if segments.iter().any(|s| matches!(s, SqlSegment::Placeholder(_))),
+        )
     }
 
     fn quote_parameter(parameter: &Option<String>) -> String {
@@ -134,61 +114,25 @@ impl Connection {
         query: &str,
         parameters: &[Option<String>],
     ) -> Result<String, ErrorResponse> {
-        let bytes = query.as_bytes();
-        let mut bound = Vec::with_capacity(query.len());
-        let mut index = 0;
-        let mut in_string = false;
+        let segments = scan_sql_segments(query)?;
+        let mut bound = String::with_capacity(query.len());
 
-        while index < bytes.len() {
-            match bytes[index] {
-                b'\'' => {
-                    bound.push(b'\'');
-                    index += 1;
-
-                    if in_string && index < bytes.len() && bytes[index] == b'\'' {
-                        bound.push(b'\'');
-                        index += 1;
-                    } else {
-                        in_string = !in_string;
-                    }
-                }
-                b'$' if !in_string
-                    && index + 1 < bytes.len()
-                    && bytes[index + 1].is_ascii_digit() =>
-                {
-                    index += 1;
-                    let number_start = index;
-
-                    while index < bytes.len() && bytes[index].is_ascii_digit() {
-                        index += 1;
-                    }
-
-                    let parameter_index: usize = query[number_start..index]
-                        .parse::<usize>()
-                        .map_err(|error| {
-                            ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string())
-                        })?;
-
-                    if parameter_index == 0 || parameter_index > parameters.len() {
+        for segment in segments {
+            match segment {
+                SqlSegment::Passthrough(text) => bound.push_str(text),
+                SqlSegment::Placeholder(index) => {
+                    if index == 0 || index > parameters.len() {
                         return Err(ErrorResponse::error(
                             SqlState::SYNTAX_ERROR,
-                            format!("missing bind parameter ${parameter_index}"),
+                            format!("missing bind parameter ${index}"),
                         ));
                     }
-
-                    bound.extend_from_slice(
-                        Self::quote_parameter(&parameters[parameter_index - 1]).as_bytes(),
-                    );
-                }
-                byte => {
-                    bound.push(byte);
-                    index += 1;
+                    bound.push_str(&Self::quote_parameter(&parameters[index - 1]));
                 }
             }
         }
 
-        String::from_utf8(bound)
-            .map_err(|error| ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string()))
+        Ok(bound)
     }
 
     async fn parse_parameterized_insert(
@@ -691,6 +635,171 @@ impl Connection {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum SqlSegment<'a> {
+    Passthrough(&'a str),
+    Placeholder(usize),
+}
+
+/// Splits SQL into pass-through spans and `$N` placeholder positions, respecting
+/// single-quoted strings, quoted identifiers, line comments (`-- ...`), nested
+/// block comments (`/* ... */`), and dollar-quoted strings (`$tag$ ... $tag$`).
+/// Returns an error when a literal or comment is left unterminated.
+fn scan_sql_segments(sql: &str) -> Result<Vec<SqlSegment<'_>>, ErrorResponse> {
+    let bytes = sql.as_bytes();
+    let mut segments = Vec::new();
+    let mut passthrough_start = 0usize;
+    let mut i = 0usize;
+
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\'' => {
+                i = skip_single_quoted(bytes, i)?;
+            }
+            b'"' => {
+                i = skip_double_quoted(bytes, i)?;
+            }
+            b'-' if bytes.get(i + 1) == Some(&b'-') => {
+                i = skip_line_comment(bytes, i);
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
+                i = skip_block_comment(bytes, i)?;
+            }
+            b'$' => {
+                if let Some(end) = try_skip_dollar_quoted(bytes, i)? {
+                    i = end;
+                } else if bytes.get(i + 1).is_some_and(u8::is_ascii_digit) {
+                    if passthrough_start < i {
+                        segments.push(SqlSegment::Passthrough(&sql[passthrough_start..i]));
+                    }
+
+                    let number_start = i + 1;
+                    let mut j = number_start;
+                    while j < bytes.len() && bytes[j].is_ascii_digit() {
+                        j += 1;
+                    }
+
+                    let index: usize = sql[number_start..j].parse::<usize>().map_err(|error| {
+                        ErrorResponse::error(SqlState::SYNTAX_ERROR, error.to_string())
+                    })?;
+                    segments.push(SqlSegment::Placeholder(index));
+                    passthrough_start = j;
+                    i = j;
+                } else {
+                    i += 1;
+                }
+            }
+            _ => i += 1,
+        }
+    }
+
+    if passthrough_start < bytes.len() {
+        segments.push(SqlSegment::Passthrough(&sql[passthrough_start..]));
+    }
+
+    Ok(segments)
+}
+
+fn skip_single_quoted(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse> {
+    let mut i = start + 1;
+    while i < bytes.len() {
+        if bytes[i] == b'\'' {
+            if bytes.get(i + 1) == Some(&b'\'') {
+                i += 2;
+            } else {
+                return Ok(i + 1);
+            }
+        } else {
+            i += 1;
+        }
+    }
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated string literal",
+    ))
+}
+
+fn skip_double_quoted(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse> {
+    let mut i = start + 1;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            if bytes.get(i + 1) == Some(&b'"') {
+                i += 2;
+            } else {
+                return Ok(i + 1);
+            }
+        } else {
+            i += 1;
+        }
+    }
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated quoted identifier",
+    ))
+}
+
+fn skip_line_comment(bytes: &[u8], start: usize) -> usize {
+    let mut i = start + 2;
+    while i < bytes.len() && bytes[i] != b'\n' {
+        i += 1;
+    }
+    i
+}
+
+fn skip_block_comment(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse> {
+    let mut i = start + 2;
+    let mut depth: u32 = 1;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'/' && bytes[i + 1] == b'*' {
+            depth += 1;
+            i += 2;
+        } else if bytes[i] == b'*' && bytes[i + 1] == b'/' {
+            depth -= 1;
+            i += 2;
+            if depth == 0 {
+                return Ok(i);
+            }
+        } else {
+            i += 1;
+        }
+    }
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated block comment",
+    ))
+}
+
+/// If `bytes[start]` is `$` and starts a valid dollar-quoted string, returns the
+/// index just past the closing tag. Returns `Ok(None)` when the sequence is not
+/// a dollar-quoted literal (so the caller can treat `$N` as a placeholder).
+fn try_skip_dollar_quoted(bytes: &[u8], start: usize) -> Result<Option<usize>, ErrorResponse> {
+    let mut i = start + 1;
+    while i < bytes.len() && (bytes[i].is_ascii_alphabetic() || bytes[i] == b'_') {
+        i += 1;
+    }
+    while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+        i += 1;
+    }
+
+    if bytes.get(i) != Some(&b'$') {
+        return Ok(None);
+    }
+
+    let tag = &bytes[start..=i];
+    let mut j = i + 1;
+    while j + tag.len() <= bytes.len() {
+        if &bytes[j..j + tag.len()] == tag {
+            return Ok(Some(j + tag.len()));
+        }
+        j += 1;
+    }
+
+    Err(ErrorResponse::error(
+        SqlState::SYNTAX_ERROR,
+        "unterminated dollar-quoted string",
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use std::net::{IpAddr, Ipv4Addr};
@@ -748,6 +857,67 @@ mod tests {
     fn query_has_parameters_ignores_placeholders_inside_string_literals() {
         assert!(!Connection::query_has_parameters("select '$1'"));
         assert!(Connection::query_has_parameters("select '$1', $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_line_comments() {
+        assert!(!Connection::query_has_parameters("select 1 -- $1"));
+        assert!(!Connection::query_has_parameters("-- $1\nselect 1"));
+        assert!(Connection::query_has_parameters("-- $1\nselect $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_block_comments() {
+        assert!(!Connection::query_has_parameters("select 1 /* $1 */"));
+        assert!(!Connection::query_has_parameters("/* nested /* $1 */ */ select 1"));
+        assert!(Connection::query_has_parameters("/* $1 */ select $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_dollar_quoted_strings() {
+        assert!(!Connection::query_has_parameters("select $body$ $1 $body$"));
+        assert!(!Connection::query_has_parameters("select $$ $1 $$"));
+        assert!(Connection::query_has_parameters("select $body$ x $body$, $1"));
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_quoted_identifiers() {
+        assert!(!Connection::query_has_parameters("select \"$1\""));
+        assert!(Connection::query_has_parameters("select \"col\", $1"));
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_line_comment_body_untouched() {
+        let query = "select $1 -- ignore $1 in comment";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select 'v' -- ignore $1 in comment");
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_block_comment_body_untouched() {
+        let query = "select /* $1 */ $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select /* $1 */ 'v'");
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_dollar_quoted_body_untouched() {
+        let query = "select $body$ inner $1 $body$, $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select $body$ inner $1 $body$, 'v'");
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_quoted_identifier_body_untouched() {
+        let query = "select \"$1 column\", $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select \"$1 column\", 'v'");
+    }
+
+    #[test]
+    fn bind_query_parameters_rejects_unterminated_block_comment() {
+        let err = Connection::bind_query_parameters("select 1 /* $1 ", &[Some("v".to_string())]);
+        assert!(err.is_err());
     }
 
     fn parse_statement(sql: &str) -> SQLStatement {
