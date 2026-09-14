@@ -687,7 +687,13 @@ fn scan_sql_segments(sql: &str) -> Result<Vec<SqlSegment<'_>>, ErrorResponse> {
     while i < bytes.len() {
         match bytes[i] {
             b'\'' => {
-                i = skip_single_quoted(bytes, i)?;
+                // PostgreSQL E'...' escape strings recognize backslash escapes
+                // (e.g. `\'` does not terminate the literal). The prefix must
+                // sit at a word boundary — `xE'foo'` is a plain identifier.
+                let is_escape_string = i >= 1
+                    && matches!(bytes[i - 1], b'E' | b'e')
+                    && (i == 1 || !is_identifier_body_char(bytes[i - 2]));
+                i = skip_single_quoted(bytes, i, is_escape_string)?;
             }
             b'"' => {
                 i = skip_double_quoted(bytes, i)?;
@@ -733,23 +739,37 @@ fn scan_sql_segments(sql: &str) -> Result<Vec<SqlSegment<'_>>, ErrorResponse> {
     Ok(segments)
 }
 
-fn skip_single_quoted(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse> {
+fn skip_single_quoted(
+    bytes: &[u8],
+    start: usize,
+    escape_string: bool,
+) -> Result<usize, ErrorResponse> {
     let mut i = start + 1;
     while i < bytes.len() {
-        if bytes[i] == b'\'' {
-            if bytes.get(i + 1) == Some(&b'\'') {
+        match bytes[i] {
+            b'\\' if escape_string && i + 1 < bytes.len() => {
+                // In E'...' strings any character after a backslash is part of
+                // the literal, so `\'` does not close the string.
                 i += 2;
-            } else {
-                return Ok(i + 1);
             }
-        } else {
-            i += 1;
+            b'\'' => {
+                if bytes.get(i + 1) == Some(&b'\'') {
+                    i += 2;
+                } else {
+                    return Ok(i + 1);
+                }
+            }
+            _ => i += 1,
         }
     }
     Err(ErrorResponse::error(
         SqlState::SYNTAX_ERROR,
         "unterminated string literal",
     ))
+}
+
+fn is_identifier_body_char(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_'
 }
 
 fn skip_double_quoted(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse> {
@@ -772,8 +792,10 @@ fn skip_double_quoted(bytes: &[u8], start: usize) -> Result<usize, ErrorResponse
 }
 
 fn skip_line_comment(bytes: &[u8], start: usize) -> usize {
+    // PostgreSQL treats both LF and CR as line-comment terminators; without CR
+    // the scanner would swallow the rest of a `\r`-terminated line.
     let mut i = start + 2;
-    while i < bytes.len() && bytes[i] != b'\n' {
+    while i < bytes.len() && !matches!(bytes[i], b'\n' | b'\r') {
         i += 1;
     }
     i
@@ -951,6 +973,39 @@ mod tests {
     fn bind_query_parameters_rejects_unterminated_block_comment() {
         let err = Connection::bind_query_parameters("select 1 /* $1 ", &[Some("v".to_string())]);
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn query_has_parameters_ignores_placeholders_inside_escape_strings() {
+        // PostgreSQL E'...' escape strings: `\'` does not terminate.
+        assert!(!Connection::query_has_parameters(r"select E'it\'s $1'"));
+        assert!(!Connection::query_has_parameters(r"select e'it\'s $1'"));
+        // Placeholder outside the escape string still counts.
+        assert!(Connection::query_has_parameters(r"select E'x' , $1"));
+        // Identifier ending in `E` is not an escape prefix.
+        assert!(Connection::query_has_parameters(r"select xE, $1"));
+    }
+
+    #[test]
+    fn bind_query_parameters_leaves_escape_string_body_untouched() {
+        // `\'` inside E'...' must not be treated as a terminator, so $1 stays literal.
+        let query = r"select E'it\'s $1', $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, r"select E'it\'s $1', 'v'");
+    }
+
+    #[test]
+    fn query_has_parameters_treats_carriage_return_as_line_comment_terminator() {
+        // `\r` also ends line comments in PostgreSQL; `$1` after CR is a real placeholder.
+        assert!(Connection::query_has_parameters("select -- comment\r $1"));
+        assert!(Connection::query_has_parameters("select -- comment\r\nfrom t where a = $1"));
+    }
+
+    #[test]
+    fn bind_query_parameters_stops_line_comment_at_carriage_return() {
+        let query = "select 1 -- ignore\r $1";
+        let bound = Connection::bind_query_parameters(query, &[Some("v".to_string())]).unwrap();
+        assert_eq!(bound, "select 1 -- ignore\r 'v'");
     }
 
     fn parse_statement(sql: &str) -> SQLStatement {
