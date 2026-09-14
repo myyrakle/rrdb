@@ -468,6 +468,7 @@ impl Connection {
                                 } else {
                                     None
                                 },
+                                parameter_types: parse.parameter_types,
                             },
                         );
                         framed.send(ParseComplete).await?;
@@ -537,8 +538,12 @@ impl Connection {
                         framed.send(BindComplete).await?;
                     }
                     ClientMessage::Describe(Describe::PreparedStatement(ref statement_name)) => {
-                        let fields = self.prepared_statement(statement_name)?.fields.clone();
-                        framed.send(ParameterDescription {}).await?;
+                        let prepared = self.prepared_statement(statement_name)?;
+                        let fields = prepared.fields.clone();
+                        let parameter_types = prepared.parameter_types.clone();
+                        framed
+                            .send(ParameterDescription { parameter_types })
+                            .await?;
                         if fields.is_empty() {
                             framed.send(NoData).await?;
                         } else {
