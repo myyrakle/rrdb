@@ -31,6 +31,13 @@ pub struct Connection {
     state: ConnectionState,
     statements: HashMap<String, PreparedStatement>,
     portals: HashMap<String, Option<BoundPortal<RRDBEngine>>>,
+    /// True while recovering from an extended-protocol error: every client
+    /// message except Sync/Terminate is discarded until Sync arrives.
+    skip_until_sync: bool,
+    /// Whether the message currently being processed came from simple query
+    /// mode (`Q`). Simple-query errors reply with ReadyForQuery immediately;
+    /// extended-protocol errors instead switch into `skip_until_sync`.
+    current_message_is_simple: bool,
 }
 
 impl Connection {
@@ -41,6 +48,8 @@ impl Connection {
             statements: HashMap::new(),
             portals: HashMap::new(),
             engine: RRDBEngine { shared_state },
+            skip_until_sync: false,
+            current_message_is_simple: true,
         }
     }
 
@@ -385,11 +394,30 @@ impl Connection {
                 Ok(Some(ConnectionState::Idle))
             }
             ConnectionState::Idle => {
-                match framed
+                let message = framed
                     .next()
                     .await
-                    .ok_or(ConnectionError::ConnectionClosed)??
-                {
+                    .ok_or(ConnectionError::ConnectionClosed)??;
+
+                // Extended-protocol error recovery: PG spec requires the backend
+                // to swallow every non-Sync message after an ErrorResponse until
+                // it sees a Sync, and only then emit ReadyForQuery.
+                if self.skip_until_sync {
+                    match message {
+                        ClientMessage::Sync => {
+                            self.skip_until_sync = false;
+                            framed.send(ReadyForQuery).await?;
+                        }
+                        ClientMessage::Terminate => return Ok(None),
+                        _ => {}
+                    }
+                    return Ok(Some(ConnectionState::Idle));
+                }
+
+                self.current_message_is_simple =
+                    matches!(&message, ClientMessage::Query(_));
+
+                match message {
                     ClientMessage::Parse(parse) => {
                         let has_parameters = !parse.parameter_types.is_empty()
                             || Self::query_has_parameters(&parse.query);
@@ -616,7 +644,12 @@ impl Connection {
                         return Err(err_info.into());
                     }
 
-                    framed.send(ReadyForQuery).await?;
+                    if self.current_message_is_simple {
+                        framed.send(ReadyForQuery).await?;
+                    } else {
+                        // Extended-protocol error: wait for Sync before ReadyForQuery.
+                        self.skip_until_sync = true;
+                    }
                     ConnectionState::Idle
                 }
                 Err(err) => {
@@ -1057,5 +1090,165 @@ mod tests {
         assert_eq!(values[1], Some(SQLExpression::Boolean(true)));
         assert_eq!(values[2], Some(SQLExpression::Float(3.5)));
         assert_eq!(values[3], Some(SQLExpression::String("007".to_string())));
+    }
+
+    use bytes::{BufMut, BytesMut};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    fn startup_bytes(database: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_i16(3);
+        body.put_i16(0);
+        body.put_slice(b"user\0me\0");
+        if !database.is_empty() {
+            body.put_slice(b"database\0");
+            body.put_slice(database.as_bytes());
+            body.put_u8(0);
+        }
+        body.put_u8(0);
+
+        let mut msg = BytesMut::new();
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    fn bind_bytes(portal: &str, statement: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_slice(portal.as_bytes());
+        body.put_u8(0);
+        body.put_slice(statement.as_bytes());
+        body.put_u8(0);
+        body.put_i16(0); // param format codes
+        body.put_i16(0); // param values
+        body.put_i16(0); // result format codes
+
+        let mut msg = BytesMut::new();
+        msg.put_u8(b'B');
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    fn execute_bytes(portal: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_slice(portal.as_bytes());
+        body.put_u8(0);
+        body.put_i32(0);
+
+        let mut msg = BytesMut::new();
+        msg.put_u8(b'E');
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    fn tag_only_bytes(tag: u8) -> BytesMut {
+        let mut msg = BytesMut::new();
+        msg.put_u8(tag);
+        msg.put_i32(4);
+        msg
+    }
+
+    fn simple_query_bytes(sql: &str) -> BytesMut {
+        let mut body = BytesMut::new();
+        body.put_slice(sql.as_bytes());
+        body.put_u8(0);
+
+        let mut msg = BytesMut::new();
+        msg.put_u8(b'Q');
+        msg.put_i32((4 + body.len()) as i32);
+        msg.extend_from_slice(&body);
+        msg
+    }
+
+    async fn read_message<R: tokio::io::AsyncRead + Unpin>(reader: &mut R) -> (u8, Vec<u8>) {
+        let mut header = [0u8; 5];
+        reader.read_exact(&mut header).await.unwrap();
+        let length = i32::from_be_bytes(header[1..5].try_into().unwrap()) as usize;
+        let mut body = vec![0u8; length - 4];
+        if !body.is_empty() {
+            reader.read_exact(&mut body).await.unwrap();
+        }
+        (header[0], body)
+    }
+
+    async fn drain_startup_replies<R: tokio::io::AsyncRead + Unpin>(reader: &mut R) {
+        // AuthenticationOk, then ParameterStatus messages, then ReadyForQuery.
+        loop {
+            let (tag, _) = read_message(reader).await;
+            if tag == b'Z' {
+                return;
+            }
+        }
+    }
+
+    /// PostgreSQL extended-protocol spec: after an ErrorResponse, the backend
+    /// must silently discard every message until it sees Sync, and only then
+    /// send ReadyForQuery.
+    #[tokio::test]
+    async fn extended_protocol_error_defers_ready_for_query_until_sync() {
+        let (mut client, server) = tokio::io::duplex(4096);
+        let mut connection = build_test_connection("test_pgwire_skip_until_sync").await;
+
+        let server_task = tokio::spawn(async move {
+            let _ = connection.run(server).await;
+        });
+
+        client.write_all(&startup_bytes("")).await.unwrap();
+        drain_startup_replies(&mut client).await;
+
+        // Bind referencing a statement that was never Parsed → ErrorResponse.
+        client
+            .write_all(&bind_bytes("p1", "nonexistent"))
+            .await
+            .unwrap();
+        // Follow-up Execute must be discarded silently.
+        client.write_all(&execute_bytes("p1")).await.unwrap();
+        // Sync ends the recovery window and triggers ReadyForQuery.
+        client.write_all(&tag_only_bytes(b'S')).await.unwrap();
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(tag, b'E', "expected ErrorResponse first");
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(
+            tag, b'Z',
+            "next message must be ReadyForQuery (after Sync), not a response to the discarded Execute"
+        );
+
+        client.write_all(&tag_only_bytes(b'X')).await.unwrap();
+        let _ = server_task.await;
+    }
+
+    /// Simple query (`Q`) mode still emits ReadyForQuery immediately after an
+    /// ErrorResponse — the extended-protocol recovery window applies only to
+    /// Parse/Bind/Describe/Execute/Close/Flush.
+    #[tokio::test]
+    async fn simple_query_error_still_emits_ready_for_query_immediately() {
+        let (mut client, server) = tokio::io::duplex(4096);
+        let mut connection = build_test_connection("test_pgwire_simple_query_error").await;
+
+        let server_task = tokio::spawn(async move {
+            let _ = connection.run(server).await;
+        });
+
+        client.write_all(&startup_bytes("")).await.unwrap();
+        drain_startup_replies(&mut client).await;
+
+        // Syntax error in simple query mode (SELECT with nothing after it).
+        client
+            .write_all(&simple_query_bytes("select"))
+            .await
+            .unwrap();
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(tag, b'E', "expected ErrorResponse");
+
+        let (tag, _) = read_message(&mut client).await;
+        assert_eq!(tag, b'Z', "simple query error must be followed by ReadyForQuery without Sync");
+
+        client.write_all(&tag_only_bytes(b'X')).await.unwrap();
+        let _ = server_task.await;
     }
 }
