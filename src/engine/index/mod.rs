@@ -151,6 +151,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn integer_key_encoding_is_stable_and_order_preserving() {
+        // 저장된 인덱스 키와 호환되도록 인코딩 결과를 고정합니다 (#274).
+        let cases = [
+            (i64::MIN, "I:0000000000000000"),
+            (-1, "I:7FFFFFFFFFFFFFFF"),
+            (0, "I:8000000000000000"),
+            (1, "I:8000000000000001"),
+            (i64::MAX, "I:FFFFFFFFFFFFFFFF"),
+        ];
+
+        for (value, expected) in cases {
+            assert_eq!(field_to_key(&TableDataFieldType::Integer(value)), expected);
+        }
+
+        for pair in cases.windows(2) {
+            assert!(pair[0].1 < pair[1].1);
+        }
+    }
+
+    #[test]
     fn composite_component_encoding_is_injective_for_splits() {
         let a = (
             encode_composite_key_component("S:ab"),
