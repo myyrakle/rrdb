@@ -110,7 +110,7 @@ pub fn field_to_key(field: &TableDataFieldType) -> String {
     match field {
         TableDataFieldType::Integer(v) => {
             // Flip the sign bit so negative < positive in unsigned comparison
-            let bits = (*v as i64 as u64) ^ (1u64 << 63);
+            let bits = (*v as u64) ^ (1u64 << 63);
             format!("I:{:016X}", bits)
         }
         TableDataFieldType::Float(v) => {

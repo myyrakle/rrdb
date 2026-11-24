@@ -160,46 +160,6 @@ impl DBEngine {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use crate::config::launch_config::LaunchConfig;
-    use crate::engine::DBEngine;
-    use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
-
-    #[tokio::test]
-    async fn find_database_checks_database_directory_directly() {
-        let base_path = PathBuf::from("target/test_find_database/direct_directory_lookup");
-        if base_path.exists() {
-            tokio::fs::remove_dir_all(&base_path).await.unwrap();
-        }
-
-        let config = LaunchConfig::default_for_base_path(&base_path);
-        tokio::fs::create_dir_all(&config.data_directory)
-            .await
-            .unwrap();
-
-        let engine = DBEngine::new(config);
-        engine
-            .create_database(
-                CreateDatabaseQuery::builder()
-                    .set_name("lookup_db".to_string())
-                    .set_if_not_exists(false),
-            )
-            .await
-            .unwrap();
-
-        assert!(engine.find_database("lookup_db".to_string()).await.unwrap());
-        assert!(
-            !engine
-                .find_database("missing_db".to_string())
-                .await
-                .unwrap()
-        );
-    }
-}
-
 impl DBEngine {
     pub async fn show_tables(&self, query: ShowTablesQuery) -> errors::Result<ExecuteResult> {
         let base_path = self.get_data_directory();
@@ -286,5 +246,45 @@ impl DBEngine {
                 ))],
             }],
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::config::launch_config::LaunchConfig;
+    use crate::engine::DBEngine;
+    use crate::engine::ast::ddl::create_database::CreateDatabaseQuery;
+
+    #[tokio::test]
+    async fn find_database_checks_database_directory_directly() {
+        let base_path = PathBuf::from("target/test_find_database/direct_directory_lookup");
+        if base_path.exists() {
+            tokio::fs::remove_dir_all(&base_path).await.unwrap();
+        }
+
+        let config = LaunchConfig::default_for_base_path(&base_path);
+        tokio::fs::create_dir_all(&config.data_directory)
+            .await
+            .unwrap();
+
+        let engine = DBEngine::new(config);
+        engine
+            .create_database(
+                CreateDatabaseQuery::builder()
+                    .set_name("lookup_db".to_string())
+                    .set_if_not_exists(false),
+            )
+            .await
+            .unwrap();
+
+        assert!(engine.find_database("lookup_db".to_string()).await.unwrap());
+        assert!(
+            !engine
+                .find_database("missing_db".to_string())
+                .await
+                .unwrap()
+        );
     }
 }

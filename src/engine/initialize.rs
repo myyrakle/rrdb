@@ -204,7 +204,7 @@ impl DBEngine {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -212,7 +212,6 @@ mod tests {
     use tokio::sync::{Mutex, OnceCell, RwLock};
 
     use crate::config::launch_config::LaunchConfig;
-    #[cfg(target_os = "linux")]
     use crate::constants::SYSTEMD_DAEMON_SCRIPT;
     use crate::engine::DBEngine;
     use crate::engine::index::manager::IndexManager;
@@ -239,7 +238,6 @@ mod tests {
         }
     }
 
-    #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn test_init_config() {
         use mockall::predicate::eq;
@@ -273,7 +271,7 @@ max_query_memory_bytes = 134217728
             mock_config: Box<dyn Fn() -> Arc<LaunchConfig>>,
         }
 
-        let test_cases = vec![
+        let test_cases = [
             TestCase {
                 name: "init 정상 동작 (linux)",
                 want_error: false,
@@ -615,7 +613,6 @@ max_query_memory_bytes = 134217728
         }
     }
 
-    #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn test_init_config_uses_custom_base_path() {
         use mockall::predicate::eq;
@@ -664,7 +661,6 @@ max_query_memory_bytes = 134217728
         assert!(result.is_ok(), "error = {:?}", result.err());
     }
 
-    #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn test_install_daemon_registers_and_starts_daemon() {
         use mockall::predicate::eq;

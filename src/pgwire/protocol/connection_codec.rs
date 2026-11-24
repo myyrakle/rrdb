@@ -675,7 +675,7 @@ mod tests {
     /// 바이트는 유효한 헤더를 거의 만들지 못해 이 경로를 못 건드립니다.
     #[test]
     fn decoder_never_panics_on_structured_garbage() {
-        let tags: [u8; 8] = [b'B', b'Q', b'P', b'D', b'E', b'C', b'X', b'F'];
+        let tags: [u8; 8] = *b"BQPDECXF";
 
         for seed in 1u64..20000 {
             let mut rng = FuzzRng(seed);

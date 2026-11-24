@@ -121,67 +121,54 @@ mod tests {
 
     #[test]
     fn test_function_is_aggregate() {
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Sum)).is_aggregate(),
-            true
+        assert!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Sum)).is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Count)).is_aggregate(),
-            true
+        assert!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Count)).is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Max)).is_aggregate(),
-            true
+        assert!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Max)).is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Min)).is_aggregate(),
-            true
+        assert!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Min)).is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Avg)).is_aggregate(),
-            true
+        assert!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Avg)).is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Every)).is_aggregate(),
-            true
+        assert!(
+            Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::Every)).is_aggregate()
         );
-        assert_eq!(
+        assert!(
             Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::ArrayAgg))
-                .is_aggregate(),
-            true
+                .is_aggregate()
         );
-        assert_eq!(
+        assert!(
             Function::BuiltIn(BuiltInFunction::Aggregate(AggregateFunction::StringAgg))
-                .is_aggregate(),
-            true
+                .is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::NullIf))
-                .is_aggregate(),
-            false
+        assert!(
+            !Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::NullIf))
+                .is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Coalesce))
-                .is_aggregate(),
-            false
+        assert!(
+            !Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Coalesce))
+                .is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Greatest))
-                .is_aggregate(),
-            false
+        assert!(
+            !Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Greatest))
+                .is_aggregate()
         );
-        assert_eq!(
-            Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Least))
-                .is_aggregate(),
-            false
+        assert!(
+            !Function::BuiltIn(BuiltInFunction::Conditional(ConditionalFunction::Least))
+                .is_aggregate()
         );
-        assert_eq!(
-            Function::UserDefined(UserDefinedFunction {
+        assert!(
+            !Function::UserDefined(UserDefinedFunction {
                 database_name: None,
                 function_name: "my_function".into()
             })
-            .is_aggregate(),
-            false
+            .is_aggregate()
         );
     }
 

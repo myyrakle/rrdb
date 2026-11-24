@@ -132,7 +132,7 @@ pub fn test_delete_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }

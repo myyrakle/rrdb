@@ -628,14 +628,6 @@ mod tests {
     #[test]
     fn choose_scan_merges_range_bounds_from_and_conjuncts() {
         // id > 10 AND id <= 20 AND name = 'a' (name은 인덱스 없음)
-        let optimizer = Optimizer::with_context(OptimizerContext {
-            indexes: vec![index_meta("users_pkey", "id", true)],
-            statistics: Some(TableStatistics {
-                row_count: 1_000_000,
-                block_count: 10_000,
-                distinct_values: HashMap::new(),
-            }),
-        });
 
         let expression: SQLExpression = BinaryOperatorExpression {
             operator: BinaryOperator::And,

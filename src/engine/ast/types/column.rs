@@ -111,8 +111,8 @@ mod tests {
         assert_eq!(column.data_type, DataType::Int);
         assert_eq!(column.comment, "id column");
         assert_eq!(column.default, Some(SQLExpression::Integer(1)));
-        assert_eq!(column.not_null, true);
-        assert_eq!(column.primary_key, true);
+        assert!(column.not_null);
+        assert!(column.primary_key);
     }
 
     #[test]

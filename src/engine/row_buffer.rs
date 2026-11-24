@@ -286,15 +286,6 @@ impl RowBufferPool {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn is_dirty_empty(&self) -> bool {
-        self.segments.values().all(|segment| {
-            !segment.rewrite_required
-                && segment.pending_append_rows.is_empty()
-                && segment.pending_append_bytes.is_empty()
-        })
-    }
-
     pub(crate) fn drain_unsynced_segments(&mut self) -> Vec<PathBuf> {
         self.unsynced_segments.drain().collect()
     }

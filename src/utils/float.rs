@@ -202,7 +202,7 @@ mod tests {
 
         let f1 = Float64 { value: 1.0 };
         let f2 = Float64 { value: 1.0 };
-        assert_eq!(PartialEq::eq(&f1, &f2), true);
+        assert!(PartialEq::eq(&f1, &f2));
     }
 
     #[test]
