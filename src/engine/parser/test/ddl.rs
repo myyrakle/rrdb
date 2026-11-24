@@ -34,8 +34,7 @@ fn test_handle_create_query() {
             ],
             expected: CreateDatabaseQuery::builder()
                 .set_name("foo".to_owned())
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -59,8 +58,7 @@ fn test_handle_create_query() {
                         .set_primary_key(true)
                         .build(),
                 )
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -91,7 +89,7 @@ fn test_handle_create_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }
@@ -120,8 +118,7 @@ fn test_handle_alter_query() {
                 .set_action(AlterDatabaseAction::RenameTo(AlterDatabaseRenameTo {
                     name: "bar".into(),
                 }))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -140,8 +137,7 @@ fn test_handle_alter_query() {
                     from_name: "a".into(),
                     to_name: "b".into(),
                 }))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -179,7 +175,7 @@ fn test_handle_alter_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }
@@ -199,8 +195,7 @@ fn test_handle_drop_query() {
             input: vec![Token::Database, Token::Identifier("foo".to_owned())],
             expected: DropDatabaseQuery::builder()
                 .set_name("foo".to_owned())
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -208,8 +203,7 @@ fn test_handle_drop_query() {
             input: vec![Token::Table, Token::Identifier("foo".to_owned())],
             expected: DropTableQuery::builder()
                 .set_table(TableName::new(None, "foo".to_owned()))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -241,7 +235,7 @@ fn test_handle_drop_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }
@@ -276,8 +270,7 @@ fn test_handle_create_table_query() {
                         .set_primary_key(true)
                         .build(),
                 )
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -363,7 +356,7 @@ fn test_handle_create_table_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }
@@ -393,8 +386,7 @@ fn test_handle_alter_table_query() {
                     from_name: "a".into(),
                     to_name: "b".into(),
                 }))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -408,8 +400,7 @@ fn test_handle_alter_table_query() {
             input: vec![Token::Identifier("foo".to_owned())],
             expected: AlterTableQuery::builder()
                 .set_table(TableName::new(None, "foo".to_owned()))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -417,8 +408,7 @@ fn test_handle_alter_table_query() {
             input: vec![Token::Identifier("foo".to_owned()), Token::SemiColon],
             expected: AlterTableQuery::builder()
                 .set_table(TableName::new(None, "foo".to_owned()))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -734,7 +724,7 @@ fn test_handle_alter_table_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }
@@ -754,8 +744,7 @@ fn test_handle_drop_table_query() {
             input: vec![Token::Identifier("foo".to_owned())],
             expected: DropTableQuery::builder()
                 .set_table(TableName::new(None, "foo".to_owned()))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -793,7 +782,7 @@ fn test_handle_drop_table_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }

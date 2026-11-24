@@ -137,9 +137,11 @@ mod tests {
 
     #[test]
     fn with_base_path_overrides_loaded_storage_directories() {
-        let mut config = LaunchConfig::default();
-        config.data_directory = "/var/lib/rrdb/data".to_string();
-        config.wal_directory = "/var/lib/rrdb/wal".to_string();
+        let config = LaunchConfig {
+            data_directory: "/var/lib/rrdb/data".to_string(),
+            wal_directory: "/var/lib/rrdb/wal".to_string(),
+            ..LaunchConfig::default()
+        };
 
         let config = config.with_base_path("/tmp/rrdb");
         let base_path = absolute_path(PathBuf::from("/tmp/rrdb"));

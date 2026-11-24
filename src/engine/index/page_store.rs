@@ -524,7 +524,9 @@ mod tests {
     #[tokio::test]
     async fn open_rejects_an_unsupported_format_version() {
         let path = temp_path("foreign_version.idx");
-        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE)
+            .await
+            .unwrap();
         drop(store);
 
         rewrite_superblock(&path, |sb| sb.version = VERSION + 1);
@@ -547,7 +549,9 @@ mod tests {
     #[tokio::test]
     async fn open_accepts_an_older_but_still_supported_version() {
         let path = temp_path("older_supported_version.idx");
-        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE)
+            .await
+            .unwrap();
         drop(store);
 
         rewrite_superblock(&path, |sb| sb.version = MIN_SUPPORTED_VERSION);
@@ -564,7 +568,9 @@ mod tests {
     #[tokio::test]
     async fn open_still_accepts_a_store_written_by_this_version() {
         let path = temp_path("same_version.idx");
-        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE)
+            .await
+            .unwrap();
         let id = store.allocate_page().await.unwrap();
         store
             .write_page(
@@ -597,7 +603,9 @@ mod tests {
     #[tokio::test]
     async fn a_foreign_version_would_write_pages_at_the_wrong_offset() {
         let path = temp_path("wrong_offset.idx");
-        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE).await.unwrap();
+        let store = PageStore::create(&path, page::INDEX_PAGE_SIZE)
+            .await
+            .unwrap();
         let id = store.allocate_page().await.unwrap();
         store
             .write_page(

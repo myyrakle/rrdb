@@ -1,3 +1,14 @@
+//! 복합 PRIMARY KEY 엔드투엔드 통합 테스트 (#220)
+//!
+//! 커버리지:
+//! - 복합 PK 테이블 생성 시 `{table}_pkey` 인덱스 자동 생성
+//! - 복합 키 유니크 강제: 개별 중복 + 배치 중복 거부, 다른 조합은 허용
+//! - 복합 키 조회: 옵티마이저가 복합 인덱스 prefix 스캔 미지원이라도
+//!   (FullScan 폴백) 정확한 결과 반환 — 특히 큰 테이블에서 회귀 테스트
+//! - UPDATE/DELETE 유지보수
+//! - 재기동 후 persisted index 재적재
+//! - 인덱스 유지보수 실패 시 롤백 (orphan row 없음)
+
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -10,17 +21,6 @@ use crate::engine::types::{ExecuteField, ExecuteResult};
 use crate::engine::wal::endec::implements::bincode::{BincodeDecoder, BincodeEncoder};
 use crate::engine::wal::manager::builder::WALBuilder;
 use crate::engine::{DBEngine, SharedWALManager};
-
-/// 복합 PRIMARY KEY 엔드투엔드 통합 테스트 (#220)
-///
-/// 커버리지:
-/// - 복합 PK 테이블 생성 시 `{table}_pkey` 인덱스 자동 생성
-/// - 복합 키 유니크 강제: 개별 중복 + 배치 중복 거부, 다른 조합은 허용
-/// - 복합 키 조회: 옵티마이저가 복합 인덱스 prefix 스캔 미지원이라도
-///   (FullScan 폴백) 정확한 결과 반환 — 특히 큰 테이블에서 회귀 테스트
-/// - UPDATE/DELETE 유지보수
-/// - 재기동 후 persisted index 재적재
-/// - 인덱스 유지보수 실패 시 롤백 (orphan row 없음)
 
 async fn build_test_engine(test_name: &str) -> (DBEngine, SharedWALManager) {
     let base_path = PathBuf::from("target/test_composite_pk").join(test_name);

@@ -61,7 +61,6 @@ impl BinaryOperator {
 #[cfg(test)]
 mod tests {
     use super::BinaryOperator;
-    use crate::engine::parser::predule::Parser;
 
     #[test]
     fn test_get_precedence() {

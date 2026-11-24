@@ -121,9 +121,7 @@ mod tests {
         }
 
         // 'D' | i32 body_len | i16 num_cols | i32 field_len | u8 value
-        let expected: &[u8] = &[
-            b'D', 0, 0, 0, 11, 0, 1, 0, 0, 0, 1, 1,
-        ];
+        let expected: &[u8] = &[b'D', 0, 0, 0, 11, 0, 1, 0, 0, 0, 1, 1];
         assert_eq!(&batch.data[..], expected);
     }
 
@@ -137,9 +135,7 @@ mod tests {
         }
 
         // 'D' | i32 body_len | i16 num_cols | i32 field_len | 't' | i32 field_len | 'f'
-        let expected: &[u8] = &[
-            b'D', 0, 0, 0, 16, 0, 2, 0, 0, 0, 1, b't', 0, 0, 0, 1, b'f',
-        ];
+        let expected: &[u8] = &[b'D', 0, 0, 0, 16, 0, 2, 0, 0, 0, 1, b't', 0, 0, 0, 1, b'f'];
         assert_eq!(&batch.data[..], expected);
     }
 }

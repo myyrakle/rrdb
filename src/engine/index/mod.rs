@@ -110,7 +110,7 @@ pub fn field_to_key(field: &TableDataFieldType) -> String {
     match field {
         TableDataFieldType::Integer(v) => {
             // Flip the sign bit so negative < positive in unsigned comparison
-            let bits = (*v as i64 as u64) ^ (1u64 << 63);
+            let bits = (*v as u64) ^ (1u64 << 63);
             format!("I:{:016X}", bits)
         }
         TableDataFieldType::Float(v) => {
@@ -149,6 +149,26 @@ pub fn encode_composite_key_component(key: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn integer_key_encoding_is_stable_and_order_preserving() {
+        // 저장된 인덱스 키와 호환되도록 인코딩 결과를 고정합니다 (#274).
+        let cases = [
+            (i64::MIN, "I:0000000000000000"),
+            (-1, "I:7FFFFFFFFFFFFFFF"),
+            (0, "I:8000000000000000"),
+            (1, "I:8000000000000001"),
+            (i64::MAX, "I:FFFFFFFFFFFFFFFF"),
+        ];
+
+        for (value, expected) in cases {
+            assert_eq!(field_to_key(&TableDataFieldType::Integer(value)), expected);
+        }
+
+        for pair in cases.windows(2) {
+            assert!(pair[0].1 < pair[1].1);
+        }
+    }
 
     #[test]
     fn composite_component_encoding_is_injective_for_splits() {

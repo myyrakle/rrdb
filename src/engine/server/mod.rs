@@ -100,8 +100,7 @@ impl Server {
         }
 
         let wal_manager = Arc::new(Mutex::new(wal_manager));
-        let _wal_sync_task =
-            spawn_wal_sync_loop(wal_manager.clone(), DEFAULT_WAL_SYNC_INTERVAL);
+        let _wal_sync_task = spawn_wal_sync_loop(wal_manager.clone(), DEFAULT_WAL_SYNC_INTERVAL);
         let _durability_flush_task = spawn_durability_flush_loop(
             engine.clone(),
             wal_manager.clone(),
@@ -321,9 +320,11 @@ mod tests {
                     .iter()
                     .any(|entry| matches!(entry.entry_type, EntryType::Insert))
                 {
-                    assert!(entries
-                        .iter()
-                        .all(|entry| !matches!(entry.entry_type, EntryType::Checkpoint)));
+                    assert!(
+                        entries
+                            .iter()
+                            .all(|entry| !matches!(entry.entry_type, EntryType::Checkpoint))
+                    );
                     break;
                 }
 

@@ -49,20 +49,20 @@ use crate::errors;
 use crate::errors::execute_error::ExecuteError;
 use tokio::sync::{Mutex, RwLock};
 
-/// 쿼리 수준 메모리 예산 추적기 (#265).
-///
-/// 서버는 연결마다 task를 spawn하므로, 동시에 여러
-/// `process_query`가 실행될 수 있습니다. 공유된 슬롯(RwLock<Option<..>>)에
-/// 저장하면 서로의 tracker를 덮어쓰거나 클리어하는 race가
-/// 발생합니다. 특히 한 쿼리가 스캔을 마치기 전에 다른
-/// 쿼리가 슬롯을 클리어하면 후자는 예산 없이 실행됩니다.
-///
-/// 해결: `tokio::task_local!`로 task 범위에 저장합니다.
-/// (`tokio::task_local!`은 `Copy` 타입만 지원하므로
-/// `QueryMemoryTrackerRef`(NonNull 래퍼)를 저장합니다.)
-/// - task 마다 각자의 tracker를 가짐 → 동시 쿼리 간 race 없음
-/// - task 종료 시 자동 정리 → cleanup race 없음
-/// - 시그니처 변경 없이 내부 코드에서 `query_memory()` 호출 가능
+// 쿼리 수준 메모리 예산 추적기 (#265).
+//
+// 서버는 연결마다 task를 spawn하므로, 동시에 여러
+// `process_query`가 실행될 수 있습니다. 공유된 슬롯(RwLock<Option<..>>)에
+// 저장하면 서로의 tracker를 덮어쓰거나 클리어하는 race가
+// 발생합니다. 특히 한 쿼리가 스캔을 마치기 전에 다른
+// 쿼리가 슬롯을 클리어하면 후자는 예산 없이 실행됩니다.
+//
+// 해결: `tokio::task_local!`로 task 범위에 저장합니다.
+// (`tokio::task_local!`은 `Copy` 타입만 지원하므로
+// `QueryMemoryTrackerRef`(NonNull 래퍼)를 저장합니다.)
+// - task 마다 각자의 tracker를 가짐 → 동시 쿼리 간 race 없음
+// - task 종료 시 자동 정리 → cleanup race 없음
+// - 시그니처 변경 없이 내부 코드에서 `query_memory()` 호출 가능
 tokio::task_local! {
     static QUERY_MEMORY_TRACKER: QueryMemoryTrackerRef;
 }
@@ -143,7 +143,7 @@ impl DBEngine {
         statement: SQLStatement,
         wal_manager: SharedWALManager,
     ) -> errors::Result<ExecuteResult> {
-        let result = match statement {
+        match statement {
             SQLStatement::DDL(DDLStatement::CreateDatabaseQuery(query)) => {
                 self.create_database(query).await
             }
@@ -185,9 +185,7 @@ impl DBEngine {
             SQLStatement::Other(OtherStatement::ShowTables(query)) => self.show_tables(query).await,
             SQLStatement::Other(OtherStatement::DescTable(query)) => self.desc_table(query).await,
             _ => unimplemented!("no execute implementation"),
-        };
-
-        result
+        }
     }
 
     /// 쿼리 메모리 예산 추적기를 생성합니다 (#265).

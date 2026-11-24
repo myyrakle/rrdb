@@ -199,6 +199,14 @@ cargo run -- init
 
 - PR은 `master` 브랜치로 머지
 - clippy 린트 통과 필수 (lint `to_string_trait_impl` 허용됨)
+- 기준 도구 체인: 최신 Rust stable (CI의 `toolchain: stable`과 동일)
+- PR 전에 아래 검사를 통과시킵니다.
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --all-targets -- -D warnings -A clippy::to_string_trait_impl
+cargo test
+```
 
 ## 주의사항
 

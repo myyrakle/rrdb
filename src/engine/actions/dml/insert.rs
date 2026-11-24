@@ -96,7 +96,7 @@ impl DBEngine {
             if !input_columns_set.contains(&required_column.name) {
                 return Err(ExecuteError::wrap(format!(
                     "column '{}' is required, but it was not provided",
-                    &required_column.name
+                    required_column.name
                 )));
             }
         }

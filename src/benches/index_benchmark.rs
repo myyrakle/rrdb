@@ -69,7 +69,7 @@ impl BenchResult {
     fn print(&self) {
         println!(
             "  {:<50} n={:>7}  total={:>12}  throughput={:>16}",
-            &self.name,
+            self.name,
             self.n,
             fmt_duration(self.total),
             fmt_throughput(self.n, self.total),

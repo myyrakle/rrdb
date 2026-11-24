@@ -30,8 +30,7 @@ fn test_handle_alter_database_query() {
                 .set_action(AlterDatabaseAction::RenameTo(AlterDatabaseRenameTo {
                     name: "bar".into(),
                 }))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -47,8 +46,7 @@ fn test_handle_alter_database_query() {
                 .set_action(AlterDatabaseAction::RenameTo(AlterDatabaseRenameTo {
                     name: "bar".into(),
                 }))
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -56,8 +54,7 @@ fn test_handle_alter_database_query() {
             input: vec![Token::Identifier("foo".to_owned())],
             expected: AlterDatabaseQuery::builder()
                 .set_name("foo".to_owned())
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -132,7 +129,7 @@ fn test_handle_alter_database_query() {
         );
 
         if let Ok(statements) = got {
-            assert_eq!(statements, t.expected.into(), "TC: {}", t.name);
+            assert_eq!(statements, t.expected, "TC: {}", t.name);
         }
     }
 }

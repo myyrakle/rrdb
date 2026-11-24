@@ -56,15 +56,14 @@ impl BTreeIndex {
     /// Insert a key->row_path mapping into the index.
     /// Returns Err if a unique constraint is violated.
     pub fn insert(&mut self, key: String, row_path: String) -> Result<(), String> {
-        if self.is_unique {
-            if let Some(existing) = self.tree.get(&key) {
-                if !existing.is_empty() {
-                    return Err(format!(
-                        "unique index violation on column '{}': key '{}' already exists",
-                        self.column_name, key
-                    ));
-                }
-            }
+        if self.is_unique
+            && let Some(existing) = self.tree.get(&key)
+            && !existing.is_empty()
+        {
+            return Err(format!(
+                "unique index violation on column '{}': key '{}' already exists",
+                self.column_name, key
+            ));
         }
 
         self.tree.entry(key).or_default().push(row_path);
@@ -209,15 +208,15 @@ impl BTreeIndex {
 
         // Validate: if unique, the new_key must not already exist
         // (unless old_key == new_key, which is a no-op update)
-        if self.is_unique && old_key != new_key.as_str() {
-            if let Some(existing) = self.tree.get(&new_key) {
-                if !existing.is_empty() {
-                    return Err(format!(
-                        "unique index violation on column '{}': key '{}' already exists",
-                        self.column_name, new_key
-                    ));
-                }
-            }
+        if self.is_unique
+            && old_key != new_key.as_str()
+            && let Some(existing) = self.tree.get(&new_key)
+            && !existing.is_empty()
+        {
+            return Err(format!(
+                "unique index violation on column '{}': key '{}' already exists",
+                self.column_name, new_key
+            ));
         }
 
         // All validations passed, perform the mutation

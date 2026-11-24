@@ -132,43 +132,39 @@ impl DBEngine {
                         let config_path = table_path.clone().join("table.config");
 
                         match tokio::fs::read(&config_path).await {
-                            Ok(data) => {
-                                match encoder.decode::<TableSchema>(data.as_slice()) {
-                                    Ok(mut table_config) => {
-                                        let target = table_config
-                                            .columns
-                                            .iter_mut()
-                                            .find(|e| e.name == column_name);
+                            Ok(data) => match encoder.decode::<TableSchema>(data.as_slice()) {
+                                Ok(mut table_config) => {
+                                    let target = table_config
+                                        .columns
+                                        .iter_mut()
+                                        .find(|e| e.name == column_name);
 
-                                        match target {
-                                            Some(target) => {
-                                                target.default = None;
-                                            }
-                                            None => {
-                                                return Err(ExecuteError::wrap(format!(
-                                                    "column '{}' not exists ",
-                                                    column_name
-                                                )));
-                                            }
+                                    match target {
+                                        Some(target) => {
+                                            target.default = None;
                                         }
-
-                                        if let Err(error) = tokio::fs::write(
-                                            config_path,
-                                            encoder.encode(table_config),
-                                        )
-                                        .await
-                                        {
-                                            return Err(ExecuteError::wrap(error.to_string()));
+                                        None => {
+                                            return Err(ExecuteError::wrap(format!(
+                                                "column '{}' not exists ",
+                                                column_name
+                                            )));
                                         }
                                     }
-                                    Err(error) => {
-                                        return Err(ExecuteError::wrap(format!(
-                                            "invalid config data: {}",
-                                            error
-                                        )));
+
+                                    if let Err(error) =
+                                        tokio::fs::write(config_path, encoder.encode(table_config))
+                                            .await
+                                    {
+                                        return Err(ExecuteError::wrap(error.to_string()));
                                     }
                                 }
-                            }
+                                Err(error) => {
+                                    return Err(ExecuteError::wrap(format!(
+                                        "invalid config data: {}",
+                                        error
+                                    )));
+                                }
+                            },
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
                                     return Err(ExecuteError::wrap("table not found".to_string()));
@@ -184,43 +180,39 @@ impl DBEngine {
                         let config_path = table_path.clone().join("table.config");
 
                         match tokio::fs::read(&config_path).await {
-                            Ok(data) => {
-                                match encoder.decode::<TableSchema>(data.as_slice()) {
-                                    Ok(mut table_config) => {
-                                        let target = table_config
-                                            .columns
-                                            .iter_mut()
-                                            .find(|e| e.name == column_name);
+                            Ok(data) => match encoder.decode::<TableSchema>(data.as_slice()) {
+                                Ok(mut table_config) => {
+                                    let target = table_config
+                                        .columns
+                                        .iter_mut()
+                                        .find(|e| e.name == column_name);
 
-                                        match target {
-                                            Some(target) => {
-                                                target.not_null = true;
-                                            }
-                                            None => {
-                                                return Err(ExecuteError::wrap(format!(
-                                                    "column '{}' not exists ",
-                                                    column_name
-                                                )));
-                                            }
+                                    match target {
+                                        Some(target) => {
+                                            target.not_null = true;
                                         }
-
-                                        if let Err(error) = tokio::fs::write(
-                                            config_path,
-                                            encoder.encode(table_config),
-                                        )
-                                        .await
-                                        {
-                                            return Err(ExecuteError::wrap(error.to_string()));
+                                        None => {
+                                            return Err(ExecuteError::wrap(format!(
+                                                "column '{}' not exists ",
+                                                column_name
+                                            )));
                                         }
                                     }
-                                    Err(error) => {
-                                        return Err(ExecuteError::wrap(format!(
-                                            "invalid config data: {}",
-                                            error
-                                        )));
+
+                                    if let Err(error) =
+                                        tokio::fs::write(config_path, encoder.encode(table_config))
+                                            .await
+                                    {
+                                        return Err(ExecuteError::wrap(error.to_string()));
                                     }
                                 }
-                            }
+                                Err(error) => {
+                                    return Err(ExecuteError::wrap(format!(
+                                        "invalid config data: {}",
+                                        error
+                                    )));
+                                }
+                            },
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
                                     return Err(ExecuteError::wrap("table not found".to_string()));
@@ -236,43 +228,39 @@ impl DBEngine {
                         let config_path = table_path.clone().join("table.config");
 
                         match tokio::fs::read(&config_path).await {
-                            Ok(data) => {
-                                match encoder.decode::<TableSchema>(data.as_slice()) {
-                                    Ok(mut table_config) => {
-                                        let target = table_config
-                                            .columns
-                                            .iter_mut()
-                                            .find(|e| e.name == column_name);
+                            Ok(data) => match encoder.decode::<TableSchema>(data.as_slice()) {
+                                Ok(mut table_config) => {
+                                    let target = table_config
+                                        .columns
+                                        .iter_mut()
+                                        .find(|e| e.name == column_name);
 
-                                        match target {
-                                            Some(target) => {
-                                                target.not_null = false;
-                                            }
-                                            None => {
-                                                return Err(ExecuteError::wrap(format!(
-                                                    "column '{}' not exists ",
-                                                    column_name
-                                                )));
-                                            }
+                                    match target {
+                                        Some(target) => {
+                                            target.not_null = false;
                                         }
-
-                                        if let Err(error) = tokio::fs::write(
-                                            config_path,
-                                            encoder.encode(table_config),
-                                        )
-                                        .await
-                                        {
-                                            return Err(ExecuteError::wrap(error.to_string()));
+                                        None => {
+                                            return Err(ExecuteError::wrap(format!(
+                                                "column '{}' not exists ",
+                                                column_name
+                                            )));
                                         }
                                     }
-                                    Err(error) => {
-                                        return Err(ExecuteError::wrap(format!(
-                                            "invalid config data: {}",
-                                            error
-                                        )));
+
+                                    if let Err(error) =
+                                        tokio::fs::write(config_path, encoder.encode(table_config))
+                                            .await
+                                    {
+                                        return Err(ExecuteError::wrap(error.to_string()));
                                     }
                                 }
-                            }
+                                Err(error) => {
+                                    return Err(ExecuteError::wrap(format!(
+                                        "invalid config data: {}",
+                                        error
+                                    )));
+                                }
+                            },
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
                                     return Err(ExecuteError::wrap("table not found".to_string()));
@@ -287,43 +275,39 @@ impl DBEngine {
                         let config_path = table_path.clone().join("table.config");
 
                         match tokio::fs::read(&config_path).await {
-                            Ok(data) => {
-                                match encoder.decode::<TableSchema>(data.as_slice()) {
-                                    Ok(mut table_config) => {
-                                        let target = table_config
-                                            .columns
-                                            .iter_mut()
-                                            .find(|e| e.name == column_name);
+                            Ok(data) => match encoder.decode::<TableSchema>(data.as_slice()) {
+                                Ok(mut table_config) => {
+                                    let target = table_config
+                                        .columns
+                                        .iter_mut()
+                                        .find(|e| e.name == column_name);
 
-                                        match target {
-                                            Some(target) => {
-                                                target.data_type = action.data_type;
-                                            }
-                                            None => {
-                                                return Err(ExecuteError::wrap(format!(
-                                                    "column '{}' not exists ",
-                                                    column_name
-                                                )));
-                                            }
+                                    match target {
+                                        Some(target) => {
+                                            target.data_type = action.data_type;
                                         }
-
-                                        if let Err(error) = tokio::fs::write(
-                                            config_path,
-                                            encoder.encode(table_config),
-                                        )
-                                        .await
-                                        {
-                                            return Err(ExecuteError::wrap(error.to_string()));
+                                        None => {
+                                            return Err(ExecuteError::wrap(format!(
+                                                "column '{}' not exists ",
+                                                column_name
+                                            )));
                                         }
                                     }
-                                    Err(error) => {
-                                        return Err(ExecuteError::wrap(format!(
-                                            "invalid config data: {}",
-                                            error
-                                        )));
+
+                                    if let Err(error) =
+                                        tokio::fs::write(config_path, encoder.encode(table_config))
+                                            .await
+                                    {
+                                        return Err(ExecuteError::wrap(error.to_string()));
                                     }
                                 }
-                            }
+                                Err(error) => {
+                                    return Err(ExecuteError::wrap(format!(
+                                        "invalid config data: {}",
+                                        error
+                                    )));
+                                }
+                            },
                             Err(error) => match error.kind() {
                                 IOErrorKind::NotFound => {
                                     return Err(ExecuteError::wrap("table not found".to_string()));

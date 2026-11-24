@@ -19,8 +19,7 @@ fn test_handle_drop_database_query() {
             input: vec![Token::Identifier("test_db".to_owned()), Token::SemiColon],
             expected: DropDatabaseQuery::builder()
                 .set_name("test_db".to_owned())
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -28,8 +27,7 @@ fn test_handle_drop_database_query() {
             input: vec![Token::Identifier("test_db".to_owned())],
             expected: DropDatabaseQuery::builder()
                 .set_name("test_db".to_owned())
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -43,8 +41,7 @@ fn test_handle_drop_database_query() {
             expected: DropDatabaseQuery::builder()
                 .set_name("test_db".to_owned())
                 .set_if_exists(true)
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {

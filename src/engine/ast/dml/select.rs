@@ -260,7 +260,7 @@ mod tests {
     fn test_has_group_by() {
         let select_query = SelectQuery::builder().build();
 
-        assert_eq!(select_query.has_group_by(), false);
+        assert!(!select_query.has_group_by());
 
         let select_query = SelectQuery::builder()
             .add_group_by(GroupByItem {
@@ -271,7 +271,7 @@ mod tests {
             })
             .build();
 
-        assert_eq!(select_query.has_group_by(), true);
+        assert!(select_query.has_group_by());
     }
 
     #[test]

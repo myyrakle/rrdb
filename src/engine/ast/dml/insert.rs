@@ -10,17 +10,12 @@ pub struct InsertQuery {
     pub data: InsertData,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub enum InsertData {
     Select(Box<SelectQuery>),
     Values(Vec<InsertValue>),
+    #[default]
     None,
-}
-
-impl Default for InsertData {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl InsertQuery {

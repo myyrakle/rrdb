@@ -19,8 +19,7 @@ fn test_handle_create_database_query() {
             input: vec![Token::Identifier("test_db".to_owned()), Token::SemiColon],
             expected: CreateDatabaseQuery::builder()
                 .set_name("test_db".to_owned())
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -28,8 +27,7 @@ fn test_handle_create_database_query() {
             input: vec![Token::Identifier("test_db".to_owned())],
             expected: CreateDatabaseQuery::builder()
                 .set_name("test_db".to_owned())
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {
@@ -44,8 +42,7 @@ fn test_handle_create_database_query() {
             expected: CreateDatabaseQuery::builder()
                 .set_name("test_db".to_owned())
                 .set_if_not_exists(true)
-                .build()
-                .into(),
+                .build(),
             want_error: false,
         },
         TestCase {

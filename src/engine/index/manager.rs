@@ -564,10 +564,7 @@ mod tests {
     #[tokio::test]
     async fn create_index_rejects_a_traversing_index_name() {
         let dir = setup_temp_dir("traversal_index_name").await;
-        let escaped = dir
-            .parent()
-            .unwrap()
-            .join("escaped_by_index_name.idx");
+        let escaped = dir.parent().unwrap().join("escaped_by_index_name.idx");
         let _ = tokio::fs::remove_file(&escaped).await;
 
         let manager = IndexManager::new(dir.clone());

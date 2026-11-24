@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use super::select_column::SelectColumn;
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 pub enum SQLExpression {
     // 복합 표현식
     Unary(Box<UnaryOperatorExpression>),     // 단항 연산식
@@ -33,13 +33,8 @@ pub enum SQLExpression {
     String(String),
     List(ListExpression),
     SelectColumn(SelectColumn),
+    #[default]
     Null,
-}
-
-impl Default for SQLExpression {
-    fn default() -> Self {
-        Self::Null
-    }
 }
 
 impl SQLExpression {
