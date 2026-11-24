@@ -414,8 +414,7 @@ impl Connection {
                     return Ok(Some(ConnectionState::Idle));
                 }
 
-                self.current_message_is_simple =
-                    matches!(&message, ClientMessage::Query(_));
+                self.current_message_is_simple = matches!(&message, ClientMessage::Query(_));
 
                 match message {
                     ClientMessage::Parse(parse) => {
@@ -924,7 +923,9 @@ mod tests {
     #[test]
     fn query_has_parameters_ignores_placeholders_inside_block_comments() {
         assert!(!Connection::query_has_parameters("select 1 /* $1 */"));
-        assert!(!Connection::query_has_parameters("/* nested /* $1 */ */ select 1"));
+        assert!(!Connection::query_has_parameters(
+            "/* nested /* $1 */ */ select 1"
+        ));
         assert!(Connection::query_has_parameters("/* $1 */ select $1"));
     }
 
@@ -932,7 +933,9 @@ mod tests {
     fn query_has_parameters_ignores_placeholders_inside_dollar_quoted_strings() {
         assert!(!Connection::query_has_parameters("select $body$ $1 $body$"));
         assert!(!Connection::query_has_parameters("select $$ $1 $$"));
-        assert!(Connection::query_has_parameters("select $body$ x $body$, $1"));
+        assert!(Connection::query_has_parameters(
+            "select $body$ x $body$, $1"
+        ));
     }
 
     #[test]
@@ -998,7 +1001,9 @@ mod tests {
     fn query_has_parameters_treats_carriage_return_as_line_comment_terminator() {
         // `\r` also ends line comments in PostgreSQL; `$1` after CR is a real placeholder.
         assert!(Connection::query_has_parameters("select -- comment\r $1"));
-        assert!(Connection::query_has_parameters("select -- comment\r\nfrom t where a = $1"));
+        assert!(Connection::query_has_parameters(
+            "select -- comment\r\nfrom t where a = $1"
+        ));
     }
 
     #[test]
@@ -1301,7 +1306,10 @@ mod tests {
         assert_eq!(tag, b'E', "expected ErrorResponse");
 
         let (tag, _) = read_message(&mut client).await;
-        assert_eq!(tag, b'Z', "simple query error must be followed by ReadyForQuery without Sync");
+        assert_eq!(
+            tag, b'Z',
+            "simple query error must be followed by ReadyForQuery without Sync"
+        );
 
         client.write_all(&tag_only_bytes(b'X')).await.unwrap();
         let _ = server_task.await;

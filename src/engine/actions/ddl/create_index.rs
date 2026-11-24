@@ -455,9 +455,13 @@ mod tests {
         );
 
         // 삭제된 행은 더 이상 인덱스로 조회되지 않아야 함
-        let deleted = execute_sql(&engine, wal.clone(), "select score from users where id = 1;")
-            .await
-            .unwrap();
+        let deleted = execute_sql(
+            &engine,
+            wal.clone(),
+            "select score from users where id = 1;",
+        )
+        .await
+        .unwrap();
         assert_eq!(deleted.rows.len(), 0);
 
         // row index가 이동하지 않으므로 남은 행은 계속 정확히 조회되어야 함

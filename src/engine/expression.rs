@@ -857,7 +857,6 @@ mod tests {
         }
     }
 
-
     async fn negate(value: i64) -> crate::errors::Result<TableDataFieldType> {
         let engine = DBEngine::new(LaunchConfig::default());
         let expression = SQLExpression::Unary(Box::new(UnaryOperatorExpression {

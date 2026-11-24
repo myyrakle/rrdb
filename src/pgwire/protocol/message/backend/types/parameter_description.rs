@@ -33,10 +33,7 @@ mod tests {
 
         // i16 count | u32 oid | u32 oid
         // Int4 = 23, Text = 25
-        assert_eq!(
-            &buf[..],
-            &[0, 2, 0, 0, 0, 23, 0, 0, 0, 25][..],
-        );
+        assert_eq!(&buf[..], &[0, 2, 0, 0, 0, 23, 0, 0, 0, 25][..],);
     }
 
     #[test]

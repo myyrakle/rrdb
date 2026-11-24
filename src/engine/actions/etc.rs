@@ -226,7 +226,11 @@ impl DBEngine {
                                                 match encoder.decode(result.as_slice()) {
                                                     Ok(decoded) => decoded,
                                                     Err(e) => {
-                                                        log::warn!("failed to decode table config {}: {}", path_display, e);
+                                                        log::warn!(
+                                                            "failed to decode table config {}: {}",
+                                                            path_display,
+                                                            e
+                                                        );
                                                         return None;
                                                     }
                                                 };

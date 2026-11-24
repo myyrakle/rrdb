@@ -93,9 +93,9 @@ impl Optimizer {
             && query.order_by_clause.is_none()
             && !query.has_aggregate
         {
-            query.limit.map(|limit| {
-                (limit as usize).saturating_add(query.offset.unwrap_or(0) as usize)
-            })
+            query
+                .limit
+                .map(|limit| (limit as usize).saturating_add(query.offset.unwrap_or(0) as usize))
         } else {
             None
         };

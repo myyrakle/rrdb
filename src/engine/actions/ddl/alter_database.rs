@@ -65,29 +65,25 @@ impl DBEngine {
                     config_path.push("database.config");
 
                     match tokio::fs::read(&config_path).await {
-                        Ok(data) => {
-                            match encoder.decode::<DatabaseSchema>(data.as_slice()) {
-                                Ok(mut database_config) => {
-                                    database_config.database_name = to_database_name;
-                                    if let Err(_error) = tokio::fs::write(
-                                        config_path,
-                                        encoder.encode(database_config),
-                                    )
-                                    .await
-                                    {
-                                        return Err(ExecuteError::wrap(
-                                            "failed to write database config",
-                                        ));
-                                    }
-                                }
-                                Err(error) => {
-                                    return Err(ExecuteError::wrap(format!(
-                                        "invalid config data: {}",
-                                        error
-                                    )));
+                        Ok(data) => match encoder.decode::<DatabaseSchema>(data.as_slice()) {
+                            Ok(mut database_config) => {
+                                database_config.database_name = to_database_name;
+                                if let Err(_error) =
+                                    tokio::fs::write(config_path, encoder.encode(database_config))
+                                        .await
+                                {
+                                    return Err(ExecuteError::wrap(
+                                        "failed to write database config",
+                                    ));
                                 }
                             }
-                        }
+                            Err(error) => {
+                                return Err(ExecuteError::wrap(format!(
+                                    "invalid config data: {}",
+                                    error
+                                )));
+                            }
+                        },
                         Err(error) => match error.kind() {
                             IOErrorKind::NotFound => {
                                 return Err(ExecuteError::wrap("database not found"));

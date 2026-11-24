@@ -144,7 +144,9 @@ impl RowBufferPool {
     ) -> usize {
         let segment = self.segments.entry(segment_path).or_default();
         segment.pending_append_rows.extend_from_slice(rows);
-        segment.pending_append_bytes.extend_from_slice(&encoded_rows);
+        segment
+            .pending_append_bytes
+            .extend_from_slice(&encoded_rows);
         self.dirty_bytes()
     }
 
@@ -157,13 +159,7 @@ impl RowBufferPool {
         let persisted_rows = segment.persisted_rows.get_or_insert_with(load_disk_rows);
         segment.persisted_row_count = Some(persisted_rows.len());
         let mut rows = persisted_rows.clone();
-        rows.extend(
-            segment
-                .pending_append_rows
-                .iter()
-                .cloned()
-                .map(Some),
-        );
+        rows.extend(segment.pending_append_rows.iter().cloned().map(Some));
         rows
     }
 
